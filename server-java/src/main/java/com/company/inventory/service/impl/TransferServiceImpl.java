@@ -239,7 +239,7 @@ public class TransferServiceImpl implements TransferService {
         approvalGuard.assertApprovable(username, doc.getCreator());
         // 先条件迁移 approved(执行失败整单回滚,含本次状态变更,单据保持 pending 可重试)
         Map<String, Object> extra = new HashMap<>();
-        extra.put("\"approver\"", username);
+        extra.put("approver", username);
         extra.put("approved_at", LocalDateTime.now());
         int n = stateSupport.transitionWith(docMapper, id, List.of(DocStatus.PENDING),
                 DocStatus.APPROVED, username, extra);
@@ -269,7 +269,7 @@ public class TransferServiceImpl implements TransferService {
             throw new BizException("驳回原因必填");
         }
         Map<String, Object> extra = new HashMap<>();
-        extra.put("\"approver\"", username);
+        extra.put("approver", username);
         extra.put("approved_at", LocalDateTime.now());
         extra.put("reject_reason", dto.rejectReason().trim());
         int n = stateSupport.transitionWith(docMapper, id, List.of(DocStatus.PENDING),

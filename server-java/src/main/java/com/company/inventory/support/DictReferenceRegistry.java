@@ -129,8 +129,8 @@ public class DictReferenceRegistry {
             for (DictDO item : items) {
                 for (TableRef ref : refs) {
                     Long count = jdbcTemplate.queryForObject(
-                            "SELECT COUNT(*) FROM \"" + ref.table()
-                                    + "\" WHERE \"" + ref.column() + "\" = ?",
+                            "SELECT COUNT(*) FROM " + ref.table()
+                                    + " WHERE " + ref.column() + " = ?",
                             Long.class, item.getDictKey());
                     if (count != null && count > 0) {
                         return true;

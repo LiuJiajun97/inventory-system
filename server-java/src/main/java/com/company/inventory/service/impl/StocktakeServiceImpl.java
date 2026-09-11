@@ -307,7 +307,7 @@ public class StocktakeServiceImpl implements StocktakeService {
         }
         approvalGuard.assertApprovable(username, doc.getCreator());
         Map<String, Object> extra = new HashMap<>();
-        extra.put("\"approver\"", username);
+        extra.put("approver", username);
         extra.put("approved_at", LocalDateTime.now());
         int n = stateSupport.transitionWith(docMapper, id, List.of(DocStatus.PENDING),
                 DocStatus.APPROVED, username, extra);
@@ -332,7 +332,7 @@ public class StocktakeServiceImpl implements StocktakeService {
             throw new BizException("驳回原因必填");
         }
         Map<String, Object> extra = new HashMap<>();
-        extra.put("\"approver\"", username);
+        extra.put("approver", username);
         extra.put("approved_at", LocalDateTime.now());
         extra.put("reject_reason", rejectReason.trim());
         int n = stateSupport.transitionWith(docMapper, id, List.of(DocStatus.PENDING),

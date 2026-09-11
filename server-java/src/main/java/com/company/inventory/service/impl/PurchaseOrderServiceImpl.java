@@ -475,7 +475,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
      */
     private Map<String, Object> approveExtra(String username) {
         Map<String, Object> extra = new HashMap<>();
-        extra.put("\"approver\"", username);
+        extra.put("approver", username);
         extra.put("approved_at", LocalDateTime.now());
         return extra;
     }

@@ -34,14 +34,14 @@ public class DocStateSupport {
      */
     public <T> int transition(BaseMapper<T> mapper, long id, List<String> from, String to, String updater) {
         UpdateWrapper<T> wrapper = new UpdateWrapper<>();
-        wrapper.set("\"status\"", to)
-                .set("\"updater\"", updater)
+        wrapper.set("status", to)
+                .set("updater", updater)
                 .set("updated_at", LocalDateTime.now())
-                .eq("\"id\"", id);
+                .eq("id", id);
         if (from.size() == 1) {
-            wrapper.eq("\"status\"", from.get(0));
+            wrapper.eq("status", from.get(0));
         } else {
-            wrapper.in("\"status\"", from);
+            wrapper.in("status", from);
         }
         return mapper.update(null, wrapper);
     }
@@ -54,26 +54,26 @@ public class DocStateSupport {
      * @param from     允许的来源状态集合(非空)
      * @param to       目标状态
      * @param updater  操作人(username)
-     * @param extra    额外设置列(列名为已加引号 camelCase)→ 值
+     * @param extra    额外设置列(列名,无引号 snake)→ 值
      * @param <T>      表头实体类型
      * @return 影响行数(1 成功 / 0 状态冲突)
      */
     public <T> int transitionWith(BaseMapper<T> mapper, long id, List<String> from, String to,
             String updater, java.util.Map<String, Object> extra) {
         UpdateWrapper<T> wrapper = new UpdateWrapper<>();
-        wrapper.set("\"status\"", to)
-                .set("\"updater\"", updater)
+        wrapper.set("status", to)
+                .set("updater", updater)
                 .set("updated_at", LocalDateTime.now());
         if (extra != null) {
             for (java.util.Map.Entry<String, Object> e : extra.entrySet()) {
                 wrapper.set(e.getKey(), e.getValue());
             }
         }
-        wrapper.eq("\"id\"", id);
+        wrapper.eq("id", id);
         if (from.size() == 1) {
-            wrapper.eq("\"status\"", from.get(0));
+            wrapper.eq("status", from.get(0));
         } else {
-            wrapper.in("\"status\"", from);
+            wrapper.in("status", from);
         }
         return mapper.update(null, wrapper);
     }
