@@ -166,10 +166,10 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 
 ```
 inventory-system/
+├── AGENTS.md                  AI 编码代理工作手册(代理原生读取)
 ├── docker-compose.yml         PG 16-alpine,端口 5433
 ├── scripts/mvn.sh             Maven 包装脚本(本机 bash 路径兼容)
 ├── docs/迭代日志.md            迭代流水账(每次实质变更追加一条)
-├── docs/AGENT.md               AI 编码代理工作手册(派任务时给代理的上下文)
 ├── server-java/               Spring Boot 后端(阿里规范)
 │   ├── pom.xml                Boot 3.5.x / MyBatis-Plus 3.5.x / jjwt / springdoc / checkstyle
 │   ├── checkstyle.xml         阿里规范规则集(中文 Javadoc 适配)
