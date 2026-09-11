@@ -11,6 +11,11 @@
 
 ## 常用命令
 
+**优先走 IDEA MCP 通道**(IDEA 开着时):IDE 侧的编译(`build_project`)、运行(`execute_run_configuration`
+跑 InventoryApplication / web-前端(Vite))、git(`git_status`/`get_repositories`)、
+数据库(`execute_sql_query`/`preview_table_data`)、重构(`rename_refactoring`)、调试(xdebug 系列)。
+IDEA 没开或通道不通时,退回下面命令。
+
 ```bash
 # 构建/测试(server-java 下,Maven 必须经包装脚本,bash 下直接 mvn 有 classworlds 路径 bug)
 bash scripts/mvn.sh test               # 后端测试(当前 77 条,必须全绿)
@@ -56,7 +61,8 @@ docker compose up -d                   # 起 PG
 
 ## 踩坑备忘
 
-- 杀后端:`netstat -ano | grep 8081` 找 java PID 强杀,杀 mvn 壳不够
+- 杀后端:`netstat -ano | grep 8081` 找 java PID 强杀,杀 mvn 壳不够;
+  正常启停一律走 IDEA 运行配置(InventoryApplication / web-前端(Vite)),别命令行另起实例
 - 统计测试数用 `grep -cE "@Test\b"`,别 grep `@Test`(@TestInstance 会多算)
 - curl 直连 8081 带 Authorization 会被本机代理吞成假 401;验证接口走 python urllib 或浏览器 fetch
 - 改实体/接口后同步 `web/src/types/phase1.ts` 与 `web/src/api/index.ts`
