@@ -64,11 +64,24 @@ export function RoleTag({ role }: { role: Role }) {
   );
 }
 
-// 业务 Tag(入库/出库) —— 用于流水查询
+// 业务 Tag(流水 bizCode 全量映射,与后端 ErrorCode.BIZ_CODE_* 一一对应)
+// 状态机/流水枚举不进字典(字典只做配置类),此处前端静态映射
 const BIZ_LABEL: Record<string, { text: string; cls: string }> = {
   inbound: { text: "入库", cls: "tag-status-inbound" },
   outbound: { text: "出库", cls: "tag-status-outbound" },
+  transfer_in: { text: "调拨入", cls: "tag-biz-transfer-in" },
+  transfer_out: { text: "调拨出", cls: "tag-biz-transfer-out" },
+  adjust_in: { text: "调整入", cls: "tag-biz-adjust-in" },
+  adjust_out: { text: "调整出", cls: "tag-biz-adjust-out" },
+  pre_alloc: { text: "预占", cls: "tag-biz-pre-alloc" },
+  release_pre_alloc: { text: "释放预占", cls: "tag-biz-release" },
 };
+
+/** 业务筛选下拉选项(流水查询页复用,与 BIZ_LABEL 同源)。 */
+export const BIZ_OPTIONS = Object.entries(BIZ_LABEL).map(([value, it]) => ({
+  label: it.text,
+  value,
+}));
 
 export function BizTag({ biz }: { biz: string }) {
   const it = BIZ_LABEL[biz];

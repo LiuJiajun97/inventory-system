@@ -8,7 +8,7 @@ import { transactionApi, warehouseApi } from "../../api";
 import type { StockTransaction, Warehouse } from "../../types";
 import { ListPageShell } from "../../components/ListPageShell";
 import { fmtDateTime } from "../../utils/format";
-import { BizTag } from "../../components/StatusTag";
+import { BizTag, BIZ_OPTIONS } from "../../components/StatusTag";
 
 export function TransactionQueryPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -159,11 +159,8 @@ export function TransactionQueryPage() {
         <Select
           allowClear
           placeholder="全部"
-          style={{ width: 120 }}
-          options={[
-            { label: "入库", value: "inbound" },
-            { label: "出库", value: "outbound" },
-          ]}
+          style={{ width: 140 }}
+          options={BIZ_OPTIONS}
         />
       </Form.Item>
       <Form.Item label="日期范围" name="range">

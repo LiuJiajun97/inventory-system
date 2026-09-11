@@ -353,6 +353,45 @@ body {
   color: #b91c1c;
 }
 
+/* 调拨入(目的仓,紫)/ 调拨出(源仓,紫深) */
+.tag-biz-transfer-in {
+  background: #faf5ff;
+  border-color: #e9d5ff;
+  color: #7e22ce;
+}
+
+.tag-biz-transfer-out {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  color: #6d28d9;
+}
+
+/* 调整入(盘盈,青)/ 调整出(盘亏,青深) */
+.tag-biz-adjust-in {
+  background: #ecfeff;
+  border-color: #a5f3fc;
+  color: #0e7490;
+}
+
+.tag-biz-adjust-out {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+  color: #0f766e;
+}
+
+/* 预占(销售审批冻结,金)/ 释放预占(解冻,灰) */
+.tag-biz-pre-alloc {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.tag-biz-release {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+  color: #4b5563;
+}
+
 .tag-role-admin {
   background: #fef2f2;
   border-color: #fecaca;
