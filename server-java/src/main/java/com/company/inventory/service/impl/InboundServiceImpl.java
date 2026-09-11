@@ -2,6 +2,7 @@ package com.company.inventory.service.impl;
 
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.DateRangeSupport;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.common.util.QtyUtils;
 import com.company.inventory.model.dto.inbound.InboundCreateDTO;
@@ -47,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.time.LocalDate;
 
 /**
  * 入库单服务实现:整单一个事务,单据头 + 行 + 库存变动 + 序列号同事务。
@@ -216,11 +218,13 @@ public class InboundServiceImpl implements InboundService {
         if (StringUtils.hasText(query.getStatus())) {
             wrapper.eq(InboundDocDO::getStatus, query.getStatus().trim());
         }
-        if (StringUtils.hasText(query.getFrom())) {
-            wrapper.ge(InboundDocDO::getDocDate, query.getFrom().trim());
+        LocalDate from = DateRangeSupport.parseDate(query.getFrom(), "日期起");
+        if (from != null) {
+            wrapper.ge(InboundDocDO::getDocDate, from);
         }
-        if (StringUtils.hasText(query.getTo())) {
-            wrapper.le(InboundDocDO::getDocDate, query.getTo().trim());
+        LocalDate to = DateRangeSupport.parseDate(query.getTo(), "日期止");
+        if (to != null) {
+            wrapper.le(InboundDocDO::getDocDate, to);
         }
         wrapper.orderByDesc(InboundDocDO::getId);
         Page<InboundDocDO> result = inboundDocMapper.selectPage(

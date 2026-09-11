@@ -4,6 +4,7 @@ import com.company.inventory.common.constant.DocStatus;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.common.support.ApprovalGuard;
+import com.company.inventory.common.support.DateRangeSupport;
 import com.company.inventory.common.support.DocStateSupport;
 import com.company.inventory.common.util.MoneyUtils;
 import com.company.inventory.common.util.QtyUtils;
@@ -43,6 +44,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -167,11 +169,13 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         if (StringUtils.hasText(query.getStatus())) {
             wrapper.eq(SalesOrderDO::getStatus, query.getStatus().trim());
         }
-        if (StringUtils.hasText(query.getFrom())) {
-            wrapper.ge(SalesOrderDO::getDocDate, query.getFrom().trim());
+        LocalDate from = DateRangeSupport.parseDate(query.getFrom(), "日期起");
+        if (from != null) {
+            wrapper.ge(SalesOrderDO::getDocDate, from);
         }
-        if (StringUtils.hasText(query.getTo())) {
-            wrapper.le(SalesOrderDO::getDocDate, query.getTo().trim());
+        LocalDate to = DateRangeSupport.parseDate(query.getTo(), "日期止");
+        if (to != null) {
+            wrapper.le(SalesOrderDO::getDocDate, to);
         }
         wrapper.orderByDesc(SalesOrderDO::getId);
         Page<SalesOrderDO> page = orderMapper.selectPage(

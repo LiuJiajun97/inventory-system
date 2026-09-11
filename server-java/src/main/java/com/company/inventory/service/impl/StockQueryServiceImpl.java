@@ -1,6 +1,7 @@
 package com.company.inventory.service.impl;
 
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.DateRangeSupport;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.common.util.QtyUtils;
 import com.company.inventory.model.entity.stock.BatchDO;
@@ -107,9 +108,6 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -260,8 +258,8 @@ public class StockQueryServiceImpl implements StockQueryService {
     public PageResult<TransactionVO> queryTransactions(TransactionQuery query) {
         long page = query.getPage();
         long pageSize = query.getPageSize();
-        LocalDateTime from = parseDateTime(query.getFrom());
-        LocalDateTime to = parseDateTime(query.getTo());
+        LocalDateTime from = DateRangeSupport.parseDateTimeStart(query.getFrom(), "开始时间");
+        LocalDateTime to = DateRangeSupport.parseDateTimeEnd(query.getTo(), "结束时间");
 
         LambdaQueryWrapper<StockTransactionDO> wrapper = new LambdaQueryWrapper<>();
         if (query.getWarehouseId() != null) {
@@ -319,27 +317,6 @@ public class StockQueryServiceImpl implements StockQueryService {
         return PageResult.of(voList, result.getTotal(), page, pageSize);
     }
 
-    /**
-     * 解析时间参数:兼容带 Z 的 UTC ISO 与本地 ISO(与 Fastify 版 new Date(str) 对齐,
-     * 库内时间按 UTC 存储)。
-     *
-     * @param value 原始参数(可空)
-     * @return 解析结果(可空)
-     */
-    private LocalDateTime parseDateTime(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        try {
-            if (value.endsWith("Z")) {
-                return LocalDateTime.ofInstant(
-                        java.time.Instant.parse(value), ZoneOffset.UTC);
-            }
-            return LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        } catch (DateTimeParseException e) {
-            throw new BizException("时间格式错误: " + value);
-        }
-    }
 
     /**
      * 实体列表转 ID→VO 映射。
