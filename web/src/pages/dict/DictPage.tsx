@@ -1,355 +1,633 @@
-// 字典管理页(admin 才可见操作列)
-// 三张卡片按类型分组，行内编辑，Switch 状态切换
+// 字典管理页(传统类型列表 + Drawer 二级管理弹窗)
+// admin 可见操作列;viewer 只读
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Card,
-  Row,
-  Col,
-  List,
+  Table,
   Switch,
   Input,
   InputNumber,
   Modal,
   Form,
   Button,
-  Tag,
-  Spin,
+  Badge,
   Space,
   App,
+  Drawer,
+  Tag,
+  Popconfirm,
+  Typography,
 } from "antd";
-import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, ToolOutlined } from "@ant-design/icons";
 import { dictApi } from "../../api";
-import type { DictItem } from "../../types/phase1";
-
-const DICT_TYPES = [
-  { type: "warehouseType", label: "仓库类型" },
-  { type: "itemCategory", label: "物品分类" },
-  { type: "settleMethod", label: "结算方式" },
-] as const;
-
-type DictType = (typeof DICT_TYPES)[number]["type"];
-
-interface DictState {
-  data: DictItem[];
-  loading: boolean;
-  error: boolean;
-}
+import type { DictItem, DictTypeItem } from "../../types/phase1";
+import type { ColumnsType } from "antd/es/table";
 
 export function DictPage() {
   const { message } = App.useApp();
-  const [states, setStates] = useState<Record<DictType, DictState>>({
-    warehouseType: { data: [], loading: false, error: false },
-    itemCategory: { data: [], loading: false, error: false },
-    settleMethod: { data: [], loading: false, error: false },
-  });
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<DictType>("warehouseType");
-  const [form] = Form.useForm();
+  // 类型列表
+  const [types, setTypes] = useState<DictTypeItem[]>([]);
+  const [typesLoading, setTypesLoading] = useState(false);
+  // 新建类型弹窗
+  const [typeModalOpen, setTypeModalOpen] = useState(false);
+  const [typeForm] = Form.useForm();
+  // 编辑类型弹窗
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingType, setEditingType] = useState<DictTypeItem | null>(null);
+  const [editForm] = Form.useForm();
+  // Drawer 状态
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerType, setDrawerType] = useState<DictTypeItem | null>(null);
+  // Drawer 内字典项
+  const [items, setItems] = useState<DictItem[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  // 新建字典项弹窗
+  const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [itemForm] = Form.useForm();
+  // 角色
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  const loadType = useCallback(async (type: DictType) => {
-    setStates((prev) => ({
-      ...prev,
-      [type]: { ...prev[type], loading: true, error: false },
-    }));
+  // 加载类型列表
+  const loadTypes = useCallback(async () => {
+    setTypesLoading(true);
     try {
-      const res = await dictApi.getAll(type);
-      setStates((prev) => ({
-        ...prev,
-        [type]: { data: res, loading: false, error: false },
-      }));
+      const res = await dictApi.getTypes();
+      setTypes(res);
+      setIsAdmin(true);
     } catch {
-      setStates((prev) => ({
-        ...prev,
-        [type]: { ...prev[type], loading: false, error: true },
-      }));
+      setIsAdmin(false);
+    } finally {
+      setTypesLoading(false);
     }
   }, []);
 
-  const loadAll = useCallback(() => {
-    DICT_TYPES.forEach(({ type }) => loadType(type));
-  }, [loadType]);
-
   useEffect(() => {
-    loadAll();
-  }, [loadAll]);
+    loadTypes();
+  }, [loadTypes]);
 
-  const openCreateModal = (type: DictType) => {
-    setModalType(type);
-    form.resetFields();
-    form.setFieldsValue({ dictType: type, sortOrder: 0 });
-    setModalOpen(true);
+  // 加载 Drawer 内字典项
+  const loadItems = useCallback(async (typeCode: string) => {
+    setItemsLoading(true);
+    try {
+      const res = await dictApi.getAll(typeCode);
+      setItems(res);
+    } catch {
+      setItems([]);
+    } finally {
+      setItemsLoading(false);
+    }
+  }, []);
+
+  // 打开 Drawer
+  const openDrawer = (record: DictTypeItem) => {
+    setDrawerType(record);
+    setDrawerOpen(true);
+    loadItems(record.typeCode);
   };
 
-  const onCreate = async () => {
-    const v = await form.validateFields();
+  // 关闭 Drawer 后刷新主表格
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setDrawerType(null);
+    setItems([]);
+    loadTypes();
+  };
+
+  // 新建类型
+  const onCreateType = async () => {
+    const v = await typeForm.validateFields();
+    try {
+      await dictApi.createType({
+        typeCode: v.typeCode,
+        typeName: v.typeName,
+        remark: v.remark || "",
+      });
+      message.success("类型创建成功");
+      setTypeModalOpen(false);
+      typeForm.resetFields();
+      loadTypes();
+    } catch {
+      // 拦截器已处理
+    }
+  };
+
+  // 打开编辑类型弹窗
+  const openEditModal = (record: DictTypeItem) => {
+    setEditingType(record);
+    editForm.setFieldsValue({
+      typeName: record.typeName,
+      remark: record.remark,
+    });
+    setEditModalOpen(true);
+  };
+
+  // 保存编辑类型
+  const onSaveEditType = async () => {
+    if (!editingType) return;
+    const v = await editForm.validateFields();
+    try {
+      await dictApi.updateType(editingType.typeCode, {
+        typeName: v.typeName,
+        remark: v.remark || "",
+      });
+      message.success("类型更新成功");
+      setEditModalOpen(false);
+      setEditingType(null);
+      editForm.resetFields();
+      loadTypes();
+      // 如果 Drawer 打开着该类型，同步更新标题
+      if (drawerType?.typeCode === editingType.typeCode) {
+        setDrawerType((prev) =>
+          prev ? { ...prev, typeName: v.typeName, remark: v.remark || "" } : prev
+        );
+      }
+    } catch {
+      // 拦截器已处理
+    }
+  };
+
+  // 停用/启用类型
+  const onToggleTypeStatus = async (typeCode: string, currentStatus: number) => {
+    const newStatus = currentStatus === 1 ? 0 : 1;
+    try {
+      await dictApi.updateType(typeCode, { status: newStatus });
+      message.success(newStatus === 1 ? "已启用" : "已停用");
+      loadTypes();
+    } catch {
+      // 拦截器已处理
+    }
+  };
+
+  // 新建字典项
+  const onCreateItem = async () => {
+    const v = await itemForm.validateFields();
     try {
       await dictApi.create({
-        dictType: v.dictType,
+        dictType: drawerType!.typeCode,
         dictKey: v.dictKey,
         dictLabel: v.dictLabel,
-        sortOrder: v.sortOrder,
+        sortOrder: v.sortOrder || 0,
         status: 1,
       });
       message.success("字典项创建成功");
-      setModalOpen(false);
-      form.resetFields();
-      loadType(modalType);
+      setItemModalOpen(false);
+      itemForm.resetFields();
+      loadItems(drawerType!.typeCode);
+      loadTypes(); // 刷新 enabledCount
     } catch {
       // 拦截器已处理
     }
   };
 
-  const onToggleStatus = async (type: DictType, record: DictItem) => {
-    const newStatus = record.status === 1 ? 0 : 1;
-    try {
-      await dictApi.setStatus(record.id, newStatus);
-      message.success(newStatus === 1 ? "已启用" : "已停用");
-      loadType(type);
-    } catch {
-      // 拦截器已处理
-    }
-  };
+  // 类型列表表格列
+  const typeColumns: ColumnsType<DictTypeItem> = [
+    {
+      title: "类型编码",
+      dataIndex: "typeCode",
+      key: "typeCode",
+      render: (text: string) => (
+        <Typography.Text code style={{ fontSize: 13 }}>
+          {text}
+        </Typography.Text>
+      ),
+    },
+    {
+      title: "类型名称",
+      dataIndex: "typeName",
+      key: "typeName",
+    },
+    {
+      title: "备注",
+      dataIndex: "remark",
+      key: "remark",
+      render: (text: string) => text || <span style={{ color: "#ccc" }}>-</span>,
+    },
+    {
+      title: "启用项数",
+      dataIndex: "enabledCount",
+      key: "enabledCount",
+      width: 100,
+      render: (count: number) => (
+        <Badge count={count} style={{ backgroundColor: "#52c41a" }} showZero />
+      ),
+    },
+    {
+      title: "状态",
+      dataIndex: "status",
+      key: "status",
+      width: 80,
+      render: (status: number) =>
+        status === 1 ? (
+          <Tag color="success">启用</Tag>
+        ) : (
+          <Tag color="default">停用</Tag>
+        ),
+    },
+    ...(isAdmin
+      ? [
+          {
+            title: "操作",
+            key: "action",
+            width: 220,
+            render: (_: unknown, record: DictTypeItem) => (
+              <Space size="small">
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<ToolOutlined />}
+                  onClick={() => openDrawer(record)}
+                >
+                  管理项
+                </Button>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => openEditModal(record)}
+                >
+                  编辑
+                </Button>
+                {record.status === 1 ? (
+                  <Popconfirm
+                    title="确认停用该类型?"
+                    onConfirm={() => onToggleTypeStatus(record.typeCode, record.status)}
+                    okText="停用"
+                    cancelText="取消"
+                  >
+                    <Button type="link" size="small" danger>
+                      停用
+                    </Button>
+                  </Popconfirm>
+                ) : (
+                  <Popconfirm
+                    title="确认启用该类型?"
+                    onConfirm={() => onToggleTypeStatus(record.typeCode, record.status)}
+                    okText="启用"
+                    cancelText="取消"
+                  >
+                    <Button type="link" size="small">
+                      启用
+                    </Button>
+                  </Popconfirm>
+                )}
+              </Space>
+            ),
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2 style={{ margin: 0 }}>字典管理</h2>
-        <Button icon={<ReloadOutlined />} onClick={loadAll}>
-          刷新
-        </Button>
+    <div style={{ padding: "24px 24px 0" }}>
+      {/* 页头 */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
+        <span style={{ fontSize: 18, fontWeight: 600 }}>字典管理</span>
+        {isAdmin && (
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              typeForm.resetFields();
+              setTypeModalOpen(true);
+            }}
+          >
+            新建类型
+          </Button>
+        )}
       </div>
 
-      <Row gutter={[24, 24]}>
-        {DICT_TYPES.map(({ type, label }) => {
-          const state = states[type];
-          return (
-            <Col xs={24} lg={12} key={type}>
-              <Card
-                title={
-                  <Space>
-                    <span>{label}</span>
-                    <Tag>{state.data.length} 项</Tag>
-                  </Space>
-                }
-                extra={
-                  <Button
-                    type="text"
-                    icon={<PlusOutlined />}
-                    onClick={() => openCreateModal(type)}
-                  >
-                    新增项
-                  </Button>
-                }
-                style={{ height: "100%" }}
-              >
-                {state.loading ? (
-                  <div style={{ textAlign: "center", padding: 24 }}>
-                    <Spin />
-                  </div>
-                ) : state.error ? (
-                  <div style={{ textAlign: "center", padding: 24, color: "#ff4d4f" }}>
-                    加载失败
-                  </div>
-                ) : state.data.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: 24, color: "#999" }}>
-                    暂无字典项
-                  </div>
-                ) : (
-                  <List
-                    dataSource={state.data}
-                    renderItem={(item) => (
-                      <DictItemRow
-                        key={item.id}
-                        item={item}
-                        dictType={type}
-                        onReload={() => loadType(type)}
-                      />
-                    )}
-                  />
-                )}
-              </Card>
-            </Col>
-          );
-        })}
-      </Row>
+      {/* 类型列表主表格 */}
+      <Table
+        rowKey="typeCode"
+        columns={typeColumns}
+        dataSource={types}
+        loading={typesLoading}
+        pagination={false}
+        size="middle"
+      />
 
+      {/* 新建类型弹窗 */}
       <Modal
-        title="新增字典项"
-        open={modalOpen}
-        onOk={onCreate}
+        title="新建字典类型"
+        open={typeModalOpen}
+        onOk={onCreateType}
         onCancel={() => {
-          setModalOpen(false);
-          form.resetFields();
+          setTypeModalOpen(false);
+          typeForm.resetFields();
         }}
         width={420}
       >
-        <Form form={form} layout="vertical" requiredMark={false}>
-          <Form.Item label="字典类型" name="dictType">
-            <Input disabled />
+        <Form form={typeForm} layout="vertical" requiredMark={false}>
+          <Form.Item
+            label="类型编码"
+            name="typeCode"
+            rules={[
+              { required: true, message: "类型编码必填" },
+              {
+                pattern: /^[a-z][a-z0-9_]*$/,
+                message: "只能含小写字母、数字、下划线,且以字母开头",
+              },
+            ]}
+          >
+            <Input placeholder="如 warehouse_type" />
           </Form.Item>
           <Form.Item
-            label="编码"
-            name="dictKey"
-            rules={[{ required: true, message: "编码必填" }]}
+            label="类型名称"
+            name="typeName"
+            rules={[{ required: true, message: "类型名称必填" }]}
           >
-            <Input placeholder="如 raw / cold" />
+            <Input placeholder="如 仓库类型" />
           </Form.Item>
-          <Form.Item
-            label="中文标签"
-            name="dictLabel"
-            rules={[{ required: true, message: "标签必填" }]}
-          >
-            <Input placeholder="如 原材料仓" />
-          </Form.Item>
-          <Form.Item label="排序" name="sortOrder">
-            <InputNumber min={0} style={{ width: "100%" }} />
+          <Form.Item label="备注" name="remark">
+            <Input placeholder="可选" />
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* 编辑类型弹窗 */}
+      <Modal
+        title="编辑字典类型"
+        open={editModalOpen}
+        onOk={onSaveEditType}
+        onCancel={() => {
+          setEditModalOpen(false);
+          setEditingType(null);
+          editForm.resetFields();
+        }}
+        width={420}
+      >
+        <Form form={editForm} layout="vertical" requiredMark={false}>
+          <Form.Item
+            label="类型名称"
+            name="typeName"
+            rules={[{ required: true, message: "类型名称必填" }]}
+          >
+            <Input placeholder="如 仓库类型" />
+          </Form.Item>
+          <Form.Item label="备注" name="remark">
+            <Input placeholder="可选" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Drawer: 字典项管理 */}
+      <Drawer
+        title={drawerType ? `${drawerType.typeName} · 字典项` : "字典项"}
+        open={drawerOpen}
+        onClose={closeDrawer}
+        width={720}
+        destroyOnClose
+        extra={
+          isAdmin && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                itemForm.resetFields();
+                itemForm.setFieldsValue({ sortOrder: 0 });
+                setItemModalOpen(true);
+              }}
+            >
+              新增项
+            </Button>
+          )
+        }
+      >
+        {/* 类型备注 */}
+        {drawerType?.remark && (
+          <div style={{ marginBottom: 12, color: "#999", fontSize: 13 }}>
+            {drawerType.remark}
+          </div>
+        )}
+
+        {/* 字典项表格 */}
+        <Table
+          rowKey="id"
+          dataSource={items}
+          loading={itemsLoading}
+          pagination={false}
+          size="small"
+          columns={[
+            {
+              title: "中文标签",
+              dataIndex: "dictLabel",
+              key: "dictLabel",
+              render: (_: unknown, record: DictItem) => (
+                <DictLabelCell item={record} onReload={() => loadItems(drawerType!.typeCode)} />
+              ),
+            },
+            {
+              title: "编码",
+              dataIndex: "dictKey",
+              key: "dictKey",
+              render: (text: string) => (
+                <Typography.Text code style={{ fontSize: 12, color: "#999" }}>
+                  {text}
+                </Typography.Text>
+              ),
+            },
+            {
+              title: "排序",
+              dataIndex: "sortOrder",
+              key: "sortOrder",
+              width: 80,
+              render: (_: unknown, record: DictItem) => (
+                <DictSortCell item={record} onReload={() => loadItems(drawerType!.typeCode)} />
+              ),
+            },
+            {
+              title: "状态",
+              key: "status",
+              width: 80,
+              render: (_: unknown, record: DictItem) => (
+                <Switch
+                  checked={record.status === 1}
+                  onChange={async () => {
+                    const newStatus = record.status === 1 ? 0 : 1;
+                    try {
+                      await dictApi.setStatus(record.id, newStatus);
+                      message.success(newStatus === 1 ? "已启用" : "已停用");
+                      loadItems(drawerType!.typeCode);
+                      loadTypes();
+                    } catch {
+                      // 拦截器已处理
+                    }
+                  }}
+                  size="small"
+                />
+              ),
+            },
+          ]}
+          rowClassName={(record) => (record.status === 0 ? "dict-row-disabled" : "")}
+        />
+
+        {/* 新建字典项弹窗 */}
+        <Modal
+          title="新增字典项"
+          open={itemModalOpen}
+          onOk={onCreateItem}
+          onCancel={() => {
+            setItemModalOpen(false);
+            itemForm.resetFields();
+          }}
+          width={420}
+        >
+          <Form form={itemForm} layout="vertical" requiredMark={false}>
+            <Form.Item
+              label="编码"
+              name="dictKey"
+              rules={[{ required: true, message: "编码必填" }]}
+            >
+              <Input placeholder="如 raw / cold" />
+            </Form.Item>
+            <Form.Item
+              label="中文标签"
+              name="dictLabel"
+              rules={[{ required: true, message: "标签必填" }]}
+            >
+              <Input placeholder="如 原材料仓" />
+            </Form.Item>
+            <Form.Item label="排序" name="sortOrder">
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </Drawer>
+
+      {/* 全局样式:停用行半透明 */}
+      <style>{`
+        .dict-row-disabled td { opacity: 0.5; }
+      `}</style>
     </div>
   );
 }
 
-function DictItemRow({
+/** Drawer 内:中文标签(行内编辑) */
+function DictLabelCell({
   item,
-  dictType,
   onReload,
 }: {
   item: DictItem;
-  dictType: DictType;
   onReload: () => void;
 }) {
   const { message } = App.useApp();
-  const [editingLabel, setEditingLabel] = useState(false);
-  const [editingSort, setEditingSort] = useState(false);
-  const [labelValue, setLabelValue] = useState(item.dictLabel);
-  const [sortValue, setSortValue] = useState(item.sortOrder);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(item.dictLabel);
 
-  const saveLabel = async () => {
-    if (labelValue === item.dictLabel) {
-      setEditingLabel(false);
+  const save = async () => {
+    if (value === item.dictLabel) {
+      setEditing(false);
       return;
     }
     try {
-      await dictApi.update(item.id, { dictLabel: labelValue });
+      await dictApi.update(item.id, { dictLabel: value });
       message.success("标签更新成功");
-      setEditingLabel(false);
+      setEditing(false);
       onReload();
     } catch {
       message.error("标签更新失败");
-      setLabelValue(item.dictLabel);
-      setEditingLabel(false);
+      setValue(item.dictLabel);
+      setEditing(false);
     }
   };
 
-  const saveSort = async () => {
-    if (sortValue === item.sortOrder) {
-      setEditingSort(false);
+  if (editing) {
+    return (
+      <Input
+        size="small"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onPressEnter={save}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setValue(item.dictLabel);
+            setEditing(false);
+          }
+        }}
+        autoFocus
+        style={{ width: 120 }}
+      />
+    );
+  }
+
+  return (
+    <span
+      style={{
+        cursor: "pointer",
+        color: item.status === 0 ? "#999" : undefined,
+        textDecoration: item.status === 0 ? "line-through" : undefined,
+      }}
+      onClick={() => setEditing(true)}
+    >
+      {item.dictLabel}
+    </span>
+  );
+}
+
+/** Drawer 内:排序(行内编辑) */
+function DictSortCell({
+  item,
+  onReload,
+}: {
+  item: DictItem;
+  onReload: () => void;
+}) {
+  const { message } = App.useApp();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(item.sortOrder);
+
+  const save = async () => {
+    if (value === item.sortOrder) {
+      setEditing(false);
       return;
     }
     try {
-      await dictApi.update(item.id, { sortOrder: sortValue });
+      await dictApi.update(item.id, { sortOrder: value });
       message.success("排序更新成功");
-      setEditingSort(false);
+      setEditing(false);
       onReload();
     } catch {
       message.error("排序更新失败");
-      setSortValue(item.sortOrder);
-      setEditingSort(false);
+      setValue(item.sortOrder);
+      setEditing(false);
     }
   };
 
-  const isDisabled = item.status === 0;
-
-  return (
-    <List.Item
-      style={{
-        opacity: isDisabled ? 0.5 : 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "8px 0",
-      }}
-    >
-      <Space style={{ flex: 1 }}>
-        {editingLabel ? (
-          <Input
-            size="small"
-            value={labelValue}
-            onChange={(e) => setLabelValue(e.target.value)}
-            onPressEnter={saveLabel}
-            onBlur={saveLabel}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setLabelValue(item.dictLabel);
-                setEditingLabel(false);
-              }
-            }}
-            autoFocus
-            style={{ width: 120 }}
-          />
-        ) : (
-          <span
-            style={{
-              cursor: "pointer",
-              color: isDisabled ? "#999" : undefined,
-              textDecoration: isDisabled ? "line-through" : undefined,
-            }}
-            onClick={() => setEditingLabel(true)}
-          >
-            {item.dictLabel}
-          </span>
-        )}
-        <span
-          style={{
-            fontFamily: "monospace",
-            fontSize: 12,
-            color: "#999",
-          }}
-        >
-          {item.dictKey}
-        </span>
-        {editingSort ? (
-          <InputNumber
-            size="small"
-            value={sortValue}
-            onChange={(v) => setSortValue(v ?? 0)}
-            onPressEnter={saveSort}
-            onBlur={saveSort}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setSortValue(item.sortOrder);
-                setEditingSort(false);
-              }
-            }}
-            autoFocus
-            min={0}
-            style={{ width: 60 }}
-          />
-        ) : (
-          <span
-            style={{ cursor: "pointer", color: "#666" }}
-            onClick={() => setEditingSort(true)}
-          >
-            {item.sortOrder}
-          </span>
-        )}
-      </Space>
-      <Switch
-        checked={item.status === 1}
-        onChange={async () => {
-          const newStatus = item.status === 1 ? 0 : 1;
-          try {
-            await dictApi.setStatus(item.id, newStatus);
-            message.success(newStatus === 1 ? "已启用" : "已停用");
-            onReload();
-          } catch {
-            // 拦截器已处理
+  if (editing) {
+    return (
+      <InputNumber
+        size="small"
+        value={value}
+        onChange={(v) => setValue(v ?? 0)}
+        onPressEnter={save}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            setValue(item.sortOrder);
+            setEditing(false);
           }
         }}
-        size="small"
+        autoFocus
+        min={0}
+        style={{ width: 60 }}
       />
-    </List.Item>
+    );
+  }
+
+  return (
+    <span
+      style={{ cursor: "pointer", color: "#666" }}
+      onClick={() => setEditing(true)}
+    >
+      {item.sortOrder}
+    </span>
   );
 }

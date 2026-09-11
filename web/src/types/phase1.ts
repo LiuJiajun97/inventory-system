@@ -254,3 +254,13 @@ export interface DictItem {
   sortOrder: number;
   status: number;
 }
+
+/** 字典类型(动态管理) */
+export interface DictTypeItem {
+  id: number;
+  typeCode: string;
+  typeName: string;
+  remark: string;
+  status: number;
+  enabledCount: number;
+}

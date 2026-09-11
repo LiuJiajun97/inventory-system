@@ -7,13 +7,13 @@ import com.company.inventory.dto.dict.DictUpdateDTO;
 import com.company.inventory.entity.dict.DictDO;
 import com.company.inventory.mapper.DictMapper;
 import com.company.inventory.service.DictAdminService;
+import com.company.inventory.support.DictReferenceRegistry;
 import com.company.inventory.vo.dict.DictVO;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,18 +36,18 @@ public class DictAdminServiceImpl implements DictAdminService {
     /** 字典 Mapper。 */
     private final DictMapper dictMapper;
 
-    /** JDBC 模板(引用校验用)。 */
-    private final JdbcTemplate jdbcTemplate;
+    /** 引用校验注册表。 */
+    private final DictReferenceRegistry registry;
 
     /**
      * 构造服务。
      *
-     * @param dictMapper  字典 Mapper
-     * @param jdbcTemplate JDBC 模板
+     * @param dictMapper 字典 Mapper
+     * @param registry   引用校验注册表
      */
-    public DictAdminServiceImpl(DictMapper dictMapper, JdbcTemplate jdbcTemplate) {
+    public DictAdminServiceImpl(DictMapper dictMapper, DictReferenceRegistry registry) {
         this.dictMapper = dictMapper;
-        this.jdbcTemplate = jdbcTemplate;
+        this.registry = registry;
     }
 
     /**
@@ -121,10 +121,7 @@ public class DictAdminServiceImpl implements DictAdminService {
     }
 
     /**
-     * 启用/停用字典项(停用前校验是否被引用)。
-     *
-     * <p>引用校验范围:Warehouse.type / Item.category / Supplier.settleMethod /
-     * Customer.settleMethod,有引用则拒绝停用。</p>
+     * 启用/停用字典项(停用前通过注册表校验是否被引用)。
      *
      * @param id     字典项 ID
      * @param status 目标状态:1 启用/0 停用
@@ -136,49 +133,17 @@ public class DictAdminServiceImpl implements DictAdminService {
         if (d == null) {
             throw BizException.notFound("字典项不存在");
         }
-        if (status == 0 && isDictReferenced(d.getDictType(), d.getDictKey())) {
-            throw new BizException("字典项已被引用,不能停用",
-                    ErrorCode.BIZ_ERROR, ErrorCode.HTTP_BAD_REQUEST);
+        if (status == 0) {
+            String displayName = registry.getRefDisplayName(d.getDictType(), d.getDictKey());
+            if (displayName != null) {
+                throw new BizException("字典项已被" + displayName + "引用,不能停用",
+                        ErrorCode.BIZ_ERROR, ErrorCode.HTTP_BAD_REQUEST);
+            }
         }
         d.setStatus(status);
         dictMapper.updateById(d);
         LOGGER.info("更新字典项状态: id={}, type={}, key={}, status={}",
                 id, d.getDictType(), d.getDictKey(), status);
-    }
-
-    /**
-     * 校验字典项是否被业务表引用。
-     *
-     * @param dictType 字典类型
-     * @param dictKey  字典键值
-     * @return 是否被引用
-     */
-    private boolean isDictReferenced(String dictType, String dictKey) {
-        try {
-            switch (dictType) {
-                case "warehouseType":
-                    return jdbcTemplate.queryForObject(
-                            "SELECT COUNT(*) FROM \"Warehouse\" WHERE \"warehouseType\" = ?",
-                            Integer.class, dictKey) > 0;
-                case "itemCategory":
-                    return jdbcTemplate.queryForObject(
-                            "SELECT COUNT(*) FROM \"Item\" WHERE \"category\" = ?",
-                            Integer.class, dictKey) > 0;
-                case "settleMethod":
-                    long supplierCount = jdbcTemplate.queryForObject(
-                            "SELECT COUNT(*) FROM \"Supplier\" WHERE \"settleMethod\" = ?",
-                            Integer.class, dictKey);
-                    long customerCount = jdbcTemplate.queryForObject(
-                            "SELECT COUNT(*) FROM \"Customer\" WHERE \"settleMethod\" = ?",
-                            Integer.class, dictKey);
-                    return supplierCount > 0 || customerCount > 0;
-                default:
-                    return false;
-            }
-        } catch (org.springframework.jdbc.BadSqlGrammarException e) {
-            LOGGER.warn("引用校验表不存在,跳过: dictType={}", dictType);
-            return false;
-        }
     }
 
     /**

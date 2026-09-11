@@ -25,6 +25,7 @@ import type {
   ExpiryAlertRow,
   LowStockRow,
   DictItem,
+  DictTypeItem,
 } from "../types/phase1";
 
 export const authApi = {
@@ -275,6 +276,12 @@ export const alertApi = {
 };
 
 export const dictApi = {
+  getTypes: () =>
+    http.get<unknown, DictTypeItem[]>("/dicts/types"),
+  createType: (data: { typeCode: string; typeName: string; remark?: string }) =>
+    http.post<unknown, DictTypeItem>("/dicts/types", data),
+  updateType: (typeCode: string, data: { typeName?: string; remark?: string; status?: number }) =>
+    http.put<unknown, DictTypeItem>(`/dicts/types/${typeCode}`, data),
   getType: (type: string) =>
     http.get<unknown, Array<{ code: string; label: string }>>("/dicts", { params: { type } }),
   getAll: (type: string) =>

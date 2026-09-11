@@ -3,7 +3,7 @@
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5)。
 > 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占 + 基础出入库,17 个 Controller,前端 24 个页面(20 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **70 条测试全绿**,阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **77 条测试全绿**,阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -48,6 +48,7 @@ docker compose up -d
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/schema.sql
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V2__phase1.sql
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V3__dict.sql
+docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V4__dict_type.sql
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/seed.sql
 
 # 3. 启动后端(IDEA 运行 InventoryApplication,或命令行)
@@ -62,7 +63,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 70 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 77 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -127,6 +128,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | GET/POST | `/stock-adjusts` | 库存调整单(盘盈亏等,含审批) | 登录 / admin+operator |
 | GET | `/alerts/low-stock` `/alerts/expiry` | 低库存 / 临期预警 | 登录 |
 | GET | `/dicts` `/dicts/all` | 字典查询(登录 / admin) | 登录 / admin |
+| GET/POST/PUT | `/dicts/types` `/dicts/types/:typeCode` | 字典类型列表/新建/编辑(admin 可写) | 登录 / admin |
 | POST/PUT/DELETE | `/dicts/admin...` | 字典项增删改/停用(引用校验) | admin |
 | GET/POST/PUT | `/users` | 用户管理 | admin |
 
@@ -155,7 +157,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 14. **调拨**:源仓扣减 + 目的仓入库单事务内原子完成,任一失败整体回滚。
 15. **盘点/调整**:盘点录入实盘差异 → 生成调整单 → 审批后过账,流水 type 为 `adjust_in/adjust_out`。
 16. **预警**:低库存(`minStock` 阈值)与临期(效期 N 天内)只读查询,不自动改库存。
-17. **字典**:配置类枚举(仓库类型/物品分类/结算方式)进字典表;状态机枚举(单据状态等)不进字典。停用被业务表引用的字典项被拒(400)。
+17. **字典**:配置类枚举(仓库类型/物品分类/结算方式)进字典表,类型可动态管理(DictType 表);状态机枚举(单据状态等)不进字典。停用被业务表引用的字典项被拒(400);停用含启用项的类型被拒(400);引用校验通过 `DictReferenceRegistry` 注册表统一管理。
 
 ---
 
@@ -174,12 +176,13 @@ inventory-system/
 │   │   ├── config/            MybatisPlus / Jwt / @RequireRole / Swagger / Jackson(东八区+格式)
 │   │   ├── controller/        17 个 Controller
 │   │   ├── dto/  entity/  vo/  query/  层内按功能分包
-│   │   ├── mapper/            26 个 Mapper + resources/mapper/*.xml
-│   │   └── service/ (+impl/)  业务层;StockCoreService = 库存核心
+│   │   ├── mapper/            27 个 Mapper + resources/mapper/*.xml
+│   │   ├── service/ (+impl/)  业务层;StockCoreService = 库存核心
+│   │   └── support/           DictReferenceRegistry(字典引用校验注册表)
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
-│   │   └── db/{schema,V2__phase1,V3__dict,seed}.sql
-│   └── src/test/java/         11 个测试类,70 条(库存核心/并发/采购/销售/调拨/盘点/权限/字典/预警)
+│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,seed}.sql
+│   └── src/test/java/         12 个测试类,77 条(库存核心/并发/采购/销售/调拨/盘点/权限/字典/预警)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/

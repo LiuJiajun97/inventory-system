@@ -117,7 +117,7 @@ class DictAdminTest {
         DictVO ref = all.stream().filter(v -> "refWh".equals(v.dictKey())).findFirst().orElseThrow();
         BizException ex = assertThrows(BizException.class,
                 () -> dictAdminService.updateStatus(ref.id(), 0));
-        assertEquals("字典项已被引用,不能停用", ex.getMessage());
+        assertEquals("字典项已被仓库引用,不能停用", ex.getMessage());
     }
 
     /**
