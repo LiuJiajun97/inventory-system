@@ -22,6 +22,7 @@ import { PlusOutlined, EditOutlined, ToolOutlined } from "@ant-design/icons";
 import { dictApi } from "../../api";
 import type { DictItem, DictTypeItem } from "../../types/phase1";
 import type { ColumnsType } from "antd/es/table";
+import { ListPageShell } from "../../components/ListPageShell";
 
 export function DictPage() {
   const { message } = App.useApp();
@@ -46,6 +47,17 @@ export function DictPage() {
   const [itemForm] = Form.useForm();
   // 角色
   const [isAdmin, setIsAdmin] = useState(false);
+  // 关键字筛选(后端全量返回,前端内存过滤)
+  const [keyword, setKeyword] = useState("");
+  const [filterForm] = Form.useForm();
+
+  const filteredTypes = types.filter((t) => {
+    const kw = keyword.trim().toLowerCase();
+    if (!kw) return true;
+    return (
+      t.typeCode.toLowerCase().includes(kw) || t.typeName.toLowerCase().includes(kw)
+    );
+  });
 
   // 加载类型列表
   const loadTypes = useCallback(async () => {
@@ -277,19 +289,37 @@ export function DictPage() {
       : []),
   ];
 
+  // 关键字筛选表单
+  const filterNode = (
+    <Form
+      form={filterForm}
+      layout="inline"
+      onFinish={(v: Record<string, unknown>) => setKeyword((v.keyword as string) || "")}
+    >
+      <Form.Item label="关键字" name="keyword">
+        <Input allowClear placeholder="编码/名称" style={{ width: 180 }} />
+      </Form.Item>
+      <Form.Item>
+        <Space>
+          <Button type="primary" htmlType="submit">查询</Button>
+          <Button
+            onClick={() => {
+              filterForm.resetFields();
+              setKeyword("");
+            }}
+          >
+            重置
+          </Button>
+        </Space>
+      </Form.Item>
+    </Form>
+  );
+
   return (
-    <div style={{ padding: "24px 24px 0" }}>
-      {/* 页头 */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <span style={{ fontSize: 18, fontWeight: 600 }}>字典管理</span>
-        {isAdmin && (
+    <ListPageShell
+      filter={filterNode}
+      extra={
+        isAdmin && (
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -300,18 +330,17 @@ export function DictPage() {
           >
             新建类型
           </Button>
-        )}
-      </div>
-
-      {/* 类型列表主表格 */}
-      <Table
-        rowKey="typeCode"
-        columns={typeColumns}
-        dataSource={types}
-        loading={typesLoading}
-        pagination={false}
-        size="middle"
-      />
+        )
+      }
+      tableProps={{
+        rowKey: "typeCode",
+        columns: typeColumns,
+        dataSource: filteredTypes,
+        loading: typesLoading,
+        pagination: false,
+        size: "middle",
+      }}
+    >
 
       {/* 新建类型弹窗 */}
       <Modal
@@ -408,65 +437,67 @@ export function DictPage() {
         )}
 
         {/* 字典项表格 */}
-        <Table
-          rowKey="id"
-          dataSource={items}
-          loading={itemsLoading}
-          pagination={false}
-          size="small"
-          columns={[
-            {
-              title: "中文标签",
-              dataIndex: "dictLabel",
-              key: "dictLabel",
-              render: (_: unknown, record: DictItem) => (
-                <DictLabelCell item={record} onReload={() => loadItems(drawerType!.typeCode)} />
-              ),
-            },
-            {
-              title: "编码",
-              dataIndex: "dictKey",
-              key: "dictKey",
-              render: (text: string) => (
-                <Typography.Text code style={{ fontSize: 12, color: "#999" }}>
-                  {text}
-                </Typography.Text>
-              ),
-            },
-            {
-              title: "排序",
-              dataIndex: "sortOrder",
-              key: "sortOrder",
-              width: 80,
-              render: (_: unknown, record: DictItem) => (
-                <DictSortCell item={record} onReload={() => loadItems(drawerType!.typeCode)} />
-              ),
-            },
-            {
-              title: "状态",
-              key: "status",
-              width: 80,
-              render: (_: unknown, record: DictItem) => (
-                <Switch
-                  checked={record.status === 1}
-                  onChange={async () => {
-                    const newStatus = record.status === 1 ? 0 : 1;
-                    try {
-                      await dictApi.setStatus(record.id, newStatus);
-                      message.success(newStatus === 1 ? "已启用" : "已停用");
-                      loadItems(drawerType!.typeCode);
-                      loadTypes();
-                    } catch {
-                      // 拦截器已处理
-                    }
-                  }}
-                  size="small"
-                />
-              ),
-            },
-          ]}
-          rowClassName={(record) => (record.status === 0 ? "dict-row-disabled" : "")}
-        />
+        <div className="table-card">
+          <Table
+            rowKey="id"
+            dataSource={items}
+            loading={itemsLoading}
+            pagination={false}
+            size="small"
+            columns={[
+              {
+                title: "中文标签",
+                dataIndex: "dictLabel",
+                key: "dictLabel",
+                render: (_: unknown, record: DictItem) => (
+                  <DictLabelCell item={record} onReload={() => loadItems(drawerType!.typeCode)} />
+                ),
+              },
+              {
+                title: "编码",
+                dataIndex: "dictKey",
+                key: "dictKey",
+                render: (text: string) => (
+                  <Typography.Text code style={{ fontSize: 12, color: "#999" }}>
+                    {text}
+                  </Typography.Text>
+                ),
+              },
+              {
+                title: "排序",
+                dataIndex: "sortOrder",
+                key: "sortOrder",
+                width: 80,
+                render: (_: unknown, record: DictItem) => (
+                  <DictSortCell item={record} onReload={() => loadItems(drawerType!.typeCode)} />
+                ),
+              },
+              {
+                title: "状态",
+                key: "status",
+                width: 80,
+                render: (_: unknown, record: DictItem) => (
+                  <Switch
+                    checked={record.status === 1}
+                    onChange={async () => {
+                      const newStatus = record.status === 1 ? 0 : 1;
+                      try {
+                        await dictApi.setStatus(record.id, newStatus);
+                        message.success(newStatus === 1 ? "已启用" : "已停用");
+                        loadItems(drawerType!.typeCode);
+                        loadTypes();
+                      } catch {
+                        // 拦截器已处理
+                      }
+                    }}
+                    size="small"
+                  />
+                ),
+              },
+            ]}
+            rowClassName={(record) => (record.status === 0 ? "dict-row-disabled" : "")}
+          />
+      </div>
 
         {/* 新建字典项弹窗 */}
         <Modal
@@ -505,7 +536,7 @@ export function DictPage() {
       <style>{`
         .dict-row-disabled td { opacity: 0.5; }
       `}</style>
-    </div>
+    </ListPageShell>
   );
 }
 

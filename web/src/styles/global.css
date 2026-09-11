@@ -126,22 +126,27 @@ body {
 }
 
 /* ====== 筛选卡 / 表格卡 微调 ====== */
-/* 页面级操作按钮工具条(无筛选区的页面也有位置放按钮) */
-.page-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
-}
-
-.page-toolbar-extra {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
+/* 筛选卡:左侧筛选表单(flex:1)+ 右侧页面级操作按钮,窄屏 wrap 时按钮换行 */
 .filter-card {
   padding: 16px 20px;
   margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-card form {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-card-extra {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .table-card {
