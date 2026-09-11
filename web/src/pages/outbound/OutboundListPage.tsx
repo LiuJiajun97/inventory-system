@@ -1,8 +1,11 @@
 // 出库单列表(SPEC-WEB V2 2.5)
 
 import { useEffect, useState } from "react";
-import { Form, Select, Button, Table, Modal, Descriptions, Tag, Space } from "antd";
+import { DatePicker, Form, Input, Select, Button, Table, Modal, Descriptions, Tag, Space } from "antd";
 import { Link, useLocation } from "react-router-dom";
+import dayjs from "dayjs";
+
+const { RangePicker } = DatePicker;
 import type { ColumnsType } from "antd/es/table";
 import { outboundApi, warehouseApi } from "../../api";
 import type { OutboundDoc, Warehouse } from "../../types";
@@ -34,11 +37,24 @@ export function OutboundListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  const onSearch = async (values: { warehouseId?: number }, pg = page, ps = pageSize) => {
+  const onSearch = async (
+    values: {
+      docNo?: string;
+      status?: string;
+      warehouseId?: number;
+      range?: [dayjs.Dayjs, dayjs.Dayjs] | null;
+    },
+    pg = page,
+    ps = pageSize,
+  ) => {
     setLoading(true);
     try {
       const res = await outboundApi.list({
+        docNo: values.docNo,
+        status: values.status,
         warehouseId: values.warehouseId,
+        from: values.range?.[0]?.format("YYYY-MM-DD"),
+        to: values.range?.[1]?.format("YYYY-MM-DD"),
         page: pg,
         pageSize: ps,
       });
@@ -133,6 +149,10 @@ export function OutboundListPage() {
     },
   ];
 
+  const statusOptions = [
+    { label: "已完成", value: "finished" },
+  ];
+
   const filterNode = (
     <Form
       form={form}
@@ -142,16 +162,25 @@ export function OutboundListPage() {
         onSearch(v);
       }}
     >
+      <Form.Item label="单号" name="docNo">
+        <Input allowClear placeholder="出库单号" style={{ width: 150 }} />
+      </Form.Item>
       <Form.Item label="仓库" name="warehouseId">
         <Select
           allowClear
-          placeholder="全部仓库"
-          style={{ width: 200 }}
+          placeholder="全部"
+          style={{ width: 160 }}
           options={warehouses.map((w) => ({
             label: w.warehouseName,
             value: w.id,
           }))}
         />
+      </Form.Item>
+      <Form.Item label="状态" name="status">
+        <Select allowClear placeholder="全部" style={{ width: 120 }} options={statusOptions} />
+      </Form.Item>
+      <Form.Item label="日期" name="range">
+        <RangePicker />
       </Form.Item>
       <Form.Item>
         <Space>
@@ -175,7 +204,6 @@ export function OutboundListPage() {
   return (
     <>
       <ListPageShell
-        title="出库单列表"
         extra={
           user?.role !== "viewer" && (
             <Link to="/outbound/new">

@@ -207,7 +207,6 @@ export function AdjustPage() {
   return (
     <>
       <ListPageShell
-        title="库存调整单"
         extra={
           isWriter && (
             <Button type="primary" onClick={openCreate}>

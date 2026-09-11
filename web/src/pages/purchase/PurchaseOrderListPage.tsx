@@ -216,7 +216,6 @@ export function PurchaseOrderListPage() {
   return (
     <>
       <ListPageShell
-        title="采购订单"
         extra={
           isWriter && (
             <Link to="/purchase-orders/new">

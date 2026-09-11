@@ -33,6 +33,7 @@ export function WarehouseListPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
   const [form] = Form.useForm();
+  const [filterForm] = Form.useForm();
   const { message } = App.useApp();
   const user = getUser();
   const [enableBatch, setEnableBatch] = useState(false);
@@ -42,7 +43,12 @@ export function WarehouseListPage() {
   const load = async (pg = 1, ps = pageSize) => {
     setLoading(true);
     try {
-      const res = await warehouseApi.list({ page: pg, pageSize: ps });
+      const res = await warehouseApi.list({
+        keyword: filterForm.getFieldValue("keyword") || undefined,
+        warehouseType: filterForm.getFieldValue("warehouseType") || undefined,
+        page: pg,
+        pageSize: ps,
+      });
       setRows(res.rows);
       setTotal(res.total);
       setPage(pg);
@@ -191,7 +197,6 @@ export function WarehouseListPage() {
   return (
     <>
       <ListPageShell
-        title="仓库管理"
         extra={
           user?.role === "admin" && (
             <Button
@@ -202,6 +207,44 @@ export function WarehouseListPage() {
               新建仓库
             </Button>
           )
+        }
+        filter={
+          <Form
+            form={filterForm}
+            layout="inline"
+            onFinish={() => {
+              setPage(1);
+              load(1, pageSize);
+            }}
+          >
+            <Form.Item label="关键字" name="keyword">
+              <Input allowClear placeholder="编码/名称" style={{ width: 150 }} />
+            </Form.Item>
+            <Form.Item label="类型" name="warehouseType">
+              <Select
+                allowClear
+                placeholder="全部"
+                style={{ width: 140 }}
+                options={typeOptions.map((d) => ({ label: d.label, value: d.code }))}
+              />
+            </Form.Item>
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  查询
+                </Button>
+                <Button
+                  onClick={() => {
+                    filterForm.resetFields();
+                    setPage(1);
+                    load(1, pageSize);
+                  }}
+                >
+                  重置
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
         }
         tableProps={{
           rowKey: "id",

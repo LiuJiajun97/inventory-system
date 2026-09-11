@@ -4,8 +4,8 @@
 import { useEffect, useState } from "react";
 import { Form, Select, DatePicker, Button, Table, Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { transactionApi, warehouseApi } from "../../api";
-import type { StockTransaction, Warehouse } from "../../types";
+import { itemApi, transactionApi, warehouseApi } from "../../api";
+import type { Item, StockTransaction, Warehouse } from "../../types";
 import { ListPageShell } from "../../components/ListPageShell";
 import { fmtDateTime } from "../../utils/format";
 import { BizTag, BIZ_OPTIONS } from "../../components/StatusTag";
@@ -17,10 +17,12 @@ export function TransactionQueryPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState<Item[]>([]);
   const [form] = Form.useForm();
 
   useEffect(() => {
     warehouseApi.list({ page: 1, pageSize: 200 }).then((r) => setWarehouses(r.rows)).catch(() => undefined);
+    itemApi.list({ page: 1, pageSize: 200 }).then((r) => setItems(r.rows)).catch(() => undefined);
     // 进入页面即按默认条件(最新流水,每页 20)拉取,避免初始"暂无数据"
     onSearch({}, 1, 20);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -30,6 +32,7 @@ export function TransactionQueryPage() {
   const onSearch = async (
     values: {
       warehouseId?: number;
+      itemId?: number;
       bizCode?: string;
       range?: [string, string];
     },
@@ -40,6 +43,7 @@ export function TransactionQueryPage() {
     try {
       const res = await transactionApi.query({
         warehouseId: values.warehouseId,
+        itemId: values.itemId,
         bizCode: values.bizCode as "inbound" | "outbound" | undefined,
         from: values.range?.[0],
         to: values.range?.[1],
@@ -155,6 +159,16 @@ export function TransactionQueryPage() {
           }))}
         />
       </Form.Item>
+      <Form.Item label="物品" name="itemId">
+        <Select
+          allowClear
+          showSearch
+          placeholder="全部"
+          style={{ width: 180 }}
+          optionFilterProp="label"
+          options={items.map((it) => ({ label: `${it.itemCode} ${it.itemName}`, value: it.id }))}
+        />
+      </Form.Item>
       <Form.Item label="业务" name="bizCode">
         <Select
           allowClear
@@ -188,7 +202,6 @@ export function TransactionQueryPage() {
 
   return (
     <ListPageShell
-      title="流水查询"
       filter={filterNode}
       tableProps={{
         rowKey: "id",

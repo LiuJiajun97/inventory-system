@@ -36,6 +36,7 @@ export function CustomerPage() {
   const [editing, setEditing] = useState<Customer | null>(null);
   const [settleOptions, setSettleOptions] = useState<Array<{ label: string; value: string }>>([]);
   const [form] = Form.useForm<FormValues>();
+  const [filterForm] = Form.useForm();
 
   const onSearch = async (kw?: string, pg = 1, ps = 20) => {
     setLoading(true);
@@ -144,7 +145,6 @@ export function CustomerPage() {
   return (
     <>
       <ListPageShell
-        title="客户管理"
         extra={
           isAdmin && (
             <Button type="primary" onClick={openCreate}>
@@ -153,18 +153,36 @@ export function CustomerPage() {
           )
         }
         filter={
-          <Space>
-            <Input.Search
-              placeholder="编码/名称关键字"
-              allowClear
-              style={{ width: 240 }}
-              onSearch={(v) => {
-                setKeyword(v || undefined);
-                setPage(1);
-                onSearch(v || undefined, 1, pageSize);
-              }}
-            />
-          </Space>
+          <Form
+            form={filterForm}
+            layout="inline"
+            onFinish={(v) => {
+              setKeyword(v.keyword || undefined);
+              setPage(1);
+              onSearch(v.keyword || undefined, 1, pageSize);
+            }}
+          >
+            <Form.Item label="关键字" name="keyword">
+              <Input allowClear placeholder="编码/名称" style={{ width: 180 }} />
+            </Form.Item>
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  查询
+                </Button>
+                <Button
+                  onClick={() => {
+                    filterForm.resetFields();
+                    setKeyword(undefined);
+                    setPage(1);
+                    onSearch(undefined, 1, pageSize);
+                  }}
+                >
+                  重置
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
         }
         tableProps={{
           rowKey: "id",

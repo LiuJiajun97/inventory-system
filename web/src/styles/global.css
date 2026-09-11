@@ -117,13 +117,26 @@ body {
   align-items: center;
 }
 
-/* ====== 筛选卡 / 表格卡 微调 ====== */
 .filter-card,
 .table-card {
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-light);
   box-shadow: var(--shadow-sm);
+}
+
+/* ====== 筛选卡 / 表格卡 微调 ====== */
+/* 页面级操作按钮工具条(无筛选区的页面也有位置放按钮) */
+.page-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.page-toolbar-extra {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .filter-card {

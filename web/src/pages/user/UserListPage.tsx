@@ -54,12 +54,17 @@ export function UserListPage() {
   const [resetPwd, setResetPwd] = useState<string>("");
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
+  const [filterForm] = Form.useForm();
   const { message } = App.useApp();
 
   const load = async (pg = 1, ps = pageSize) => {
     setLoading(true);
     try {
-      const res = await userApi.list({ page: pg, pageSize: ps });
+      const res = await userApi.list({
+        keyword: filterForm.getFieldValue("keyword") || undefined,
+        page: pg,
+        pageSize: ps,
+      });
       setRows(res.rows);
       setTotal(res.total);
       setPage(pg);
@@ -168,7 +173,6 @@ export function UserListPage() {
   return (
     <>
       <ListPageShell
-        title="用户管理"
         extra={
           <Button
             type="primary"
@@ -177,6 +181,36 @@ export function UserListPage() {
           >
             新建用户
           </Button>
+        }
+        filter={
+          <Form
+            form={filterForm}
+            layout="inline"
+            onFinish={() => {
+              setPage(1);
+              load(1, pageSize);
+            }}
+          >
+            <Form.Item label="关键字" name="keyword">
+              <Input allowClear placeholder="用户名/姓名" style={{ width: 180 }} />
+            </Form.Item>
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  查询
+                </Button>
+                <Button
+                  onClick={() => {
+                    filterForm.resetFields();
+                    setPage(1);
+                    load(1, pageSize);
+                  }}
+                >
+                  重置
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
         }
         tableProps={{
           rowKey: "id",

@@ -50,6 +50,8 @@ export function TransferPage() {
         toWarehouseId: values.toWarehouseId as number | undefined,
         docNo: values.docNo as string | undefined,
         status: values.status as string | undefined,
+        from: (values.range as [Dayjs, Dayjs] | null)?.[0]?.format("YYYY-MM-DD"),
+        to: (values.range as [Dayjs, Dayjs] | null)?.[1]?.format("YYYY-MM-DD"),
         page: pg,
         pageSize: ps,
       });
@@ -250,7 +252,6 @@ export function TransferPage() {
   return (
     <>
       <ListPageShell
-        title="调拨单"
         extra={
           isWriter && (
             <Button type="primary" onClick={openCreate}>
@@ -271,6 +272,9 @@ export function TransferPage() {
             </Form.Item>
             <Form.Item label="状态" name="status">
               <Select allowClear placeholder="全部" style={{ width: 120 }} options={statusOptions} />
+            </Form.Item>
+            <Form.Item label="日期" name="range">
+              <DatePicker.RangePicker />
             </Form.Item>
             <Form.Item>
               <Space>

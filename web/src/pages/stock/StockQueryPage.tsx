@@ -169,7 +169,6 @@ export function StockQueryPage() {
 
   return (
     <ListPageShell
-      title="库存查询"
       filter={filterNode}
       tableProps={{
         rowKey: "id",

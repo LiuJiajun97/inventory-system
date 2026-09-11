@@ -230,7 +230,6 @@ export function SalesOrderListPage() {
   return (
     <>
       <ListPageShell
-        title="销售订单"
         extra={
           isWriter && (
             <Link to="/sales-orders/new">

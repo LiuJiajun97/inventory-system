@@ -32,19 +32,24 @@ export function ItemListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(false);
-  const [keyword, setKeyword] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
   const [attrs, setAttrs] = useState<AttrRow[]>([{ key: "", value: "" }]);
   const [categoryOptions, setCategoryOptions] = useState<Array<{ code: string; label: string }>>([]);
   const [form] = Form.useForm();
+  const [filterForm] = Form.useForm();
   const user = getUser();
   const { message } = App.useApp();
 
-  const load = async (kw?: string, pg = 1, ps = pageSize) => {
+  const load = async (pg = 1, ps = pageSize) => {
     setLoading(true);
     try {
-      const res = await itemApi.list({ keyword: kw, page: pg, pageSize: ps });
+      const res = await itemApi.list({
+        keyword: filterForm.getFieldValue("keyword") || undefined,
+        itemCategory: filterForm.getFieldValue("itemCategory") || undefined,
+        page: pg,
+        pageSize: ps,
+      });
       setRows(res.rows);
       setTotal(res.total);
       setPage(pg);
@@ -209,7 +214,7 @@ export function ItemListPage() {
       form.resetFields();
       setAttrs([{ key: "", value: "" }]);
       setEditing(null);
-      load(keyword, page, pageSize);
+      load(page, pageSize);
     } catch {
       // 拦截器已处理
     }
@@ -223,23 +228,47 @@ export function ItemListPage() {
   };
 
   const filterNode = (
-    <Space>
-      <Input.Search
-        placeholder="搜索编码或名称"
-        allowClear
-        style={{ width: 280 }}
-        onSearch={(v) => {
-          setKeyword(v);
-          load(v, 1, pageSize);
-        }}
-      />
-    </Space>
+    <Form
+      form={filterForm}
+      layout="inline"
+      onFinish={() => {
+        setPage(1);
+        load(1, pageSize);
+      }}
+    >
+      <Form.Item label="关键字" name="keyword">
+        <Input allowClear placeholder="编码/名称" style={{ width: 180 }} />
+      </Form.Item>
+      <Form.Item label="分类" name="itemCategory">
+        <Select
+          allowClear
+          placeholder="全部"
+          style={{ width: 140 }}
+          options={categoryOptions.map((d) => ({ label: d.label, value: d.code }))}
+        />
+      </Form.Item>
+      <Form.Item>
+        <Space>
+          <Button type="primary" htmlType="submit">
+            查询
+          </Button>
+          <Button
+            onClick={() => {
+              filterForm.resetFields();
+              setPage(1);
+              load(1, pageSize);
+            }}
+          >
+            重置
+          </Button>
+        </Space>
+      </Form.Item>
+    </Form>
   );
 
   return (
     <>
       <ListPageShell
-        title="物品管理"
         extra={
           user?.role === "admin" && (
             <Button
@@ -262,7 +291,7 @@ export function ItemListPage() {
             pageSize,
             total,
             showSizeChanger: true,
-            onChange: (p, ps) => load(keyword, p, ps),
+            onChange: (p, ps) => load(p, ps),
             showTotal: (t) => `共 ${t} 条`,
           },
         }}

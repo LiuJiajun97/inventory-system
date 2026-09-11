@@ -29,9 +29,13 @@ export function LocationListPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Location | null>(null);
   const [form] = Form.useForm();
-  const [warehouseId, setWarehouseId] = useState<number | undefined>();
+  const [filterForm] = Form.useForm();
   const user = getUser();
   const { message } = App.useApp();
+
+  /** 读取筛选表单里的仓库 ID。 */
+  const getFilterWarehouseId = () =>
+    filterForm.getFieldValue("warehouseId") as number | undefined;
 
   const load = async (wid?: number, pg = 1, ps = pageSize) => {
     setLoading(true);
@@ -124,7 +128,7 @@ export function LocationListPage() {
       setOpen(false);
       form.resetFields();
       setEditing(null);
-      load(warehouseId, page, pageSize);
+      load(getFilterWarehouseId(), page, pageSize);
     } catch {
       // 拦截器已处理
     }
@@ -139,33 +143,50 @@ export function LocationListPage() {
   return (
     <>
       <ListPageShell
-        title="库位管理"
         extra={
-          <Space>
-            <Select
-              allowClear
-              placeholder="筛选仓库"
-              style={{ width: 200 }}
-              value={warehouseId}
-              options={warehouses.map((w) => ({
-                label: w.warehouseName,
-                value: w.id,
-              }))}
-              onChange={(v) => {
-                setWarehouseId(v);
-                load(v, 1, pageSize);
-              }}
-            />
-            {user?.role === "admin" && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={openCreate}
-              >
-                新建库位
-              </Button>
-            )}
-          </Space>
+          user?.role === "admin" && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+              新建库位
+            </Button>
+          )
+        }
+        filter={
+          <Form
+            form={filterForm}
+            layout="inline"
+            onFinish={(v) => {
+              setPage(1);
+              load(v.warehouseId as number | undefined, 1, pageSize);
+            }}
+          >
+            <Form.Item label="仓库" name="warehouseId">
+              <Select
+                allowClear
+                placeholder="全部"
+                style={{ width: 160 }}
+                options={warehouses.map((w) => ({
+                  label: w.warehouseName,
+                  value: w.id,
+                }))}
+              />
+            </Form.Item>
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  查询
+                </Button>
+                <Button
+                  onClick={() => {
+                    filterForm.resetFields();
+                    setPage(1);
+                    load(undefined, 1, pageSize);
+                  }}
+                >
+                  重置
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
         }
         tableProps={{
           rowKey: "id",
@@ -177,7 +198,7 @@ export function LocationListPage() {
             pageSize,
             total,
             showSizeChanger: true,
-            onChange: (p, ps) => load(warehouseId, p, ps),
+            onChange: (p, ps) => load(getFilterWarehouseId(), p, ps),
             showTotal: (t) => `共 ${t} 条`,
           },
         }}

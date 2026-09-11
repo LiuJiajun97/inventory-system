@@ -269,7 +269,6 @@ export function StocktakePage() {
   return (
     <>
       <ListPageShell
-        title="盘点单"
         extra={
           isWriter && (
             <Button type="primary" onClick={() => setCreateOpen(true)}>
