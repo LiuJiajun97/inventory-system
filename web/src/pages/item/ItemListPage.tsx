@@ -1,6 +1,4 @@
 // 物品列表 + 新建/编辑抽屉(SPEC-WEB V2 2.9)
-// 注:服务器端 items API 没有 PUT(更新)接口,故抽屉当前仅支持新建;
-//   如需编辑需 server 侧新增接口(本任务未涉及)。
 // 属性 KV 动态行:加行/删行,JSON 自动拼
 
 import { useEffect, useState } from "react";
@@ -36,6 +34,7 @@ export function ItemListPage() {
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState<Item | null>(null);
   const [attrs, setAttrs] = useState<AttrRow[]>([{ key: "", value: "" }]);
   const [categoryOptions, setCategoryOptions] = useState<Array<{ code: string; label: string }>>([]);
   const [form] = Form.useForm();
@@ -113,9 +112,60 @@ export function ItemListPage() {
         );
       },
     },
+    ...(user?.role === "admin"
+      ? [
+          {
+            title: "操作",
+            width: 80,
+            render: (_v: unknown, r: Item) => (
+              <Button
+                type="link"
+                size="small"
+                onClick={() => openEdit(r)}
+              >
+                编辑
+              </Button>
+            ),
+          },
+        ]
+      : []),
   ];
 
-  const onCreate = async () => {
+  /** 把物品扩展属性 JSON 解析为 KV 行。 */
+  const attrsFromItem = (raw?: string | null): AttrRow[] => {
+    if (!raw) return [{ key: "", value: "" }];
+    try {
+      const obj = JSON.parse(raw) as Record<string, string>;
+      const rows = Object.entries(obj).map(([key, value]) => ({ key, value: String(value) }));
+      return rows.length > 0 ? rows : [{ key: "", value: "" }];
+    } catch {
+      return [{ key: "", value: "" }];
+    }
+  };
+
+  const openCreate = () => {
+    setEditing(null);
+    form.resetFields();
+    setAttrs([{ key: "", value: "" }]);
+    setDrawerOpen(true);
+  };
+
+  const openEdit = (r: Item) => {
+    setEditing(r);
+    form.setFieldsValue({
+      itemCode: r.itemCode,
+      itemName: r.itemName,
+      unit: r.unit,
+      spec: r.spec,
+      category: r.category,
+      minStock: r.minStock == null ? undefined : Number(r.minStock),
+      defaultTaxRate: r.defaultTaxRate == null ? undefined : Number(r.defaultTaxRate),
+    });
+    setAttrs(attrsFromItem(r.attributes));
+    setDrawerOpen(true);
+  };
+
+  const onSave = async () => {
     const v = await form.validateFields();
     try {
       // 拼接属性 JSON
@@ -123,22 +173,35 @@ export function ItemListPage() {
       for (const r of attrs) {
         if (r.key.trim()) obj[r.key.trim()] = r.value;
       }
-      const attributes =
-        Object.keys(obj).length > 0 ? JSON.stringify(obj) : undefined;
-      await itemApi.create({
-        itemCode: v.itemCode,
-        itemName: v.itemName,
-        unit: v.unit,
-        spec: v.spec,
-        attributes,
-        category: v.category,
-        minStock: v.minStock,
-        defaultTaxRate: v.defaultTaxRate,
-      });
-      message.success("物品创建成功");
+      const attributes = Object.keys(obj).length > 0 ? JSON.stringify(obj) : undefined;
+      if (editing) {
+        await itemApi.update(editing.id, {
+          itemName: v.itemName,
+          unit: v.unit,
+          spec: v.spec,
+          attributes,
+          category: v.category,
+          minStock: v.minStock,
+          defaultTaxRate: v.defaultTaxRate,
+        });
+        message.success("物品已更新");
+      } else {
+        await itemApi.create({
+          itemCode: v.itemCode,
+          itemName: v.itemName,
+          unit: v.unit,
+          spec: v.spec,
+          attributes,
+          category: v.category,
+          minStock: v.minStock,
+          defaultTaxRate: v.defaultTaxRate,
+        });
+        message.success("物品创建成功");
+      }
       setDrawerOpen(false);
       form.resetFields();
       setAttrs([{ key: "", value: "" }]);
+      setEditing(null);
       load(keyword, page, pageSize);
     } catch {
       // 拦截器已处理
@@ -149,6 +212,7 @@ export function ItemListPage() {
     setDrawerOpen(false);
     form.resetFields();
     setAttrs([{ key: "", value: "" }]);
+    setEditing(null);
   };
 
   const filterNode = (
@@ -174,7 +238,7 @@ export function ItemListPage() {
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              onClick={() => setDrawerOpen(true)}
+              onClick={openCreate}
             >
               新建物品
             </Button>
@@ -198,14 +262,14 @@ export function ItemListPage() {
       />
 
       <Drawer
-        title="新建物品"
+        title={editing ? "编辑物品" : "新建物品"}
         open={drawerOpen}
         onClose={closeDrawer}
         width={480}
         extra={
           <Space>
             <Button onClick={closeDrawer}>取消</Button>
-            <Button type="primary" onClick={onCreate}>
+            <Button type="primary" onClick={onSave}>
               保存
             </Button>
           </Space>
@@ -217,7 +281,7 @@ export function ItemListPage() {
             name="itemCode"
             rules={[{ required: true, message: "编码必填" }]}
           >
-            <Input placeholder="如 HW-SCREW-M8" />
+            <Input placeholder="如 HW-SCREW-M8" disabled={editing != null} />
           </Form.Item>
           <Form.Item
             label="名称"
