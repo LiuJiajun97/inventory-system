@@ -210,11 +210,11 @@ export function TransferPage() {
         const btns: React.ReactNode[] = [];
         if (isWriter && (s === "draft" || s === "rejected")) {
           btns.push(
-            <a key="submit" onClick={() => doAction(() => transferApi.submit(row.id), "已提交审批")}>
+            <a key="submit" className="action-submit" onClick={() => doAction(() => transferApi.submit(row.id), "已提交审批")}>
               提交
             </a>,
             <Popconfirm key="void" title="确认作废该调拨单?" onConfirm={() => doAction(() => transferApi.voidDoc(row.id), "已作废")}>
-              <a>作废</a>
+              <a className="action-void">作废</a>
             </Popconfirm>,
           );
         }
@@ -225,9 +225,9 @@ export function TransferPage() {
               title="审批即执行调拨:源仓扣减并入库目的仓,源仓库存不足将整单回滚。确认?"
               onConfirm={() => doAction(() => transferApi.approve(row.id), "调拨已执行完成")}
             >
-              <a>审批执行</a>
+              <a className="action-approve">审批执行</a>
             </Popconfirm>,
-            <a key="reject" onClick={() => setRejectTarget(row)}>
+            <a key="reject" className="action-reject" onClick={() => setRejectTarget(row)}>
               驳回
             </a>,
           );

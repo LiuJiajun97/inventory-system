@@ -3,8 +3,9 @@
 
 :root {
   /* 主色 */
-  --color-primary: #1d4ed8;          /* blue-700 */
-  --color-primary-soft: #eff4ff;      /* menu 选中浅底 */
+  --color-primary: #3056d3;          /* 降饱和蓝 */
+  --color-primary-soft: #eef2ff;      /* menu 选中浅底 */
+  --color-primary-gradient: linear-gradient(135deg, #3056d3, #5a7df7);
   --color-success: #16a34a;
   --color-warning: #d97706;
   --color-error: #dc2626;
@@ -16,7 +17,7 @@
   --color-text-quaternary: #9ca3af;
 
   /* 背景色(整站 ≤ 5 种) */
-  --color-bg-layout: #f3f5f9;        /* 内容区浅灰底 */
+  --color-bg-layout: #f5f6fa;        /* 内容区柔和灰底 */
   --color-bg-white: #ffffff;
   --color-bg-table-head: #f8fafc;
   --color-bg-table-hover: #f5f7fa;
@@ -27,8 +28,17 @@
   --color-border-light: #f1f5f9;
 
   /* 圆角 */
-  --radius: 6px;
-  --radius-lg: 8px;
+  --radius: 10px;
+  --radius-lg: 12px;
+
+  /* 阴影三级令牌 */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+
+  /* 预警色 */
+  --color-alert-red: #fef2f2;
+  --color-alert-orange: #fff7ed;
 
   /* 字体 */
   --font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei",
@@ -66,9 +76,9 @@ body {
 .brand-logo {
   width: 32px;
   height: 32px;
-  background: var(--color-primary);
+  background: var(--color-primary-gradient);
   color: #ffffff;
-  border-radius: 6px;
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -113,6 +123,7 @@ body {
   background: var(--color-bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-sm);
 }
 
 .filter-card {
@@ -209,7 +220,7 @@ body {
 .user-avatar {
   width: 28px;
   height: 28px;
-  background: var(--color-primary);
+  background: var(--color-primary-gradient);
   color: #ffffff;
   border-radius: 50%;
   display: inline-flex;
@@ -296,9 +307,20 @@ body {
   border-radius: var(--radius-lg);
   padding: 20px;
   border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition: all 200ms ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-card.clickable {
+  cursor: pointer;
 }
 
 .stat-card-label {
@@ -315,6 +337,78 @@ body {
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
+}
+
+/* 预警卡(临期-红) */
+.stat-card.alert-red {
+  border-left: 3px solid var(--color-error);
+  background: var(--color-alert-red);
+}
+
+.stat-card.alert-red .stat-card-value {
+  color: var(--color-error);
+}
+
+/* 预警卡(低库存-橙) */
+.stat-card.alert-orange {
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-alert-orange);
+}
+
+.stat-card.alert-orange .stat-card-value {
+  color: var(--color-warning);
+}
+
+/* KPI 图标容器 */
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.stat-icon.blue {
+  background: #eef2ff;
+  color: #3056d3;
+}
+
+.stat-icon.cyan {
+  background: #ecfeff;
+  color: #0891b2;
+}
+
+.stat-icon.green {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.stat-icon.orange {
+  background: #fff7ed;
+  color: #d97706;
+}
+
+.stat-icon.red {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* 横向数据条 */
+.data-bar {
+  height: 6px;
+  background: #eef2ff;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.data-bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 3px;
+  transition: width 300ms ease;
 }
 
 /* ====== 空状态小调整 ====== */
@@ -393,9 +487,9 @@ body {
 }
 
 .tag-role-admin {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #b91c1c;
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3056d3;
 }
 
 .tag-role-operator {
@@ -434,4 +528,80 @@ body {
 /* ====== 行内编辑小框 ====== */
 .inline-input {
   width: 100%;
+}
+
+/* ====== 操作列语义色 ====== */
+.action-btn {
+  transition: opacity 200ms ease;
+}
+
+.action-btn:hover {
+  opacity: 0.8;
+}
+
+.action-void {
+  color: var(--color-error) !important;
+}
+
+.action-reject {
+  color: var(--color-warning) !important;
+}
+
+.action-close {
+  color: var(--color-text-tertiary) !important;
+}
+
+.action-submit,
+.action-approve {
+  color: var(--color-primary) !important;
+}
+
+/* ====== 菜单选中态左侧圆角条 ====== */
+.ant-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: var(--color-primary);
+  border-radius: 0 3px 3px 0;
+}
+
+/* ====== Button primary 渐变 ====== */
+.ant-btn-primary {
+  background: var(--color-primary-gradient) !important;
+  border: none !important;
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #254bc2, #4a6ee6) !important;
+  box-shadow: 0 4px 12px rgba(48, 86, 211, 0.4) !important;
+}
+
+/* ====== Drawer / Modal 阴影 ====== */
+.ant-drawer-content {
+  box-shadow: var(--shadow-lg);
+}
+
+.ant-modal-content {
+  box-shadow: var(--shadow-lg);
+}
+
+/* ====== 欢迎语样式 ====== */
+.welcome-section {
+  margin-bottom: 20px;
+}
+
+.welcome-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 4px 0;
+}
+
+.welcome-subtitle {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin: 0;
 }

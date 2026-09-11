@@ -128,6 +128,7 @@ export function PurchaseOrderListPage() {
           btns.push(
             <a
               key="submit"
+              className="action-submit"
               onClick={() => doAction(() => purchaseApi.submit(row.id), "已提交审批")}
             >
               提交
@@ -137,16 +138,16 @@ export function PurchaseOrderListPage() {
         if (isWriter && s === "draft") {
           btns.push(
             <Popconfirm key="void" title="确认作废该草稿?" onConfirm={() => doAction(() => purchaseApi.voidDoc(row.id), "已作废")}>
-              <a>作废</a>
+              <a className="action-void">作废</a>
             </Popconfirm>,
           );
         }
         if (isWriter && s === "pending") {
           btns.push(
-            <a key="approve" onClick={() => doAction(() => purchaseApi.approve(row.id), "已审批通过")}>
+            <a key="approve" className="action-approve" onClick={() => doAction(() => purchaseApi.approve(row.id), "已审批通过")}>
               审批
             </a>,
-            <a key="reject" onClick={() => setRejectTarget(row)}>
+            <a key="reject" className="action-reject" onClick={() => setRejectTarget(row)}>
               驳回
             </a>,
           );
@@ -154,10 +155,10 @@ export function PurchaseOrderListPage() {
         if (isWriter && s === "approved") {
           btns.push(
             <Popconfirm key="close" title="关闭后未到货部分不再接收,确认关闭?" onConfirm={() => doAction(() => purchaseApi.close(row.id), "已关闭")}>
-              <a>关闭</a>
+              <a className="action-close">关闭</a>
             </Popconfirm>,
             <Popconfirm key="void" title="确认作废该订单?" onConfirm={() => doAction(() => purchaseApi.voidDoc(row.id), "已作废")}>
-              <a>作废</a>
+              <a className="action-void">作废</a>
             </Popconfirm>,
           );
         }

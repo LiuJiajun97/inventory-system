@@ -165,9 +165,9 @@ export function StocktakePage() {
         const s = row.status;
         const btns: React.ReactNode[] = [];
         if (isWriter && (s === "draft" || s === "pending")) {
-          btns.push(<a key="actual" onClick={() => openActual(row)}>录入实盘</a>);
+          btns.push(<a key="actual" className="action-submit" onClick={() => openActual(row)}>录入实盘</a>);
           btns.push(
-            <a key="refresh" onClick={() => doAction(() => stocktakeApi.refreshBook(row.id), "快照已刷新")}>
+            <a key="refresh" className="action-submit" onClick={() => doAction(() => stocktakeApi.refreshBook(row.id), "快照已刷新")}>
               刷新快照
             </a>,
           );
@@ -179,26 +179,26 @@ export function StocktakePage() {
               title="将按差异生成盘盈/盘亏调整单(草稿),确认?"
               onConfirm={() => doAction(() => stocktakeApi.generateAdjust(row.id), "调整单已生成,请到库存调整页审批执行")}
             >
-              <a>生成调整单</a>
+              <a className="action-approve">生成调整单</a>
             </Popconfirm>,
           );
         }
         if (isWriter && (s === "draft" || s === "rejected")) {
           btns.push(
-            <a key="submit" onClick={() => doAction(() => stocktakeApi.submit(row.id), "已提交审批")}>
+            <a key="submit" className="action-submit" onClick={() => doAction(() => stocktakeApi.submit(row.id), "已提交审批")}>
               提交
             </a>,
             <Popconfirm key="void" title="确认作废该盘点单?" onConfirm={() => doAction(() => stocktakeApi.voidDoc(row.id), "已作废")}>
-              <a>作废</a>
+              <a className="action-void">作废</a>
             </Popconfirm>,
           );
         }
         if (isWriter && s === "pending") {
           btns.push(
-            <a key="approve" onClick={() => doAction(() => stocktakeApi.approve(row.id), "已审批通过")}>
+            <a key="approve" className="action-approve" onClick={() => doAction(() => stocktakeApi.approve(row.id), "已审批通过")}>
               审批
             </a>,
-            <a key="reject" onClick={() => setRejectTarget(row)}>
+            <a key="reject" className="action-reject" onClick={() => setRejectTarget(row)}>
               驳回
             </a>,
           );

@@ -167,11 +167,11 @@ export function AdjustPage() {
         const btns: React.ReactNode[] = [];
         if (isWriter && (s === "draft" || s === "rejected")) {
           btns.push(
-            <a key="submit" onClick={() => doAction(() => adjustApi.submit(row.id), "已提交审批")}>
+            <a key="submit" className="action-submit" onClick={() => doAction(() => adjustApi.submit(row.id), "已提交审批")}>
               提交
             </a>,
             <Popconfirm key="void" title="确认作废该调整单?" onConfirm={() => doAction(() => adjustApi.voidDoc(row.id), "已作废")}>
-              <a>作废</a>
+              <a className="action-void">作废</a>
             </Popconfirm>,
           );
         }
@@ -182,9 +182,9 @@ export function AdjustPage() {
               title={row.adjustType === "gain" ? "审批即执行盘盈入库。确认?" : "审批即执行盘亏出库(库存不足将回滚)。确认?"}
               onConfirm={() => doAction(() => adjustApi.approve(row.id), "调整已执行完成")}
             >
-              <a>审批执行</a>
+              <a className="action-approve">审批执行</a>
             </Popconfirm>,
-            <a key="reject" onClick={() => setRejectTarget(row)}>
+            <a key="reject" className="action-reject" onClick={() => setRejectTarget(row)}>
               驳回
             </a>,
           );

@@ -1,5 +1,5 @@
-// 总览 Dashboard(SPEC-WEB V2 2.2)
-// 顶部 4 张统计卡 + 下方两栏:Top10 库存 + 最近流水
+// 总览 Dashboard(SPEC-WEB V2 2.3)
+// 顶部 6 张统计卡 + 下方两栏:Top10 库存 + 最近流水
 // 数据:现有 /dashboard/summary 与 /stock、/transactions,不改接口
 
 import { useEffect, useMemo, useState } from "react";
@@ -20,8 +20,21 @@ import type {
   StockRow,
   StockTransaction,
 } from "../../types";
-import { PageHeader } from "../../components/PageHeader";
 import { BizTag } from "../../components/StatusTag";
+
+/** 获取问候语(上午/下午/晚上) */
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "上午好";
+  if (hour < 18) return "下午好";
+  return "晚上好";
+}
+
+/** 获取当前时间 HH:mm */
+function getCurrentTime(): string {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
 
 export function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -68,6 +81,12 @@ export function DashboardPage() {
       .slice(0, 10);
   }, [txs]);
 
+  // 计算 Top10 最大数量用于数据条比例
+  const maxQty = useMemo(() => {
+    if (top10.length === 0) return 0;
+    return Math.max(...top10.map((r) => Number(r.quantity)));
+  }, [top10]);
+
   if (loading) {
     return (
       <div style={{ padding: 80, textAlign: "center" }}>
@@ -76,76 +95,123 @@ export function DashboardPage() {
     );
   }
 
+  const totalAlerts = expiryCount + lowStockCount;
+
   return (
     <>
-      <PageHeader title="总览" />
+      {/* 欢迎语区域 */}
+      <div className="welcome-section">
+        <h1 className="welcome-title">
+          {getGreeting()}, 系统管理员
+        </h1>
+        <p className="welcome-subtitle">
+          今日 {totalAlerts} 项预警待处理 · 数据截至 {getCurrentTime()}
+        </p>
+      </div>
 
       <Row gutter={[16, 16]}>
+        {/* 仓库数 */}
         <Col xs={24} sm={12} md={6}>
           <div className="stat-card">
-            <div className="stat-card-label">
-              <HomeOutlined /> 仓库数
-            </div>
-            <div className="stat-card-value">{summary?.warehouseCount ?? 0}</div>
-          </div>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <div className="stat-card">
-            <div className="stat-card-label">
-              <AppstoreOutlined /> 物品数
-            </div>
-            <div className="stat-card-value">{summary?.itemCount ?? 0}</div>
-          </div>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <div className="stat-card">
-            <div className="stat-card-label">
-              <ImportOutlined style={{ color: "#16a34a" }} /> 今日入库
-            </div>
-            <div className="stat-card-value" style={{ color: "#16a34a" }}>
-              {Number(summary?.todayInboundQty ?? 0).toFixed(2)}
-            </div>
-            <div style={{ fontSize: 12, color: "#9ca3af" }}>
-              {summary?.todayInboundCount ?? 0} 单
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="stat-icon blue">
+                <HomeOutlined />
+              </div>
+              <div>
+                <div className="stat-card-label">仓库数</div>
+                <div className="stat-card-value">{summary?.warehouseCount ?? 0}</div>
+              </div>
             </div>
           </div>
         </Col>
+
+        {/* 物品数 */}
         <Col xs={24} sm={12} md={6}>
           <div className="stat-card">
-            <div className="stat-card-label">
-              <ExportOutlined style={{ color: "#d97706" }} /> 今日出库
-            </div>
-            <div className="stat-card-value" style={{ color: "#d97706" }}>
-              {Number(summary?.todayOutboundQty ?? 0).toFixed(2)}
-            </div>
-            <div style={{ fontSize: 12, color: "#9ca3af" }}>
-              {summary?.todayOutboundCount ?? 0} 单
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="stat-icon cyan">
+                <AppstoreOutlined />
+              </div>
+              <div>
+                <div className="stat-card-label">物品数</div>
+                <div className="stat-card-value">{summary?.itemCount ?? 0}</div>
+              </div>
             </div>
           </div>
         </Col>
+
+        {/* 今日入库 */}
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="stat-icon green">
+                <ImportOutlined />
+              </div>
+              <div>
+                <div className="stat-card-label">今日入库</div>
+                <div className="stat-card-value">
+                  {Number(summary?.todayInboundQty ?? 0).toFixed(2)}
+                </div>
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                  {summary?.todayInboundCount ?? 0} 单
+                </div>
+              </div>
+            </div>
+          </div>
+        </Col>
+
+        {/* 今日出库 */}
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="stat-icon orange">
+                <ExportOutlined />
+              </div>
+              <div>
+                <div className="stat-card-label">今日出库</div>
+                <div className="stat-card-value">
+                  {Number(summary?.todayOutboundQty ?? 0).toFixed(2)}
+                </div>
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                  {summary?.todayOutboundCount ?? 0} 单
+                </div>
+              </div>
+            </div>
+          </div>
+        </Col>
+
+        {/* 临期预警(30 天) - 0 时恢复普通样式 */}
         <Col xs={24} sm={12} md={6}>
           <Link to="/alerts">
-            <div className="stat-card">
-              <div className="stat-card-label">
-                <FieldTimeOutlined style={{ color: "#dc2626" }} /> 临期预警(30 天)
+            <div className={`stat-card clickable${expiryCount > 0 ? " alert-red" : ""}`}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div className={`stat-icon ${expiryCount > 0 ? "red" : "blue"}`}>
+                  <FieldTimeOutlined />
+                </div>
+                <div>
+                  <div className="stat-card-label">临期预警(30 天)</div>
+                  <div className="stat-card-value">{expiryCount}</div>
+                  <div style={{ fontSize: 12, color: "#9ca3af" }}>点击处理 →</div>
+                </div>
               </div>
-              <div className="stat-card-value" style={{ color: "#dc2626" }}>
-                {expiryCount}
-              </div>
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>点击处理 →</div>
             </div>
           </Link>
         </Col>
+
+        {/* 低库存预警 - 0 时恢复普通样式 */}
         <Col xs={24} sm={12} md={6}>
           <Link to="/alerts">
-            <div className="stat-card">
-              <div className="stat-card-label">
-                <AlertOutlined style={{ color: "#d97706" }} /> 低库存预警
+            <div className={`stat-card clickable${lowStockCount > 0 ? " alert-orange" : ""}`}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div className={`stat-icon ${lowStockCount > 0 ? "orange" : "cyan"}`}>
+                  <AlertOutlined />
+                </div>
+                <div>
+                  <div className="stat-card-label">低库存预警</div>
+                  <div className="stat-card-value">{lowStockCount}</div>
+                  <div style={{ fontSize: 12, color: "#9ca3af" }}>点击处理 →</div>
+                </div>
               </div>
-              <div className="stat-card-value" style={{ color: "#d97706" }}>
-                {lowStockCount}
-              </div>
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>点击处理 →</div>
             </div>
           </Link>
         </Col>
@@ -169,7 +235,6 @@ export function DashboardPage() {
               size="small"
               pagination={false}
               dataSource={top10}
-              scroll={{ x: 480 }}
               columns={[
                 { title: "排名", width: 60, render: (_v, _r, idx) => idx + 1 },
                 {
@@ -197,10 +262,26 @@ export function DashboardPage() {
                 {
                   title: "数量",
                   dataIndex: "quantity",
-                  width: 100,
+                  width: 140,
                   align: "right",
                   className: "num-cell",
-                  render: (v: string | number) => Number(v).toFixed(4),
+                  render: (v: string | number) => {
+                    const num = Number(v);
+                    const pct = maxQty > 0 ? (num / maxQty) * 100 : 0;
+                    return (
+                      <div>
+                        <div style={{ marginBottom: 4, fontSize: 13 }}>
+                          {num.toFixed(4)}
+                        </div>
+                        <div className="data-bar">
+                          <div
+                            className="data-bar-fill"
+                            style={{ width: `${Math.min(pct, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  },
                 },
               ]}
             />
