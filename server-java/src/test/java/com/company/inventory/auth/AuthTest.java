@@ -72,9 +72,9 @@ class AuthTest {
      */
     @BeforeAll
     void cleanDb() {
-        String sql = "TRUNCATE \"OutboundDocItem\",\"InboundDocItem\",\"OutboundDoc\",\"InboundDoc\","
-                + "\"StockTransaction\",\"Stock\",\"Serial\",\"Batch\",\"Location\",\"Item\","
-                + "\"Warehouse\",\"User\" RESTART IDENTITY CASCADE";
+        String sql = "TRUNCATE \"outbound_doc_item\",\"inbound_doc_item\",\"outbound_doc\",\"inbound_doc\","
+                + "\"stock_transaction\",\"stock\",\"serial\",\"batch\",\"location\",\"item\","
+                + "\"warehouse\",\"sys_user\" RESTART IDENTITY CASCADE";
         jdbcTemplate.execute(sql);
 
         WarehouseDO wh = new WarehouseDO();
@@ -104,7 +104,7 @@ class AuthTest {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(token);
-        String body = "{\"warehouseId\":1,\"items\":[{\"itemId\":1,\"qty\":1}]}";
+        String body = "{\"warehouse_id\":1,\"items\":[{\"item_id\":1,\"qty\":1}]}";
         ResponseEntity<Map> res = rest.exchange("/api/v1/inbound", HttpMethod.POST,
                 new HttpEntity<>(body, headers), Map.class);
         assertEquals(403, res.getStatusCode().value());
@@ -121,7 +121,7 @@ class AuthTest {
     void noTokenUnauthorized() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        String body = "{\"warehouseId\":1,\"items\":[{\"itemId\":1,\"qty\":1}]}";
+        String body = "{\"warehouse_id\":1,\"items\":[{\"item_id\":1,\"qty\":1}]}";
         ResponseEntity<Map> res = rest.exchange("/api/v1/inbound", HttpMethod.POST,
                 new HttpEntity<>(body, headers), Map.class);
         assertEquals(401, res.getStatusCode().value());

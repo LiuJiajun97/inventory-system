@@ -96,11 +96,11 @@ class MasterDataAlertTest {
      */
     @BeforeAll
     void cleanDb() {
-        String sql = "TRUNCATE \"PurchaseOrderItem\",\"SalesOrderItem\",\"TransferDocItem\","
-                + "\"StocktakeDocItem\",\"StockAdjustDocItem\",\"OutboundDocItem\",\"InboundDocItem\","
-                + "\"PurchaseOrder\",\"SalesOrder\",\"TransferDoc\",\"StocktakeDoc\",\"StockAdjustDoc\","
-                + "\"OutboundDoc\",\"InboundDoc\",\"StockTransaction\",\"Stock\",\"Serial\",\"Batch\","
-                + "\"Location\",\"Item\",\"Warehouse\",\"Supplier\",\"Customer\",\"User\" RESTART IDENTITY CASCADE";
+        String sql = "TRUNCATE \"purchase_order_item\",\"sales_order_item\",\"transfer_doc_item\","
+                + "\"stocktake_doc_item\",\"stock_adjust_doc_item\",\"outbound_doc_item\",\"inbound_doc_item\","
+                + "\"purchase_order\",\"sales_order\",\"transfer_doc\",\"stocktake_doc\",\"stock_adjust_doc\","
+                + "\"outbound_doc\",\"inbound_doc\",\"stock_transaction\",\"stock\",\"serial\",\"batch\","
+                + "\"location\",\"item\",\"warehouse\",\"supplier\",\"customer\",\"sys_user\" RESTART IDENTITY CASCADE";
         jdbcTemplate.execute(sql);
         WarehouseDO wh = new WarehouseDO();
         wh.setWarehouseCode("MD-WH");

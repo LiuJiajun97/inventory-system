@@ -36,7 +36,7 @@ public class DocStateSupport {
         UpdateWrapper<T> wrapper = new UpdateWrapper<>();
         wrapper.set("\"status\"", to)
                 .set("\"updater\"", updater)
-                .set("\"updatedAt\"", LocalDateTime.now())
+                .set("updated_at", LocalDateTime.now())
                 .eq("\"id\"", id);
         if (from.size() == 1) {
             wrapper.eq("\"status\"", from.get(0));
@@ -63,7 +63,7 @@ public class DocStateSupport {
         UpdateWrapper<T> wrapper = new UpdateWrapper<>();
         wrapper.set("\"status\"", to)
                 .set("\"updater\"", updater)
-                .set("\"updatedAt\"", LocalDateTime.now());
+                .set("updated_at", LocalDateTime.now());
         if (extra != null) {
             for (java.util.Map.Entry<String, Object> e : extra.entrySet()) {
                 wrapper.set(e.getKey(), e.getValue());

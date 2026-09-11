@@ -102,9 +102,9 @@ class WarehouseLocationEditTest {
      */
     @BeforeAll
     void cleanDb() {
-        String sql = "TRUNCATE \"OutboundDocItem\",\"InboundDocItem\",\"OutboundDoc\",\"InboundDoc\","
-                + "\"StockTransaction\",\"Stock\",\"Serial\",\"Batch\",\"Location\",\"Item\","
-                + "\"Warehouse\",\"Supplier\",\"Customer\",\"User\" RESTART IDENTITY CASCADE";
+        String sql = "TRUNCATE \"outbound_doc_item\",\"inbound_doc_item\",\"outbound_doc\",\"inbound_doc\","
+                + "\"stock_transaction\",\"stock\",\"serial\",\"batch\",\"location\",\"item\","
+                + "\"warehouse\",\"supplier\",\"customer\",\"sys_user\" RESTART IDENTITY CASCADE";
         jdbcTemplate.execute(sql);
         // 用户:admin123 已在 seed 中存在,此处仅补 viewer/operator
         BCryptPasswordEncoder enc = new BCryptPasswordEncoder(4);
@@ -248,7 +248,7 @@ class WarehouseLocationEditTest {
         WarehouseDO wh = newWarehouse("WHE-W9", "原材料仓I", false, false, false, false);
         String token = login("whedit_viewer", "viewer123");
         ResponseEntity<Map> res = putWarehouse(token, wh.getId(),
-                "{\"warehouseName\":\"试图改\"}");
+                "{\"warehouse_name\":\"试图改\"}");
         assertEquals(403, res.getStatusCode().value());
     }
 
@@ -260,7 +260,7 @@ class WarehouseLocationEditTest {
         WarehouseDO wh = newWarehouse("WHE-W10", "原材料仓J", false, false, false, false);
         String token = login("whedit_operator", "operator123");
         ResponseEntity<Map> res = putWarehouse(token, wh.getId(),
-                "{\"warehouseName\":\"试图改\"}");
+                "{\"warehouse_name\":\"试图改\"}");
         assertEquals(403, res.getStatusCode().value());
     }
 

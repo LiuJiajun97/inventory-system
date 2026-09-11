@@ -26,11 +26,11 @@ public interface SalesOrderItemMapper extends BaseMapper<SalesOrderItemDO> {
      * @param qty     本次发货数量
      * @return 影响行数(0=超发或行已关闭,1=成功;累计达标时同步置 closed=true)
      */
-    @Update("UPDATE \"SalesOrderItem\" "
-            + "SET \"shippedQty\" = \"shippedQty\" + #{qty}, "
-            + "\"closed\" = (\"shippedQty\" + #{qty} >= \"orderedQty\") "
-            + "WHERE \"id\" = #{lineId} AND \"orderId\" = #{orderId} AND NOT \"closed\" "
-            + "AND \"shippedQty\" + #{qty} <= \"orderedQty\"")
+    @Update("UPDATE sales_order_item "
+            + "SET shipped_qty = shipped_qty + #{qty}, "
+            + "closed = (shipped_qty + #{qty} >= ordered_qty) "
+            + "WHERE id = #{lineId} AND order_id = #{orderId} AND NOT closed "
+            + "AND shipped_qty + #{qty} <= ordered_qty")
     int applyShipment(@Param("lineId") Long lineId, @Param("orderId") Long orderId,
             @Param("qty") BigDecimal qty);
 }

@@ -31,8 +31,9 @@
 后端分层:`controller → service(/impl) → mapper → model`(model 下 entity(DO)/dto/vo/query 四包,按功能再分文件夹,如 `model/dto/purchase/`)。
 出入库/采购/销售/调拨在单个事务内完成(`StockCoreService`),出库扣减为条件 `UPDATE ... WHERE quantity >= qty`,affected rows=0 即"库存不足"整单回滚。
 
-> 说明:PG 库表名/列名为 PascalCase/camelCase(建库时带引号),实体 DO 通过
-> `@TableName("\"X\"")` / `@TableField("\"col\"")` 显式写带引号标识符,保证 SQL 与 DDL 一致。
+> 说明:PG 库表名/列名统一小写蛇形(`db/V6__snake_case.sql` 迁移),`map-underscore-to-camel-case: true`
+> 自动映射 Java camelCase 字段 ↔ snake_case 列;手写 SQL 不写引号。审计四件套(creator/createdAt/updater/updatedAt)
+> 由 `AuditMetaObjectHandler` 统一填充,DO 字段仅需 `@TableField(fill = ...)` 标记。
 
 > **文档同步约定**:接口/表结构/测试数量变更时,随代码一起更新本 README,保持文档与代码实时一致。
 > 每次实质变更同时追加一条到 `docs/迭代日志.md`(迭代流水账,含验证与遗留项)。
@@ -143,7 +144,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 1. **仓库 4 开关**:`enableBatch` / `enableExpiry` / `enableSerial` / `enableLocation` 决定入库/出库必填项,不依赖 `warehouse_type`。
 2. **入库**:批次不存在自动创建;启用保质期必须带批次;序列号条数 = 入库数量(整数)。
 3. **出库选批**:启用保质期 → **FEFO**(expiryDate 升序,NULL 最后);仅启用批次 → **FIFO**;也可手动指定。
-4. **出库扣减**:条件 `UPDATE "Stock" SET quantity = quantity - n WHERE ... AND quantity >= n`,0 行抛"库存不足"整单回滚。**禁止先 SELECT 校验再 UPDATE**(`mapper/StockMapper.xml` 的 `deductStock`,核心逻辑禁止弱化)。
+4. **出库扣减**:条件 `UPDATE stock SET quantity = quantity - n WHERE ... AND quantity >= n`,0 行抛"库存不足"整单回滚。**禁止先 SELECT 校验再 UPDATE**(`mapper/StockMapper.xml` 的 `deductStock`,核心逻辑禁止弱化)。
 5. **余额唯一键**:`(warehouse, item, batch, location)`,默认 `batch=0, location=0`。
 6. **流水**:只插不改,必带 `afterQty`(变动后结存)。
 7. **序列号台账**:独立表,出库逐号条件更新,任一失败整单回滚。
@@ -214,7 +215,7 @@ A: 日历文案来自 dayjs 全局 locale,`main.tsx` 已显式 `dayjs.locale("zh
 A: 后端 `InventoryApplication.main()` 已锁 JVM 时区 + Jackson `Asia/Shanghai` + `yyyy-MM-dd HH:mm:ss`,新接口沿用即可。
 
 **Q: PG 表名大小写报错 "relation does not exist"?**
-A: 表/列是建库时带引号的 PascalCase/camelCase,手写 SQL 必须带双引号;DO 已用引号注解,新增 DO/XML 照抄 `StockMapper.xml` 的写法。
+A: 表/列统一小写蛇形(V6 迁移后),手写 SQL 不写引号;DO 走 `map-underscore-to-camel-case` 自动映射,新增 DO/XML 照抄 `StockMapper.xml` 的写法即可。
 
 **Q: MyBatis-Plus 空集合 `IN ( )` 报 500?**
 A: `selectByIds`/`IN` 前必须 `isEmpty` 防护(本项目 6 处已有)。

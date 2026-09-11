@@ -18,8 +18,9 @@ spring:
 
 mybatis-plus:
   configuration:
-    # 表/列名与 Prisma 一致(PascalCase 表名、camelCase 列名),关闭下划线映射
-    map-underscore-to-camel-case: false
+    # 表/列名统一小写蛇形(PG 惯例,见 db/V6),开启下划线自动映射:
+    # Java camelCase 字段 <-> 数据库 snake_case 列。显式 @TableField 仍优先(审计 fill 字段用)。
+    map-underscore-to-camel-case: true
   global-config:
     banner: false
   # 分页插件在 MybatisPlusConfig 中注册

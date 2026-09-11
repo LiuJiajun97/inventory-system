@@ -148,9 +148,9 @@ class StockCoreTest {
      */
     @BeforeAll
     void cleanDb() {
-        String sql = "TRUNCATE \"OutboundDocItem\",\"InboundDocItem\",\"OutboundDoc\",\"InboundDoc\","
-                + "\"StockTransaction\",\"Stock\",\"Serial\",\"Batch\",\"Location\",\"Item\","
-                + "\"Warehouse\",\"User\" RESTART IDENTITY CASCADE";
+        String sql = "TRUNCATE \"outbound_doc_item\",\"inbound_doc_item\",\"outbound_doc\",\"inbound_doc\","
+                + "\"stock_transaction\",\"stock\",\"serial\",\"batch\",\"location\",\"item\","
+                + "\"warehouse\",\"sys_user\" RESTART IDENTITY CASCADE";
         jdbcTemplate.execute(sql);
     }
 

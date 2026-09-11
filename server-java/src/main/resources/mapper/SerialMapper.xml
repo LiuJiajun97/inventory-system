@@ -6,23 +6,23 @@
 
     <!-- 条件更新:仅 in_stock 且仓库匹配的序列号才可出库 -->
     <update id="markOutbound">
-        UPDATE "Serial"
-        SET "status" = 'out',
-            "outboundTime" = CURRENT_TIMESTAMP
-        WHERE "itemId" = #{itemId}
-          AND "serialNo" = #{serialNo}
-          AND "status" = 'in_stock'
-          AND "warehouseId" = #{warehouseId}
+        UPDATE serial
+        SET status = 'out',
+            outbound_time = CURRENT_TIMESTAMP
+        WHERE item_id = #{itemId}
+          AND serial_no = #{serialNo}
+          AND status = 'in_stock'
+          AND warehouse_id = #{warehouseId}
     </update>
 
     <!-- 调拨:条件修改序列号归属仓库(仅 in_stock 且在源仓才迁移) -->
     <update id="transferWarehouse">
-        UPDATE "Serial"
-        SET "warehouseId" = #{toWarehouseId}
-        WHERE "itemId" = #{itemId}
-          AND "serialNo" = #{serialNo}
-          AND "status" = 'in_stock'
-          AND "warehouseId" = #{fromWarehouseId}
+        UPDATE serial
+        SET warehouse_id = #{toWarehouseId}
+        WHERE item_id = #{itemId}
+          AND serial_no = #{serialNo}
+          AND status = 'in_stock'
+          AND warehouse_id = #{fromWarehouseId}
     </update>
 
 </mapper>

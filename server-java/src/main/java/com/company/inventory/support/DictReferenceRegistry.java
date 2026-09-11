@@ -44,12 +44,12 @@ public class DictReferenceRegistry {
         this.dictMapper = dictMapper;
         this.registry = Map.of(
                 "warehouseType", List.of(
-                        new TableRef("Warehouse", "warehouseType", "仓库")),
+                        new TableRef("warehouse", "warehouse_type", "仓库")),
                 "itemCategory", List.of(
-                        new TableRef("Item", "category", "物品")),
+                        new TableRef("item", "category", "物品")),
                 "settleMethod", List.of(
-                        new TableRef("Supplier", "settleMethod", "供应商"),
-                        new TableRef("Customer", "settleMethod", "客户"))
+                        new TableRef("supplier", "settle_method", "供应商"),
+                        new TableRef("customer", "settle_method", "客户"))
         );
     }
 
@@ -68,8 +68,8 @@ public class DictReferenceRegistry {
         try {
             for (TableRef ref : refs) {
                 Long count = jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM \"" + ref.table()
-                                + "\" WHERE \"" + ref.column() + "\" = ?",
+                        "SELECT COUNT(*) FROM " + ref.table()
+                                + " WHERE " + ref.column() + " = ?",
                         Long.class, dictKey);
                 if (count != null && count > 0) {
                     return true;
@@ -96,8 +96,8 @@ public class DictReferenceRegistry {
         try {
             for (TableRef ref : refs) {
                 Long count = jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM \"" + ref.table()
-                                + "\" WHERE \"" + ref.column() + "\" = ?",
+                        "SELECT COUNT(*) FROM " + ref.table()
+                                + " WHERE " + ref.column() + " = ?",
                         Long.class, dictKey);
                 if (count != null && count > 0) {
                     return ref.displayName();

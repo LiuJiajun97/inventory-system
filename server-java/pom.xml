@@ -79,6 +79,12 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
+        <!-- Lombok:消灭 model 层 getter/setter 样板(版本由 Boot 管理) -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- API 文档:swagger-ui 挂 /docs,与 Fastify 版一致 -->
         <dependency>
             <groupId>org.springdoc</groupId>

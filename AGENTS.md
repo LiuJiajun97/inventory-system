@@ -56,7 +56,7 @@ docker compose up -d                   # 起 PG
 
 1. 禁止改 `StockCoreService` 扣减逻辑和 `mapper/StockMapper.xml` 的防穿仓 SQL(条件 UPDATE)
 2. 测试只增不减;新测试必须自包含(自建数据自清理),不要用 `@Transactional` 回滚
-3. PG 表/列是带引号的 PascalCase/camelCase:手写 SQL 必须双引号,DO 用 `@TableName("\"Item\"")`/`@TableField("\"col\"")`
+3. PG 表/列统一小写蛇形(V6 迁移):手写 SQL 不写引号;DO 靠 `map-underscore-to-camel-case: true` 自动映射,审计字段用 `@TableField(fill = ...)`
 4. Javadoc 摘要以中文句号「。」收尾(checkstyle 按字面量 `。` 匹配);禁 `select *`
 5. MyBatis-Plus 空集合防护:`selectByIds`/`IN` 前必须 `isEmpty()`
 6. 不引入新依赖,除非任务书明确允许

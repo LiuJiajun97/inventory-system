@@ -5,18 +5,18 @@
 -- 说明:状态机枚举(单据 status/bizCode/adjustType)不进字典,保持常量类。
 -- =====================================================================
 
-CREATE TABLE IF NOT EXISTS "Dict" (
+CREATE TABLE IF NOT EXISTS dict (
     id          SERIAL PRIMARY KEY,
-    "dictType"   TEXT NOT NULL,
-    "dictKey"    TEXT NOT NULL,
-    "dictLabel"  TEXT NOT NULL,
-    "sortOrder"  INTEGER NOT NULL DEFAULT 0,
-    "status"     INTEGER NOT NULL DEFAULT 1,
-    CONSTRAINT "Dict_type_key_unique" UNIQUE ("dictType", "dictKey")
+    dict_type   TEXT NOT NULL,
+    dict_key    TEXT NOT NULL,
+    dict_label  TEXT NOT NULL,
+    sort_order  INTEGER NOT NULL DEFAULT 0,
+    status     INTEGER NOT NULL DEFAULT 1,
+    CONSTRAINT "Dict_type_key_unique" UNIQUE (dict_type, dict_key)
 );
 
 -- 种子:仓库类型 / 物品分类 / 结算方式
-INSERT INTO "Dict" ("dictType", "dictKey", "dictLabel", "sortOrder", "status") VALUES
+INSERT INTO dict (dict_type, dict_key, dict_label, sort_order, status) VALUES
     ('warehouseType', 'raw',      '原材料仓', 1, 1),
     ('warehouseType', 'finished', '成品仓',   2, 1),
     ('warehouseType', 'hardware', '五金仓',   3, 1),
@@ -26,4 +26,4 @@ INSERT INTO "Dict" ("dictType", "dictKey", "dictLabel", "sortOrder", "status") V
     ('settleMethod',  'prepay',   '预付',     1, 1),
     ('settleMethod',  'cod',      '货到付款', 2, 1),
     ('settleMethod',  'credit',   '账期',     3, 1)
-ON CONFLICT ("dictType", "dictKey") DO NOTHING;
+ON CONFLICT (dict_type, dict_key) DO NOTHING;

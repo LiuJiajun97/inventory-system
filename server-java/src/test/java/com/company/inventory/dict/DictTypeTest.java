@@ -61,8 +61,8 @@ class DictTypeTest {
      */
     @BeforeAll
     void cleanDb() {
-        jdbcTemplate.execute("TRUNCATE \"Dict\" RESTART IDENTITY");
-        jdbcTemplate.execute("TRUNCATE \"DictType\" RESTART IDENTITY");
+        jdbcTemplate.execute("TRUNCATE \"dict\" RESTART IDENTITY");
+        jdbcTemplate.execute("TRUNCATE \"dict_type\" RESTART IDENTITY");
         insertType("testtypea", "测试类型A", "备注A", 1);
         insertType("testtypeb", "测试类型B", "备注B", 1);
         insertType("warehouseType", "仓库类型", "测试用", 1);
@@ -137,10 +137,10 @@ class DictTypeTest {
         String refKey = "refwk" + System.nanoTime();
         insertDictItem("warehouseType", refKey, "引用值", 1, 0);
         jdbcTemplate.update(
-                "INSERT INTO \"Warehouse\" (\"warehouseCode\",\"warehouseName\","
-                        + "\"warehouseType\",\"enableBatch\",\"enableExpiry\","
-                        + "\"enableSerial\",\"enableLocation\",\"status\","
-                        + "\"createdAt\") VALUES (?, ?, ?, false, false, false, false, 1, NOW())",
+                "INSERT INTO \"warehouse\" (\"warehouse_code\",\"warehouse_name\","
+                        + "\"warehouse_type\",\"enable_batch\",\"enable_expiry\","
+                        + "\"enable_serial\",\"enable_location\",\"status\","
+                        + "\"created_at\") VALUES (?, ?, ?, false, false, false, false, 1, NOW())",
                 "WH-CHK-" + System.nanoTime(), "检查仓", refKey);
         // 停用 warehouseType 类型(该类型下有被引用的项)
         DictTypeUpdateDTO dto = new DictTypeUpdateDTO("仓库类型", "", 0);

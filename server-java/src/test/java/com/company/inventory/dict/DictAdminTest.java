@@ -51,16 +51,16 @@ class DictAdminTest {
      */
     @BeforeAll
     void cleanDb() {
-        jdbcTemplate.execute("TRUNCATE \"Dict\" RESTART IDENTITY");
+        jdbcTemplate.execute("TRUNCATE \"dict\" RESTART IDENTITY");
         insert("admTestType", "k1", "标签1", 1, 1);
         insert("admTestType", "k2", "标签2", 2, 1);
         // 插入一条被 Warehouse 引用的字典项(warehouseType)
         insert("warehouseType", "refWh", "引用仓类", 1, 1);
         jdbcTemplate.update(
-                "INSERT INTO \"Warehouse\" (\"warehouseCode\",\"warehouseName\","
-                        + "\"warehouseType\",\"enableBatch\",\"enableExpiry\","
-                        + "\"enableSerial\",\"enableLocation\",\"status\","
-                        + "\"createdAt\") VALUES (?, ?, ?, false, false, false, false, 1, NOW())",
+                "INSERT INTO \"warehouse\" (\"warehouse_code\",\"warehouse_name\","
+                        + "\"warehouse_type\",\"enable_batch\",\"enable_expiry\","
+                        + "\"enable_serial\",\"enable_location\",\"status\","
+                        + "\"created_at\") VALUES (?, ?, ?, false, false, false, false, 1, NOW())",
                 "WH-REF-01", "引用测试仓", "refWh");
     }
 

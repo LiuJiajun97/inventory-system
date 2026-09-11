@@ -26,12 +26,12 @@ public interface PurchaseOrderItemMapper extends BaseMapper<PurchaseOrderItemDO>
      * @param qty     本次到货数量
      * @return 影响行数(0=超收或行已关闭,1=成功;累计达标时同步置 closed=true)
      */
-    @Update("UPDATE \"PurchaseOrderItem\" "
-            + "SET \"arrivedQty\" = \"arrivedQty\" + #{qty}, "
-            + "\"closed\" = (\"arrivedQty\" + #{qty} >= \"orderedQty\") "
-            + "WHERE \"id\" = #{lineId} AND \"orderId\" = #{orderId} AND NOT \"closed\" "
-            + "AND \"arrivedQty\" + #{qty} <= \"orderedQty\" * (1 + "
-            + "(SELECT \"allowOverReceiptRate\" FROM \"PurchaseOrder\" WHERE \"id\" = #{orderId}))")
+    @Update("UPDATE purchase_order_item "
+            + "SET arrived_qty = arrived_qty + #{qty}, "
+            + "closed = (arrived_qty + #{qty} >= ordered_qty) "
+            + "WHERE id = #{lineId} AND order_id = #{orderId} AND NOT closed "
+            + "AND arrived_qty + #{qty} <= ordered_qty * (1 + "
+            + "(SELECT allow_over_receipt_rate FROM purchase_order WHERE id = #{orderId}))")
     int applyArrival(@Param("lineId") Long lineId, @Param("orderId") Long orderId,
             @Param("qty") BigDecimal qty);
 }

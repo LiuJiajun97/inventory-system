@@ -260,7 +260,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             throw new BizException("驳回原因必填");
         }
         Map<String, Object> extra = approveExtra(username);
-        extra.put("\"rejectReason\"", dto.rejectReason().trim());
+        extra.put("reject_reason", dto.rejectReason().trim());
         int n = stateSupport.transitionWith(orderMapper, id, List.of(DocStatus.PENDING),
                 DocStatus.REJECTED, username, extra);
         if (n == 0) {
@@ -476,7 +476,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private Map<String, Object> approveExtra(String username) {
         Map<String, Object> extra = new HashMap<>();
         extra.put("\"approver\"", username);
-        extra.put("\"approvedAt\"", LocalDateTime.now());
+        extra.put("approved_at", LocalDateTime.now());
         return extra;
     }
 

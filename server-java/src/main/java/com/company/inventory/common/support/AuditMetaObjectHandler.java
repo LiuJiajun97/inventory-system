@@ -9,6 +9,9 @@ import java.time.LocalDateTime;
 /**
  * 审计字段自动填充:insert 时填 creator/createdAt/updater/updatedAt,update 时填 updater/updatedAt。
  *
+ * <p>说明:触发依赖 DO 字段上的 fill 注解(@TableField(fill = ...)),列名映射走
+ * MyBatis-Plus 下划线自动映射,fill 参数统一用 Java 属性名(camelCase)。</p>
+ *
  * @author inventory
  */
 @Component

@@ -46,7 +46,7 @@ class DictTest {
      */
     @BeforeAll
     void cleanDb() {
-        jdbcTemplate.execute("TRUNCATE \"Dict\" RESTART IDENTITY");
+        jdbcTemplate.execute("TRUNCATE \"dict\" RESTART IDENTITY");
         insert("whType", "z", "Z 项", 3);
         insert("whType", "a", "A 项", 1);
         insert("whType", "m", "M 项", 2);
