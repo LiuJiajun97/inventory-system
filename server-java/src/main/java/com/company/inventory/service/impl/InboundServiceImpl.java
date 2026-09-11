@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -208,6 +209,18 @@ public class InboundServiceImpl implements InboundService {
         LambdaQueryWrapper<InboundDocDO> wrapper = new LambdaQueryWrapper<>();
         if (query.getWarehouseId() != null) {
             wrapper.eq(InboundDocDO::getWarehouseId, query.getWarehouseId());
+        }
+        if (StringUtils.hasText(query.getDocNo())) {
+            wrapper.like(InboundDocDO::getDocNo, query.getDocNo().trim());
+        }
+        if (StringUtils.hasText(query.getStatus())) {
+            wrapper.eq(InboundDocDO::getStatus, query.getStatus().trim());
+        }
+        if (StringUtils.hasText(query.getFrom())) {
+            wrapper.ge(InboundDocDO::getDocDate, query.getFrom().trim());
+        }
+        if (StringUtils.hasText(query.getTo())) {
+            wrapper.le(InboundDocDO::getDocDate, query.getTo().trim());
         }
         wrapper.orderByDesc(InboundDocDO::getId);
         Page<InboundDocDO> result = inboundDocMapper.selectPage(

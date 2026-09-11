@@ -44,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -94,8 +95,16 @@ public class WarehouseServiceImpl implements WarehouseService {
      */
     @Override
     public PageResult<WarehouseVO> list(WarehouseQuery query) {
-        LambdaQueryWrapper<WarehouseDO> wrapper =
-                new LambdaQueryWrapper<WarehouseDO>().orderByAsc(WarehouseDO::getId);
+        LambdaQueryWrapper<WarehouseDO> wrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.hasText(query.getKeyword())) {
+            String like = query.getKeyword().trim();
+            wrapper.and(w -> w.like(WarehouseDO::getWarehouseCode, like)
+                    .or().like(WarehouseDO::getWarehouseName, like));
+        }
+        if (StringUtils.hasText(query.getWarehouseType())) {
+            wrapper.eq(WarehouseDO::getWarehouseType, query.getWarehouseType().trim());
+        }
+        wrapper.orderByAsc(WarehouseDO::getId);
         Page<WarehouseDO> page = warehouseMapper.selectPage(
                 Page.of(query.getPage(), query.getPageSize()), wrapper);
         List<WarehouseVO> vos = page.getRecords().stream().map(this::toVO).toList();

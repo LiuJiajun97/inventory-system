@@ -42,7 +42,7 @@ export const dashboardApi = {
 
 export const warehouseApi = {
   // 列表已改为分页接口;下拉框等需全量时传 pageSize=200
-  list: (params?: { page?: number; pageSize?: number }) =>
+  list: (params?: { keyword?: string; warehouseType?: string; page?: number; pageSize?: number }) =>
     http.get<unknown, PagedResponse<Warehouse>>("/warehouses", { params }),
   get: (id: number) => http.get<unknown, Warehouse>(`/warehouses/${id}`),
   create: (data: Omit<Warehouse, "id" | "status"> & { status?: number }) =>
@@ -62,7 +62,7 @@ export const warehouseApi = {
 };
 
 export const itemApi = {
-  list: (params?: { keyword?: string; page?: number; pageSize?: number }) =>
+  list: (params?: { keyword?: string; itemCategory?: string; page?: number; pageSize?: number }) =>
     http.get<unknown, PagedResponse<Item>>("/items", { params }),
   get: (id: number) => http.get<unknown, Item>(`/items/${id}`),
   create: (data: Omit<Item, "id">) => http.post("/items", data),
@@ -343,8 +343,15 @@ export const inboundApi = {
       refLineId?: number;
     }>;
   }) => http.post("/inbound", data),
-  list: (params: { page?: number; pageSize?: number; warehouseId?: number }) =>
-    http.get<unknown, PagedResponse<InboundDoc>>("/inbound", { params }),
+  list: (params: {
+    page?: number;
+    pageSize?: number;
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+  }) => http.get<unknown, PagedResponse<InboundDoc>>("/inbound", { params }),
   get: (id: number) => http.get<unknown, InboundDoc>(`/inbound/${id}`),
 };
 
@@ -364,8 +371,15 @@ export const outboundApi = {
       refLineId?: number;
     }>;
   }) => http.post("/outbound", data),
-  list: (params: { page?: number; pageSize?: number; warehouseId?: number }) =>
-    http.get<unknown, PagedResponse<OutboundDoc>>("/outbound", { params }),
+  list: (params: {
+    page?: number;
+    pageSize?: number;
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+  }) => http.get<unknown, PagedResponse<OutboundDoc>>("/outbound", { params }),
   get: (id: number) => http.get<unknown, OutboundDoc>(`/outbound/${id}`),
 };
 

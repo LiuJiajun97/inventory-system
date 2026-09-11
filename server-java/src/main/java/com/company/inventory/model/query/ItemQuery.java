@@ -19,5 +19,8 @@ public class ItemQuery extends PageQuery {
     /** 关键词(可空,对编码/名称模糊不区分大小写)。 */
     private String keyword;
 
+    /** 物品分类字典值(可空,精确匹配)。 */
+    private String itemCategory;
+
 
 }

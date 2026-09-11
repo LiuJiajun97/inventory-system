@@ -82,6 +82,9 @@ public class ItemServiceImpl implements ItemService {
             wrapper.and(w -> w.like(ItemDO::getItemCode, like)
                     .or().like(ItemDO::getItemName, like));
         }
+        if (StringUtils.hasText(query.getItemCategory())) {
+            wrapper.eq(ItemDO::getCategory, query.getItemCategory().trim());
+        }
         wrapper.orderByAsc(ItemDO::getId);
         Page<ItemDO> page = itemMapper.selectPage(
                 Page.of(query.getPage(), query.getPageSize()), wrapper);
