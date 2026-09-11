@@ -34,6 +34,11 @@ export const themeConfig: ThemeConfig = {
       rowHoverBg: "#f5f7fa",
       headerSplitColor: "transparent",
       borderRadius: 10,
+      // 行高统一 45px:11(上 padding)+ 22(行高)+ 1(下边框)+ 11(下 padding)
+      // Table 默认 size="middle",middle 档 CSS 后加载,必须覆盖 MD 档 token
+      cellPaddingBlock: 11,
+      cellPaddingBlockMD: 11,
+      cellPaddingBlockSM: 11,
     },
     Button: {
       primaryShadow: "0 2px 8px rgba(48,86,211,.35)",

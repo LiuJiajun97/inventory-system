@@ -77,15 +77,9 @@ export function StockQueryPage() {
     {
       title: "物品",
       width: 240,
+      ellipsis: true,
       search: false,
-      render: (_v, r) => (
-        <div style={{ lineHeight: 1.4 }}>
-          <div>{r.item?.itemName ?? "-"}</div>
-          <div style={{ color: "#9ca3af", fontSize: 12 }}>
-            {r.item?.itemCode ?? "-"}
-          </div>
-        </div>
-      ),
+      render: (_v, r) => `${r.item?.itemName ?? "-"} ${r.item?.itemCode ?? "-"}`,
     },
     {
       title: "批次",

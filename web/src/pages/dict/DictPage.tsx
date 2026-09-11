@@ -12,7 +12,6 @@ import {
   Form,
   Button,
   Badge,
-  Space,
   App,
   Drawer,
   Tag,
@@ -240,23 +239,13 @@ export function DictPage() {
             width: 220,
             search: false,
             render: (_: unknown, record: DictTypeItem) => (
-              <Space size="small">
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<ToolOutlined />}
-                  onClick={() => openDrawer(record)}
-                >
-                  管理项
-                </Button>
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<EditOutlined />}
-                  onClick={() => openEditModal(record)}
-                >
-                  编辑
-                </Button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <a className="action-edit" onClick={() => openDrawer(record)}>
+                  <ToolOutlined /> 管理项
+                </a>
+                <a className="action-edit" onClick={() => openEditModal(record)}>
+                  <EditOutlined /> 编辑
+                </a>
                 {record.status === 1 ? (
                   <Popconfirm
                     title="确认停用该类型?"
@@ -264,9 +253,7 @@ export function DictPage() {
                     okText="停用"
                     cancelText="取消"
                   >
-                    <Button type="link" size="small" danger>
-                      停用
-                    </Button>
+                    <a className="action-edit danger">停用</a>
                   </Popconfirm>
                 ) : (
                   <Popconfirm
@@ -275,12 +262,10 @@ export function DictPage() {
                     okText="启用"
                     cancelText="取消"
                   >
-                    <Button type="link" size="small">
-                      启用
-                    </Button>
+                    <a className="action-edit">启用</a>
                   </Popconfirm>
                 )}
-              </Space>
+              </div>
             ),
           },
         ]

@@ -572,8 +572,24 @@ body {
 }
 
 .action-submit,
-.action-approve {
+.action-approve,
+.action-edit {
   color: var(--color-primary) !important;
+}
+
+/* 危险操作链接(如停用) */
+.action-edit.danger {
+  color: #cf1322 !important;
+}
+
+/* 带图标的操作链接:垂直居中,消除图标基线对齐的行高漂移 */
+a.action-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+a.action-edit .anticon {
+  line-height: 1;
 }
 
 /* ====== 菜单选中态左侧圆角条 ====== */

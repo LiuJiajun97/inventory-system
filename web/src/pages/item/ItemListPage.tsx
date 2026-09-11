@@ -130,13 +130,9 @@ export function ItemListPage() {
             width: 80,
             search: false,
             render: (_v: unknown, r: Item) => (
-              <Button
-                type="link"
-                size="small"
-                onClick={() => openEdit(r)}
-              >
+              <a className="action-edit" onClick={() => openEdit(r)}>
                 编辑
-              </Button>
+              </a>
             ),
           },
         ]

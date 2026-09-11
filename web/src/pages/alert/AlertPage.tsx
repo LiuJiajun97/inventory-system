@@ -68,6 +68,8 @@ export function AlertPage() {
     {
       title: "物品",
       dataIndex: "itemName",
+      width: 220,
+      ellipsis: true,
       search: false,
       render: (_v, r) => `${r.itemCode} ${r.itemName}`,
     },
