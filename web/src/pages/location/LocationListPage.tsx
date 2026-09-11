@@ -1,5 +1,5 @@
 // 库位管理(SPEC-WEB V2 2.10)
-// 筛选仓库 + 新建库位
+// 筛选仓库 + 新建/编辑库位;编辑时编码与所属仓库锁死
 
 import { useEffect, useState } from "react";
 import {
@@ -16,6 +16,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { warehouseApi } from "../../api";
 import type { Location, Warehouse } from "../../types";
+import { getUser } from "../../auth/useAuth";
 import { ListPageShell } from "../../components/ListPageShell";
 
 export function LocationListPage() {
@@ -26,8 +27,10 @@ export function LocationListPage() {
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Location | null>(null);
   const [form] = Form.useForm();
   const [warehouseId, setWarehouseId] = useState<number | undefined>();
+  const user = getUser();
   const { message } = App.useApp();
 
   const load = async (wid?: number, pg = 1, ps = pageSize) => {
@@ -51,13 +54,15 @@ export function LocationListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const warehouseNameOf = (id: number) =>
+    warehouses.find((w) => w.id === id)?.warehouseName ?? id;
+
   const columns: ColumnsType<Location> = [
     {
       title: "仓库",
       dataIndex: "warehouseId",
       width: 200,
-      render: (id: number) =>
-        warehouses.find((w) => w.id === id)?.warehouseName ?? id,
+      render: (id: number) => warehouseNameOf(id),
     },
     {
       title: "编码",
@@ -68,19 +73,67 @@ export function LocationListPage() {
       ),
     },
     { title: "名称", dataIndex: "locationName", ellipsis: true },
+    ...(user?.role === "admin"
+      ? [
+          {
+            title: "操作",
+            width: 80,
+            render: (_v: unknown, r: Location) => (
+              <Button type="link" size="small" onClick={() => openEdit(r)}>
+                编辑
+              </Button>
+            ),
+          },
+        ]
+      : []),
   ];
 
-  const onCreate = async () => {
+  const openCreate = () => {
+    setEditing(null);
+    form.resetFields();
+    setOpen(true);
+  };
+
+  const openEdit = (r: Location) => {
+    setEditing(r);
+    form.setFieldsValue({
+      warehouseId: r.warehouseId,
+      warehouseName: warehouseNameOf(r.warehouseId),
+      locationCode: r.locationCode,
+      locationName: r.locationName,
+    });
+    setOpen(true);
+  };
+
+  const onSave = async () => {
     const v = await form.validateFields();
     try {
-      await warehouseApi.createLocation(v);
-      message.success("库位创建成功");
+      if (editing) {
+        await warehouseApi.updateLocation(editing.id, {
+          locationName: v.locationName,
+        });
+        message.success("库位已更新");
+      } else {
+        await warehouseApi.createLocation({
+          warehouseId: v.warehouseId,
+          locationCode: v.locationCode,
+          locationName: v.locationName,
+        });
+        message.success("库位创建成功");
+      }
       setOpen(false);
       form.resetFields();
+      setEditing(null);
       load(warehouseId, page, pageSize);
     } catch {
       // 拦截器已处理
     }
+  };
+
+  const closeModal = () => {
+    setOpen(false);
+    form.resetFields();
+    setEditing(null);
   };
 
   return (
@@ -103,13 +156,15 @@ export function LocationListPage() {
                 load(v, 1, pageSize);
               }}
             />
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setOpen(true)}
-            >
-              新建库位
-            </Button>
+            {user?.role === "admin" && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={openCreate}
+              >
+                新建库位
+              </Button>
+            )}
           </Space>
         }
         tableProps={{
@@ -129,32 +184,40 @@ export function LocationListPage() {
       />
 
       <Modal
-        title="新建库位"
+        title={editing ? "编辑库位" : "新建库位"}
         open={open}
-        onCancel={() => setOpen(false)}
-        onOk={onCreate}
+        onCancel={closeModal}
+        onOk={onSave}
         okText="提交"
         cancelText="取消"
+        width={420}
+        destroyOnClose
       >
         <Form form={form} layout="vertical" requiredMark={false}>
-          <Form.Item
-            label="仓库"
-            name="warehouseId"
-            rules={[{ required: true, message: "仓库必填" }]}
-          >
-            <Select
-              options={warehouses.map((w) => ({
-                label: w.warehouseName,
-                value: w.id,
-              }))}
-            />
-          </Form.Item>
+          {editing ? (
+            <Form.Item label="所属仓库" name="warehouseName">
+              <Input disabled />
+            </Form.Item>
+          ) : (
+            <Form.Item
+              label="仓库"
+              name="warehouseId"
+              rules={[{ required: true, message: "仓库必填" }]}
+            >
+              <Select
+                options={warehouses.map((w) => ({
+                  label: w.warehouseName,
+                  value: w.id,
+                }))}
+              />
+            </Form.Item>
+          )}
           <Form.Item
             label="库位编码"
             name="locationCode"
             rules={[{ required: true, message: "编码必填" }]}
           >
-            <Input placeholder="如 A-03" />
+            <Input placeholder="如 A-03" disabled={editing != null} />
           </Form.Item>
           <Form.Item label="库位名称" name="locationName">
             <Input />

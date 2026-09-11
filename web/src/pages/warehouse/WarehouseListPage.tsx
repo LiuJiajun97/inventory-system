@@ -1,6 +1,5 @@
 // 仓库管理(SPEC-WEB V2 2.10)
-// 注:服务器端没有仓库 PUT 更新接口,Drawer 当前仅支持新建;编辑需 server 侧补接口
-// 4 个 enable 开关用 Switch,联动提示:开保质期自动开批次
+// Drawer 双态:新建 / 编辑(编码锁死不可改);4 个 enable 开关联动:开保质期自动开批次
 
 import { useEffect, useState } from "react";
 import {
@@ -21,6 +20,7 @@ import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined } from "@ant-design/icons";
 import { warehouseApi, dictApi } from "../../api";
 import type { Warehouse } from "../../types";
+import { getUser } from "../../auth/useAuth";
 import { ListPageShell } from "../../components/ListPageShell";
 import { StatusTag } from "../../components/StatusTag";
 
@@ -31,8 +31,10 @@ export function WarehouseListPage() {
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState<Warehouse | null>(null);
   const [form] = Form.useForm();
   const { message } = App.useApp();
+  const user = getUser();
   const [enableBatch, setEnableBatch] = useState(false);
   const [enableExpiry, setEnableExpiry] = useState(false);
   const [typeOptions, setTypeOptions] = useState<Array<{ code: string; label: string }>>([]);
@@ -96,17 +98,75 @@ export function WarehouseListPage() {
           <StatusTag status="disabled" />
         ),
     },
+    ...(user?.role === "admin"
+      ? [
+          {
+            title: "操作",
+            width: 80,
+            render: (_v: unknown, r: Warehouse) => (
+              <Button type="link" size="small" onClick={() => openEdit(r)}>
+                编辑
+              </Button>
+            ),
+          },
+        ]
+      : []),
   ];
 
-  const onCreate = async () => {
+  const openCreate = () => {
+    setEditing(null);
+    form.resetFields();
+    setEnableBatch(false);
+    setEnableExpiry(false);
+    setDrawerOpen(true);
+  };
+
+  const openEdit = (r: Warehouse) => {
+    setEditing(r);
+    form.setFieldsValue({
+      warehouseCode: r.warehouseCode,
+      warehouseName: r.warehouseName,
+      warehouseType: r.warehouseType,
+      enableSerial: r.enableSerial,
+      enableLocation: r.enableLocation,
+      status: r.status === 1,
+    });
+    setEnableBatch(!!r.enableBatch);
+    setEnableExpiry(!!r.enableExpiry);
+    setDrawerOpen(true);
+  };
+
+  const onSave = async () => {
     const v = await form.validateFields();
     try {
-      await warehouseApi.create(v);
-      message.success("仓库创建成功");
+      if (editing) {
+        await warehouseApi.update(editing.id, {
+          warehouseName: v.warehouseName,
+          warehouseType: v.warehouseType,
+          enableBatch,
+          enableExpiry,
+          enableSerial: v.enableSerial,
+          enableLocation: v.enableLocation,
+          status: v.status ? 1 : 0,
+        });
+        message.success("仓库已更新");
+      } else {
+        await warehouseApi.create({
+          warehouseCode: v.warehouseCode,
+          warehouseName: v.warehouseName,
+          warehouseType: v.warehouseType,
+          enableBatch,
+          enableExpiry,
+          enableSerial: v.enableSerial,
+          enableLocation: v.enableLocation,
+        });
+        message.success("仓库创建成功");
+      }
       setDrawerOpen(false);
       form.resetFields();
       setEnableBatch(false);
       setEnableExpiry(false);
+      setEditing(null);
       load(page, pageSize);
     } catch {
       // 拦截器已处理
@@ -118,6 +178,7 @@ export function WarehouseListPage() {
     form.resetFields();
     setEnableBatch(false);
     setEnableExpiry(false);
+    setEditing(null);
   };
 
   return (
@@ -125,13 +186,15 @@ export function WarehouseListPage() {
       <ListPageShell
         title="仓库管理"
         extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setDrawerOpen(true)}
-          >
-            新建仓库
-          </Button>
+          user?.role === "admin" && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={openCreate}
+            >
+              新建仓库
+            </Button>
+          )
         }
         tableProps={{
           rowKey: "id",
@@ -150,14 +213,14 @@ export function WarehouseListPage() {
       />
 
       <Drawer
-        title="新建仓库"
+        title={editing ? "编辑仓库" : "新建仓库"}
         open={drawerOpen}
         onClose={closeDrawer}
         width={480}
         extra={
           <Space>
             <Button onClick={closeDrawer}>取消</Button>
-            <Button type="primary" onClick={onCreate}>
+            <Button type="primary" onClick={onSave}>
               保存
             </Button>
           </Space>
@@ -169,9 +232,12 @@ export function WarehouseListPage() {
               <Form.Item
                 label="编码"
                 name="warehouseCode"
-                rules={[{ required: true, message: "编码必填" }]}
+                rules={[{ required: !editing, message: "编码必填" }]}
               >
-                <Input placeholder="如 WH-RAW-01" />
+                <Input
+                  placeholder="如 WH-RAW-01"
+                  disabled={editing != null}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -231,6 +297,14 @@ export function WarehouseListPage() {
                   <Switch />
                 </Form.Item>
               </Space>
+              {editing && (
+                <Space>
+                  <span style={{ width: 80 }}>启用</span>
+                  <Form.Item name="status" valuePropName="checked" noStyle>
+                    <Switch />
+                  </Form.Item>
+                </Space>
+              )}
             </div>
           </Form.Item>
         </Form>

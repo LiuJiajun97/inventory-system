@@ -47,10 +47,18 @@ export const warehouseApi = {
   get: (id: number) => http.get<unknown, Warehouse>(`/warehouses/${id}`),
   create: (data: Omit<Warehouse, "id" | "status"> & { status?: number }) =>
     http.post("/warehouses", data),
+  update: (
+    id: number,
+    data: Partial<Omit<Warehouse, "id" | "warehouseCode">>,
+  ) => http.put(`/warehouses/${id}`, data),
   listLocations: (params?: { warehouseId?: number; page?: number; pageSize?: number }) =>
     http.get<unknown, PagedResponse<Location>>("/locations", { params }),
   createLocation: (data: { warehouseId: number; locationCode: string; locationName?: string }) =>
     http.post("/locations", data),
+  updateLocation: (
+    id: number,
+    data: Partial<{ locationName: string | null }>,
+  ) => http.put(`/locations/${id}`, data),
 };
 
 export const itemApi = {

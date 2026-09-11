@@ -4,6 +4,7 @@ import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.dto.location.LocationCreateDTO;
+import com.company.inventory.dto.location.LocationUpdateDTO;
 import com.company.inventory.entity.location.LocationDO;
 import com.company.inventory.mapper.LocationMapper;
 import com.company.inventory.query.LocationQuery;
@@ -116,5 +117,27 @@ public class LocationServiceImpl implements LocationService {
     private LocationVO toVO(LocationDO location) {
         return new LocationVO(location.getId(), location.getWarehouseId(),
                 location.getLocationCode(), location.getLocationName());
+    }
+
+    /**
+     * 编辑库位(仅 admin,编码与所属仓库不可改,LocationDO 无 status 字段不开放停用)。
+     *
+     * @param id  库位 ID
+     * @param dto 入参
+     * @return 更新后的库位
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public LocationVO update(long id, LocationUpdateDTO dto) {
+        LocationDO location = locationMapper.selectById(id);
+        if (location == null) {
+            throw BizException.notFound("库位不存在");
+        }
+        if (dto.locationName() != null) {
+            location.setLocationName(dto.locationName());
+        }
+        locationMapper.updateById(location);
+        LOGGER.info("编辑库位: id={}, code={}", id, location.getLocationCode());
+        return toVO(location);
     }
 }

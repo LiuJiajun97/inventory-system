@@ -3,7 +3,7 @@
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5)。
 > 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占 + 基础出入库,17 个 Controller,前端 24 个页面(20 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **77 条测试全绿**,阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **87 条测试全绿**,阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -64,7 +64,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 77 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 87 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -114,8 +114,8 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 |---|---|---|---|
 | POST | `/auth/login` `/auth/password` `/auth/me` | 登录 / 改密 / 当前用户 | 公开 / 登录 |
 | GET | `/dashboard/summary` | 首页统计 | 登录 |
-| GET/POST | `/warehouses` | 仓库列表 / 新建 | 登录 / admin |
-| GET/POST | `/locations` | 库位列表 / 新建 | 登录 / admin |
+| GET/POST/PUT | `/warehouses` `/warehouses/:id` | 仓库列表 / 新建 / 编辑(编码不可改,含防不一致校验) | 登录 / admin |
+| GET/POST/PUT | `/locations` `/locations/:id` | 库位列表 / 新建 / 编辑(编码与所属仓库不可改) | 登录 / admin |
 | GET/POST/PUT | `/items` `/items/:id` | 物品列表 / 新建 / 编辑(编码不可改) | 登录 / admin |
 | GET | `/stock` `/stock/batches/:id` | 库存余额 / 批次明细 | 登录 |
 | GET | `/transactions` | 流水查询 | 登录 |
@@ -185,7 +185,7 @@ inventory-system/
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
 │   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,seed}.sql
-│   └── src/test/java/         12 个测试类,77 条(库存核心/并发/采购/销售/调拨/盘点/权限/字典/预警)
+│   └── src/test/java/         13 个测试类,87 条(库存核心/并发/采购/销售/调拨/盘点/权限/字典/预警/仓库库位编辑)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/

@@ -2,6 +2,7 @@ package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.dto.warehouse.WarehouseCreateDTO;
+import com.company.inventory.dto.warehouse.WarehouseUpdateDTO;
 import com.company.inventory.query.WarehouseQuery;
 import com.company.inventory.vo.warehouse.WarehouseVO;
 
@@ -48,4 +49,18 @@ public interface WarehouseService {
      * @return 新建仓库
      */
     WarehouseVO create(WarehouseCreateDTO dto);
+
+    /**
+     * 编辑仓库(仅 admin,编码不可改)。
+     *
+     * <p>防不一致校验:
+     * enableLocation 由 1→0 时,该仓存在库位或库位库存行,400 拒绝;
+     * enableSerial 由 1→0 时,该仓存在序列号台账,400 拒绝;
+     * status 由 1→0 时,该仓存在 quantity&gt;0 或 preAllocatedQty&gt;0 的库存,400 拒绝。</p>
+     *
+     * @param id  仓库 ID
+     * @param dto 入参(至少一个字段非空)
+     * @return 更新后的仓库
+     */
+    WarehouseVO update(long id, WarehouseUpdateDTO dto);
 }
