@@ -151,7 +151,7 @@ export function AdjustPage() {
       width: 150,
       render: (v: string | null) => v ?? "-",
     },
-    { title: "创建人", dataIndex: "creator", width: 90 },
+    { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true },
     {
       title: "状态",
       dataIndex: "status",

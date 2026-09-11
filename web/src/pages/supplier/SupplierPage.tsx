@@ -117,6 +117,7 @@ export function SupplierPage() {
       title: "创建人",
       dataIndex: "creator",
       width: 100,
+      ellipsis: true,
       render: (v?: string | null) => v ?? "-",
     },
     {

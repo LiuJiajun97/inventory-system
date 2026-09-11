@@ -114,7 +114,7 @@ export function SalesOrderListPage() {
         </span>
       ),
     },
-    { title: "创建人", dataIndex: "creator", width: 90 },
+    { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true },
     {
       title: "创建时间",
       dataIndex: "createdAt",

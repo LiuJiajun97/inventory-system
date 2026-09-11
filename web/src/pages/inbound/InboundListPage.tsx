@@ -109,7 +109,7 @@ export function InboundListPage() {
           .reduce((s, it) => s + Number(it.quantity), 0)
           .toFixed(4),
     },
-    { title: "创建人", dataIndex: "creator", width: 100 },
+    { title: "创建人", dataIndex: "creator", width: 100, ellipsis: true },
     {
       title: "创建时间",
       dataIndex: "createdAt",

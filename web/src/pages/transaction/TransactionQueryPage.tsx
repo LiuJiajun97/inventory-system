@@ -132,7 +132,7 @@ export function TransactionQueryPage() {
       className: "num-cell",
       render: (v: string | number) => Number(v).toFixed(4),
     },
-    { title: "操作人", dataIndex: "operator", width: 100 },
+    { title: "操作人", dataIndex: "operator", width: 100, ellipsis: true },
   ];
 
   const filterNode = (

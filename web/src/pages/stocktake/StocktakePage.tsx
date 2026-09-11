@@ -150,7 +150,7 @@ export function StocktakePage() {
       render: (v: string) => (v === "all" ? "整仓" : "指定物品"),
     },
     { title: "行数", width: 70, render: (_v, r) => r.items?.length ?? "-" },
-    { title: "创建人", dataIndex: "creator", width: 90 },
+    { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true },
     {
       title: "状态",
       dataIndex: "status",
