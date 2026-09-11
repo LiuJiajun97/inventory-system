@@ -35,6 +35,7 @@
 > `@TableName("\"X\"")` / `@TableField("\"col\"")` 显式写带引号标识符,保证 SQL 与 DDL 一致。
 
 > **文档同步约定**:接口/表结构/测试数量变更时,随代码一起更新本 README,保持文档与代码实时一致。
+> 每次实质变更同时追加一条到 `docs/迭代日志.md`(迭代流水账,含验证与遗留项)。
 
 ---
 
@@ -115,7 +116,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | GET | `/dashboard/summary` | 首页统计 | 登录 |
 | GET/POST | `/warehouses` | 仓库列表 / 新建 | 登录 / admin |
 | GET/POST | `/locations` | 库位列表 / 新建 | 登录 / admin |
-| GET/POST | `/items` | 物品列表 / 新建 | 登录 / admin |
+| GET/POST/PUT | `/items` `/items/:id` | 物品列表 / 新建 / 编辑(编码不可改) | 登录 / admin |
 | GET | `/stock` `/stock/batches/:id` | 库存余额 / 批次明细 | 登录 |
 | GET | `/transactions` | 流水查询 | 登录 |
 | GET/POST | `/inbound` | 手工入库单 | 登录 / admin+operator |
@@ -167,6 +168,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 inventory-system/
 ├── docker-compose.yml         PG 16-alpine,端口 5433
 ├── scripts/mvn.sh             Maven 包装脚本(本机 bash 路径兼容)
+├── docs/迭代日志.md            迭代流水账(每次实质变更追加一条)
 ├── server-java/               Spring Boot 后端(阿里规范)
 │   ├── pom.xml                Boot 3.5.x / MyBatis-Plus 3.5.x / jjwt / springdoc / checkstyle
 │   ├── checkstyle.xml         阿里规范规则集(中文 Javadoc 适配)
