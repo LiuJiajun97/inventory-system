@@ -18,7 +18,7 @@ IDEA 没开或通道不通时,退回下面命令。
 
 ```bash
 # 构建/测试(必须在 server-java/ 下跑,Maven 必须经包装脚本,根目录直接跑报 no POM)
-bash ../scripts/mvn.sh test               # 后端测试(当前 87 条,必须全绿)
+bash ../scripts/mvn.sh test               # 后端测试(当前 93 条,必须全绿)
 bash ../scripts/mvn.sh checkstyle:check   # checkstyle(必须 0 违规)
 bash ../scripts/mvn.sh package            # 构建
 bash ../scripts/mvn.sh spring-boot:run    # 启动后端(8081)
@@ -61,6 +61,7 @@ docker compose up -d                   # 起 PG
 5. MyBatis-Plus 空集合防护:`selectByIds`/`IN` 前必须 `isEmpty()`
 6. 不引入新依赖,除非任务书明确允许
 7. 动了接口/表/测试数/权限 → 同步更新 README.md 对应章节 + docs/迭代日志.md 追加一条,与代码同 commit
+8. **git 不默认提交**:改完代码只报告"待提交",必须等用户明确说"提交"才 commit
 
 ## 踩坑备忘
 
