@@ -1,0 +1,322 @@
+package com.company.inventory.stocktake;
+
+import com.company.inventory.common.exception.BizException;
+import com.company.inventory.dto.adjust.StockAdjustCreateDTO;
+import com.company.inventory.dto.adjust.StockAdjustLineDTO;
+import com.company.inventory.dto.stock.StockOpRequest;
+import com.company.inventory.dto.stocktake.StocktakeActualDTO;
+import com.company.inventory.dto.stocktake.StocktakeActualLineDTO;
+import com.company.inventory.dto.stocktake.StocktakeCreateDTO;
+import com.company.inventory.entity.item.ItemDO;
+import com.company.inventory.entity.stock.StockDO;
+import com.company.inventory.entity.stock.StockTransactionDO;
+import com.company.inventory.entity.warehouse.WarehouseDO;
+import com.company.inventory.mapper.ItemMapper;
+import com.company.inventory.mapper.StockMapper;
+import com.company.inventory.mapper.StockTransactionMapper;
+import com.company.inventory.mapper.WarehouseMapper;
+import com.company.inventory.service.StockAdjustService;
+import com.company.inventory.service.StockCoreService;
+import com.company.inventory.service.StocktakeService;
+import com.company.inventory.vo.adjust.StockAdjustDocVO;
+import com.company.inventory.vo.stock.StockLine;
+import com.company.inventory.vo.stocktake.StocktakeDocVO;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * 盘点+库存调整测试:快照 bookQty + 实盘 + 刷新 + 差异生成调整单(盘盈/盘亏各一张)+ 调整执行改库存。
+ *
+ * @author inventory
+ */
+@SpringBootTest
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestPropertySource(properties = {
+        "spring.datasource.url=jdbc:postgresql://127.0.0.1:5433/inventory_test",
+        "spring.datasource.username=inv",
+        "spring.datasource.password=inv123"
+})
+class StocktakeAdjustTest {
+
+    /** 盘点服务 */
+    @Autowired
+    private StocktakeService stocktakeService;
+    /** 调整服务 */
+    @Autowired
+    private StockAdjustService stockAdjustService;
+    /** 库存核心服务 */
+    @Autowired
+    private StockCoreService stockCoreService;
+    /** 物品 Mapper */
+    @Autowired
+    private ItemMapper itemMapper;
+    /** 仓库 Mapper */
+    @Autowired
+    private WarehouseMapper warehouseMapper;
+    /** 库存 Mapper */
+    @Autowired
+    private StockMapper stockMapper;
+    /** 流水 Mapper */
+    @Autowired
+    private StockTransactionMapper txMapper;
+    /** JDBC */
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    /** 物品 A(盘盈场景) */
+    private long itemA;
+    /** 物品 B(盘亏场景) */
+    private long itemB;
+    /** 仓库 */
+    private long warehouseId;
+
+    /**
+     * 前置:清库,两物品各入 10 件。
+     */
+    @BeforeAll
+    void cleanDb() {
+        String sql = "TRUNCATE \"PurchaseOrderItem\",\"SalesOrderItem\",\"TransferDocItem\","
+                + "\"StocktakeDocItem\",\"StockAdjustDocItem\",\"OutboundDocItem\",\"InboundDocItem\","
+                + "\"PurchaseOrder\",\"SalesOrder\",\"TransferDoc\",\"StocktakeDoc\",\"StockAdjustDoc\","
+                + "\"OutboundDoc\",\"InboundDoc\",\"StockTransaction\",\"Stock\",\"Serial\",\"Batch\","
+                + "\"Location\",\"Item\",\"Warehouse\",\"Supplier\",\"Customer\",\"User\" RESTART IDENTITY CASCADE";
+        jdbcTemplate.execute(sql);
+        WarehouseDO wh = new WarehouseDO();
+        wh.setWarehouseCode("PD-WH");
+        wh.setWarehouseName("盘点测试仓");
+        wh.setWarehouseType("raw");
+        wh.setEnableBatch(false);
+        wh.setEnableExpiry(false);
+        wh.setEnableSerial(false);
+        wh.setEnableLocation(false);
+        warehouseMapper.insert(wh);
+        warehouseId = wh.getId();
+        itemA = insertItem("PD-A");
+        itemB = insertItem("PD-B");
+        inbound(itemA, 10);
+        inbound(itemB, 10);
+    }
+
+    /**
+     * 每用例前置:两物品库存重置为 10(用例间隔离)。
+     */
+    @BeforeEach
+    void resetStock() {
+        jdbcTemplate.update("UPDATE \"Stock\" SET \"quantity\" = 10 WHERE \"warehouseId\" = ?", warehouseId);
+        jdbcTemplate.execute("DELETE FROM \"StockAdjustDoc\"");
+        jdbcTemplate.execute("DELETE FROM \"StockAdjustDocItem\"");
+        jdbcTemplate.execute("DELETE FROM \"StocktakeDoc\"");
+        jdbcTemplate.execute("DELETE FROM \"StocktakeDocItem\"");
+    }
+
+    /**
+     * 用例 1:新建盘点单 → bookQty 快照等于当时余额。
+     */
+    @Test
+    void createSnapshotsBookQty() {
+        StocktakeDocVO vo = stocktakeService.create(
+                new StocktakeCreateDTO(warehouseId, LocalDate.now(), "all", null, "全仓盘"), "pd_creator");
+        assertEquals("draft", vo.status());
+        assertTrue(vo.items().size() >= 2);
+        for (var line : vo.items()) {
+            assertEquals(0, new BigDecimal("10").compareTo(new BigDecimal(line.bookQty())));
+            // 未录实盘时差异为空
+            assertNull(line.diffQty());
+        }
+    }
+
+    /**
+     * 用例 2:录入实盘 → diffQty 重算;刷新快照后 bookQty 跟随库存变化。
+     */
+    @Test
+    void enterActualAndRefreshBook() {
+        StocktakeDocVO vo = stocktakeService.create(
+                new StocktakeCreateDTO(warehouseId, LocalDate.now(), "all", null, null), "pd_creator");
+        long lineId = vo.items().stream().filter(l -> l.itemId().equals(itemA)).findFirst().orElseThrow().id();
+
+        stocktakeService.enterActual(vo.id(), new StocktakeActualDTO(
+                List.of(new StocktakeActualLineDTO(lineId, new BigDecimal("12")))), "pd_creator");
+        var after = stocktakeService.get(vo.id());
+        var line = after.items().stream().filter(l -> l.id().equals(lineId)).findFirst().orElseThrow();
+        assertEquals(0, new BigDecimal("12").compareTo(new BigDecimal(line.actualQty())));
+        assertEquals(0, new BigDecimal("2").compareTo(new BigDecimal(line.diffQty())));
+
+        // 库存被手工加 5,刷新快照后 bookQty = 15
+        inbound(itemA, 5);
+        StocktakeDocVO refreshed = stocktakeService.refreshBook(vo.id(), "pd_creator");
+        line = refreshed.items().stream().filter(l -> l.id().equals(lineId)).findFirst().orElseThrow();
+        assertEquals(0, new BigDecimal("15").compareTo(new BigDecimal(line.bookQty())));
+        assertEquals(0, new BigDecimal("-3").compareTo(new BigDecimal(line.diffQty())));
+        // 已录实盘不被覆盖
+        assertEquals(0, new BigDecimal("12").compareTo(new BigDecimal(line.actualQty())));
+    }
+
+    /**
+     * 用例 3:无差异 → 生成调整单拒绝(无差异行)。
+     */
+    @Test
+    void noDiffNoAdjust() {
+        long id = stocktakeService.create(
+                new StocktakeCreateDTO(warehouseId, LocalDate.now(), "all", null, null), "pd_creator").id();
+        assertThrows(BizException.class, () -> stocktakeService.generateAdjust(id, "pd_creator"));
+    }
+
+    /**
+     * 用例 4:盘盈+盘亏 → 生成 2 张调整单,refDocNo=盘点单号;调整后库存 = 实盘数。
+     */
+    @Test
+    void generateAdjustAndExecute() {
+        StocktakeDocVO vo = stocktakeService.create(
+                new StocktakeCreateDTO(warehouseId, LocalDate.now(), "all", null, null), "pd_creator");
+        StocktakeDocVO got = stocktakeService.get(vo.id());
+        long lineA = got.items().stream().filter(l -> l.itemId().equals(itemA)).findFirst().orElseThrow().id();
+        long lineB = got.items().stream().filter(l -> l.itemId().equals(itemB)).findFirst().orElseThrow().id();
+        // A 盘盈 +2,B 盘亏 -3
+        stocktakeService.enterActual(vo.id(), new StocktakeActualDTO(
+                List.of(new StocktakeActualLineDTO(lineA, new BigDecimal("12")),
+                        new StocktakeActualLineDTO(lineB, new BigDecimal("7")))), "pd_creator");
+
+        List<StockAdjustDocVO> docs = stocktakeService.generateAdjust(vo.id(), "pd_creator");
+        assertEquals(2, docs.size());
+        StockAdjustDocVO gain = docs.stream().filter(d -> "gain".equals(d.adjustType())).findFirst().orElseThrow();
+        StockAdjustDocVO loss = docs.stream().filter(d -> "loss".equals(d.adjustType())).findFirst().orElseThrow();
+        assertEquals(vo.docNo(), gain.refDocNo());
+        assertEquals(vo.docNo(), loss.refDocNo());
+
+        // 审批执行
+        stockAdjustService.submit(gain.id(), "pd_creator");
+        stockAdjustService.approve(gain.id(), "pd_approver");
+        stockAdjustService.submit(loss.id(), "pd_creator");
+        stockAdjustService.approve(loss.id(), "pd_approver");
+
+        assertEquals(0, new BigDecimal("12").compareTo(stockQty(itemA)));
+        assertEquals(0, new BigDecimal("7").compareTo(stockQty(itemB)));
+        // 流水类型
+        assertEquals(1, txCount("adjust_in"));
+        assertEquals(1, txCount("adjust_out"));
+    }
+
+    /**
+     * 用例 5:手工报废调整单(approve 执行 + 终态只读 + 类型校验)。
+     */
+    @Test
+    void manualScrapAdjust() {
+        StockAdjustDocVO vo = stockAdjustService.create(new StockAdjustCreateDTO(warehouseId,
+                LocalDate.now(), "loss", null, "报废",
+                List.of(new StockAdjustLineDTO(itemA, new BigDecimal("4"), new BigDecimal("1"),
+                        null, null, "破损"))), "pd_creator");
+        stockAdjustService.submit(vo.id(), "pd_creator");
+        StockAdjustDocVO done = stockAdjustService.approve(vo.id(), "pd_approver");
+        assertEquals("completed", done.status());
+        assertEquals(0, new BigDecimal("6").compareTo(stockQty(itemA)));
+        // 重复审批幂等,终态不可作废
+        assertEquals("completed", stockAdjustService.approve(vo.id(), "pd_approver").status());
+        assertThrows(BizException.class, () -> stockAdjustService.voidDoc(vo.id(), "pd_creator"));
+    }
+
+    /**
+     * 用例 6:非法调整类型 → 拒绝。
+     */
+    @Test
+    void invalidAdjustTypeRejected() {
+        assertThrows(BizException.class, () -> stockAdjustService.create(new StockAdjustCreateDTO(warehouseId,
+                LocalDate.now(), "magic", null, null,
+                List.of(new StockAdjustLineDTO(itemA, new BigDecimal("1"), new BigDecimal("1"),
+                        null, null, null))), "pd_creator"));
+    }
+
+    /**
+     * 用例 7:盘点单驳回必填原因;终态只读。
+     */
+    @Test
+    void stocktakeStateMachine() {
+        long id = stocktakeService.create(
+                new StocktakeCreateDTO(warehouseId, LocalDate.now(), "all", null, null), "pd_creator").id();
+        stocktakeService.submit(id, "pd_creator");
+        assertThrows(BizException.class, () -> stocktakeService.reject(id, "  ", "pd_approver"));
+        assertEquals("rejected", stocktakeService.reject(id, "账不符", "pd_approver").status());
+        // rejected 不可再审批,作废后终态
+        assertThrows(BizException.class, () -> stocktakeService.approve(id, "pd_approver"));
+        stocktakeService.voidDoc(id, "pd_approver");
+        assertThrows(BizException.class, () -> stocktakeService.voidDoc(id, "pd_approver"));
+    }
+
+    /**
+     * 造物品。
+     *
+     * @param code 编码
+     * @return 物品 ID
+     */
+    private long insertItem(String code) {
+        ItemDO item = new ItemDO();
+        item.setItemCode(code);
+        item.setItemName(code + "名称");
+        item.setUnit("件");
+        itemMapper.insert(item);
+        return item.getId();
+    }
+
+    /**
+     * 手工入库。
+     *
+     * @param itemId 物品 ID
+     * @param qty 数量
+     */
+    private void inbound(long itemId, int qty) {
+        StockOpRequest request = new StockOpRequest();
+        request.setWarehouseId(warehouseId);
+        StockLine line = new StockLine();
+        line.setItemId(itemId);
+        line.setQty(new BigDecimal(qty));
+        request.setLines(List.of(line));
+        request.setDocNo("RK-PD");
+        request.setOperator("pd_test");
+        stockCoreService.inbound(request);
+    }
+
+    /**
+     * 物品库存总量。
+     *
+     * @param itemId 物品 ID
+     * @return 总量
+     */
+    private BigDecimal stockQty(long itemId) {
+        List<StockDO> rows = stockMapper.selectList(new LambdaQueryWrapper<StockDO>()
+                .eq(StockDO::getWarehouseId, warehouseId).eq(StockDO::getItemId, itemId));
+        BigDecimal total = BigDecimal.ZERO;
+        for (StockDO row : rows) {
+            total = total.add(row.getQuantity());
+        }
+        return total;
+    }
+
+    /**
+     * 流水计数。
+     *
+     * @param bizCode 业务类型
+     * @return 条数
+     */
+    private long txCount(String bizCode) {
+        Long count = txMapper.selectCount(new LambdaQueryWrapper<StockTransactionDO>()
+                .eq(StockTransactionDO::getBizCode, bizCode));
+        return count == null ? 0 : count;
+    }
+}

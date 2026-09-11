@@ -1,0 +1,43 @@
+# 库存管理系统 Java 后端配置
+# 端口 8081(Fastify 版 8080 并存);PG 复用 5433 的 inventory 库
+server:
+  port: 8081
+
+spring:
+  application:
+    name: inventory-server-java
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://127.0.0.1:5433/inventory
+    username: inv
+    password: inv123
+  jackson:
+    # 契约要求:remark/location/batch 等空字段必须出现在响应 JSON 中,保持默认包含 null
+    serialization:
+      fail-on-empty-beans: false
+
+mybatis-plus:
+  configuration:
+    # 表/列名与 Prisma 一致(PascalCase 表名、camelCase 列名),关闭下划线映射
+    map-underscore-to-camel-case: false
+  global-config:
+    banner: false
+  # 分页插件在 MybatisPlusConfig 中注册
+
+# JWT:secret 走环境变量,默认开发值;8 小时过期
+jwt:
+  secret: ${JWT_SECRET:dev-secret-please-change-in-production-9f3a8b2c1e4d}
+  expires-seconds: 28800
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    # 与 Fastify 版一致:swagger-ui 挂 /docs
+    path: /docs
+    doc-expansion: list
+    deep-linking: true
+
+logging:
+  level:
+    com.company.inventory: info

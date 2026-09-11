@@ -1,0 +1,362 @@
+package com.company.inventory.service.impl;
+
+import com.company.inventory.common.constant.ErrorCode;
+import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.page.PageResult;
+import com.company.inventory.common.util.QtyUtils;
+import com.company.inventory.dto.outbound.OutboundCreateDTO;
+import com.company.inventory.dto.outbound.OutboundLineDTO;
+import com.company.inventory.dto.sales.ShipLine;
+import com.company.inventory.dto.stock.StockOpRequest;
+import com.company.inventory.entity.customer.CustomerDO;
+import com.company.inventory.entity.outbound.OutboundDocDO;
+import com.company.inventory.entity.outbound.OutboundDocItemDO;
+import com.company.inventory.entity.sales.SalesOrderDO;
+import com.company.inventory.entity.warehouse.WarehouseDO;
+import com.company.inventory.mapper.CustomerMapper;
+import com.company.inventory.mapper.OutboundDocItemMapper;
+import com.company.inventory.mapper.OutboundDocMapper;
+import com.company.inventory.mapper.SalesOrderMapper;
+import com.company.inventory.mapper.WarehouseMapper;
+import com.company.inventory.query.OutboundDocQuery;
+import com.company.inventory.service.DocNoService;
+import com.company.inventory.service.OutboundService;
+import com.company.inventory.service.SalesOrderService;
+import com.company.inventory.service.StockCoreService;
+import com.company.inventory.vo.outbound.OutboundDocCreatedVO;
+import com.company.inventory.vo.outbound.OutboundDocItemVO;
+import com.company.inventory.vo.outbound.OutboundDocVO;
+import com.company.inventory.vo.sales.SalesOrderItemVO;
+import com.company.inventory.vo.stock.StockLine;
+import com.company.inventory.vo.stock.StockOpResult;
+import com.company.inventory.vo.warehouse.WarehouseVO;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * 出库单服务实现:整单一个事务,单据头 + 行 + 库存扣减 + 序列号同事务。
+ *
+ * <p>一期扩展:refType=sales 关联销售订单发货,库存核心走销售扣减(优先扣预占行并同步释放),
+ * 出库成功后同事务回写订单 shippedQty(超发拒绝并提示行号)。</p>
+ *
+ * @author inventory
+ */
+@Service
+public class OutboundServiceImpl implements OutboundService {
+
+    /** 日志。 */
+    private static final Logger LOGGER = LoggerFactory.getLogger(OutboundServiceImpl.class);
+
+    /** 单据 Mapper。 */
+    private final OutboundDocMapper outboundDocMapper;
+    /** 单据行 Mapper。 */
+    private final OutboundDocItemMapper outboundDocItemMapper;
+    /** 仓库 Mapper。 */
+    private final WarehouseMapper warehouseMapper;
+    /** 库存核心服务。 */
+    private final StockCoreService stockCoreService;
+    /** 单据号服务。 */
+    private final DocNoService docNoService;
+    /** 销售订单服务(发货回写)。 */
+    private final SalesOrderService salesOrderService;
+    /** 销售订单 Mapper(列表展示关联单号)。 */
+    private final SalesOrderMapper salesOrderMapper;
+    /** 客户 Mapper(列表展示关联客户)。 */
+    private final CustomerMapper customerMapper;
+    /** JSON 序列化(serialNos 列存 JSON 数组字符串)。 */
+    private final ObjectMapper objectMapper;
+
+    /**
+     * 构造服务。
+     *
+     * @param outboundDocMapper     单据 Mapper
+     * @param outboundDocItemMapper 单据行 Mapper
+     * @param warehouseMapper       仓库 Mapper
+     * @param stockCoreService      库存核心服务
+     * @param docNoService          单据号服务
+     * @param salesOrderService     销售订单服务
+     * @param salesOrderMapper      销售订单 Mapper
+     * @param customerMapper        客户 Mapper
+     * @param objectMapper          JSON 序列化器
+     */
+    public OutboundServiceImpl(OutboundDocMapper outboundDocMapper,
+                               OutboundDocItemMapper outboundDocItemMapper,
+                               WarehouseMapper warehouseMapper,
+                               StockCoreService stockCoreService,
+                               DocNoService docNoService,
+                               SalesOrderService salesOrderService,
+                               SalesOrderMapper salesOrderMapper,
+                               CustomerMapper customerMapper,
+                               ObjectMapper objectMapper) {
+        this.outboundDocMapper = outboundDocMapper;
+        this.outboundDocItemMapper = outboundDocItemMapper;
+        this.warehouseMapper = warehouseMapper;
+        this.stockCoreService = stockCoreService;
+        this.docNoService = docNoService;
+        this.salesOrderService = salesOrderService;
+        this.salesOrderMapper = salesOrderMapper;
+        this.customerMapper = customerMapper;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * 新建出库单(手工出库或销售发货)。
+     *
+     * @param dto      入参
+     * @param username 当前登录用户名
+     * @return 单据头
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public OutboundDocCreatedVO create(OutboundCreateDTO dto, String username) {
+        String docNo = docNoService.generateOutboundDocNo();
+
+        boolean salesShip = ErrorCode.REF_TYPE_SALES.equals(dto.refType())
+                && dto.refDocId() != null;
+        Map<Long, SalesOrderItemVO> refItems = Map.of();
+        if (salesShip) {
+            long orderWarehouse = salesOrderService.requireWarehouseId(dto.refDocId());
+            if (orderWarehouse != dto.warehouseId()) {
+                throw new BizException("出库仓库必须与销售订单发货仓库一致");
+            }
+            refItems = salesOrderService.requireApprovedItems(dto.refDocId());
+            for (OutboundLineDTO line : dto.items()) {
+                if (line.refLineId() == null) {
+                    throw new BizException("销售发货行必须选择销售订单行");
+                }
+                SalesOrderItemVO ref = refItems.get(line.refLineId());
+                if (ref == null || !ref.itemId().equals(line.itemId())) {
+                    throw new BizException("销售订单行不存在或物品不匹配: " + line.refLineId());
+                }
+            }
+        }
+
+        OutboundDocDO doc = new OutboundDocDO();
+        doc.setDocNo(docNo);
+        doc.setWarehouseId(dto.warehouseId());
+        doc.setStatus(ErrorCode.DOC_STATUS_FINISHED);
+        doc.setRemark(dto.remark());
+        doc.setCreator(username);
+        doc.setRefType(dto.refType());
+        doc.setRefDocId(dto.refDocId());
+        doc.setDocDate(dto.docDate());
+        outboundDocMapper.insert(doc);
+
+        StockOpRequest request = new StockOpRequest();
+        request.setWarehouseId(dto.warehouseId());
+        request.setLines(toStockLines(dto));
+        request.setDocNo(docNo);
+        request.setOperator(username);
+        request.setSalesShip(salesShip);
+        StockOpResult stockResult = stockCoreService.outbound(request);
+
+        List<StockOpResult.StockOpRow> resultRows = stockResult.getRows();
+        List<ShipLine> shipLines = new ArrayList<>();
+        for (int i = 0; i < dto.items().size(); i++) {
+            OutboundLineDTO line = dto.items().get(i);
+            StockOpResult.StockOpRow resultRow = resultRows.get(i);
+            OutboundDocItemDO docItem = new OutboundDocItemDO();
+            docItem.setDocId(doc.getId());
+            docItem.setItemId(line.itemId());
+            docItem.setQuantity(line.qty());
+            docItem.setBatchId(resultRow.batchId());
+            docItem.setLocationId(resultRow.locationId());
+            docItem.setSerialNos(toJsonArray(line.serialNos()));
+            docItem.setRefLineId(line.refLineId());
+            if (salesShip) {
+                // 出库参考价携带订单行单价(服务端取值,不信前端传值)
+                docItem.setUnitPrice(refItems.get(line.refLineId()).unitPrice());
+                shipLines.add(new ShipLine(line.refLineId(), line.qty()));
+            } else {
+                docItem.setUnitPrice(line.unitPrice());
+            }
+            outboundDocItemMapper.insert(docItem);
+        }
+        if (salesShip) {
+            salesOrderService.applyShipment(dto.refDocId(), shipLines);
+        }
+        LOGGER.info("新建出库单: docNo={}, warehouseId={}, refType={}, 行数={}, operator={}",
+                docNo, dto.warehouseId(), dto.refType(), dto.items().size(), username);
+        return toCreatedVO(doc);
+    }
+
+    /**
+     * 出库单分页列表。
+     *
+     * @param query 查询条件(warehouseId/page/pageSize)
+     * @return 分页结果
+     */
+    @Override
+    public PageResult<OutboundDocVO> list(OutboundDocQuery query) {
+        LambdaQueryWrapper<OutboundDocDO> wrapper = new LambdaQueryWrapper<>();
+        if (query.getWarehouseId() != null) {
+            wrapper.eq(OutboundDocDO::getWarehouseId, query.getWarehouseId());
+        }
+        wrapper.orderByDesc(OutboundDocDO::getId);
+        Page<OutboundDocDO> result = outboundDocMapper.selectPage(
+                Page.of(query.getPage(), query.getPageSize()), wrapper);
+        List<OutboundDocDO> rows = result.getRecords();
+        if (rows.isEmpty()) {
+            return PageResult.of(List.of(), result.getTotal(),
+                    query.getPage(), query.getPageSize());
+        }
+        return PageResult.of(toVOs(rows), result.getTotal(),
+                query.getPage(), query.getPageSize());
+    }
+
+    /**
+     * 出库单详情。
+     *
+     * @param id 单据 ID
+     * @return 单据(含仓库与单据行)
+     */
+    @Override
+    public OutboundDocVO get(long id) {
+        OutboundDocDO doc = outboundDocMapper.selectById(id);
+        if (doc == null) {
+            throw BizException.notFound("出库单不存在");
+        }
+        List<OutboundDocVO> vos = toVOs(List.of(doc));
+        return vos.get(0);
+    }
+
+    /**
+     * 批量组装单据 VO(仓库 + 单据行 + 关联销售订单/客户)。
+     *
+     * @param docs 单据列表
+     * @return VO 列表
+     */
+    private List<OutboundDocVO> toVOs(List<OutboundDocDO> docs) {
+        Set<Long> whIds = docs.stream().map(OutboundDocDO::getWarehouseId)
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<Long> docIds = docs.stream().map(OutboundDocDO::getId)
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<Long> refOrderIds = docs.stream().map(OutboundDocDO::getRefDocId)
+                .filter(Objects::nonNull).collect(Collectors.toCollection(HashSet::new));
+
+        // 空集合防护:selectByIds 空集会生成非法 SQL "IN ( )"
+        Map<Long, WarehouseVO> whMap = (whIds.isEmpty() ? List.<WarehouseDO>of()
+                : warehouseMapper.selectByIds(whIds)).stream()
+                .collect(Collectors.toMap(WarehouseDO::getId, this::toWarehouseVO));
+        List<OutboundDocItemDO> allItems = outboundDocItemMapper.selectList(
+                new LambdaQueryWrapper<OutboundDocItemDO>()
+                        .in(OutboundDocItemDO::getDocId, docIds)
+                        .orderByAsc(OutboundDocItemDO::getId));
+        Map<Long, List<OutboundDocItemDO>> itemMap = allItems.stream()
+                .collect(Collectors.groupingBy(OutboundDocItemDO::getDocId));
+        Map<Long, SalesOrderDO> refOrderMap = (refOrderIds.isEmpty()
+                ? List.<SalesOrderDO>of() : salesOrderMapper.selectByIds(refOrderIds))
+                        .stream().collect(Collectors.toMap(SalesOrderDO::getId, o -> o));
+        Set<Long> customerIds = refOrderMap.values().stream()
+                .map(SalesOrderDO::getCustomerId).collect(Collectors.toCollection(HashSet::new));
+        Map<Long, CustomerDO> customerMap = (customerIds.isEmpty() ? List.<CustomerDO>of()
+                : customerMapper.selectByIds(customerIds)).stream()
+                .collect(Collectors.toMap(CustomerDO::getId, c -> c));
+
+        List<OutboundDocVO> vos = new ArrayList<>();
+        for (OutboundDocDO doc : docs) {
+            List<OutboundDocItemDO> items = itemMap.getOrDefault(doc.getId(), List.of());
+            List<OutboundDocItemVO> itemVos = items.stream().map(this::toItemVO).toList();
+            SalesOrderDO refOrder = doc.getRefDocId() == null ? null
+                    : refOrderMap.get(doc.getRefDocId());
+            String customerName = refOrder == null ? null
+                    : customerMap.get(refOrder.getCustomerId()) == null ? null
+                    : customerMap.get(refOrder.getCustomerId()).getCustomerName();
+            vos.add(new OutboundDocVO(doc.getId(), doc.getDocNo(), doc.getWarehouseId(),
+                    doc.getStatus(), doc.getRemark(), doc.getCreator(), doc.getCreatedAt(),
+                    whMap.get(doc.getWarehouseId()), itemVos,
+                    doc.getRefType(), doc.getRefDocId(),
+                    refOrder == null ? null : refOrder.getDocNo(), customerName,
+                    doc.getDocDate()));
+        }
+        return vos;
+    }
+
+    /**
+     * DTO 行转库存操作行。
+     *
+     * @param dto 入参
+     * @return 操作行列表
+     */
+    private List<StockLine> toStockLines(OutboundCreateDTO dto) {
+        return dto.items().stream().map(line -> {
+            StockLine sl = new StockLine();
+            sl.setItemId(line.itemId());
+            sl.setQty(line.qty());
+            sl.setBatchNo(line.batchNo());
+            sl.setLocationId(line.locationId());
+            sl.setSerialNos(line.serialNos());
+            return sl;
+        }).toList();
+    }
+
+    /**
+     * 实体转单据行 VO。
+     *
+     * @param item 实体
+     * @return VO
+     */
+    private OutboundDocItemVO toItemVO(OutboundDocItemDO item) {
+        return new OutboundDocItemVO(item.getId(), item.getDocId(), item.getItemId(),
+                QtyUtils.toContractString(item.getQuantity()), item.getBatchId(),
+                item.getLocationId(), item.getSerialNos(), item.getUnitPrice(),
+                item.getRefLineId());
+    }
+
+    /**
+     * 实体转单据头 VO。
+     *
+     * @param doc 实体
+     * @return VO
+     */
+    private OutboundDocCreatedVO toCreatedVO(OutboundDocDO doc) {
+        return new OutboundDocCreatedVO(doc.getId(), doc.getDocNo(), doc.getWarehouseId(),
+                doc.getStatus(), doc.getRemark(), doc.getCreator(), doc.getCreatedAt());
+    }
+
+    /**
+     * 序列号列表转 JSON 数组字符串(空则 null)。
+     *
+     * @param serialNos 序列号列表(可空)
+     * @return JSON 数组字符串或 null
+     */
+    private String toJsonArray(List<String> serialNos) {
+        if (serialNos == null || serialNos.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(serialNos);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("序列号序列化失败: " + serialNos, e);
+        }
+    }
+
+    /**
+     * 实体转仓库 VO。
+     *
+     * @param warehouse 实体
+     * @return VO
+     */
+    private WarehouseVO toWarehouseVO(WarehouseDO warehouse) {
+        return new WarehouseVO(warehouse.getId(), warehouse.getWarehouseCode(),
+                warehouse.getWarehouseName(), warehouse.getWarehouseType(),
+                warehouse.getEnableBatch(), warehouse.getEnableExpiry(),
+                warehouse.getEnableSerial(), warehouse.getEnableLocation(),
+                warehouse.getStatus(), warehouse.getCreatedAt());
+    }
+}

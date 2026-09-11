@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Checkstyle//DTD Suppressions 1.2//EN"
+        "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<!--
+  逐条豁免说明(SPEC-JAVA §3.12 要求:checkstyle 违规必须修复,确需豁免的在此登记并注明理由):
+  - Spring @Service 构造器注入的参数数量由依赖关系决定,拆分会破坏构造器注入的可读性,
+    对参数超 7 的构造器精确豁免 ParameterNumberCheck(仅限构造器签名行区间);
+  - StockCoreService.insertTransaction 为 8/9 参私有方法(与 StockTransaction 字段一一对应,
+    属核心业务落库路径,不改签名),精确豁免 ParameterNumberCheck(仅限该方法所在行区间)。
+-->
+<suppressions>
+    <!-- 入库单服务构造器:9 个依赖注入(Mapper/StockCoreService/DocNoService 等),属 Spring 构造器注入 -->
+    <suppress files="[\\/]InboundServiceImpl\.java" checks="ParameterNumberCheck" lines="95-105"/>
+    <!-- 出库单服务构造器:9 个依赖注入,属 Spring 构造器注入 -->
+    <suppress files="[\\/]OutboundServiceImpl\.java" checks="ParameterNumberCheck" lines="94-104"/>
+    <!-- 销售订单服务构造器:11 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
+    <suppress files="[\\/]SalesOrderServiceImpl\.java" checks="ParameterNumberCheck" lines="110-116"/>
+    <!-- 库存调整单服务构造器:9 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
+    <suppress files="[\\/]StockAdjustServiceImpl\.java" checks="ParameterNumberCheck" lines="97-103"/>
+    <!-- 盘点单服务构造器:9 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
+    <suppress files="[\\/]StocktakeServiceImpl\.java" checks="ParameterNumberCheck" lines="100-106"/>
+    <!-- 采购订单服务构造器:8 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
+    <suppress files="[\\/]PurchaseOrderServiceImpl\.java" checks="ParameterNumberCheck" lines="98-104"/>
+    <!-- 调拨单服务构造器:8 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
+    <suppress files="[\\/]TransferServiceImpl\.java" checks="ParameterNumberCheck" lines="93-99"/>
+    <!-- StockCoreService.insertTransaction 为 8/9 参私有方法(与 StockTransaction 字段一一对应,
+         属核心业务落库路径,不改签名),精确豁免 ParameterNumberCheck(仅限两重载签名行区间) -->
+    <suppress files="[\\/]StockCoreService\.java" checks="ParameterNumberCheck" lines="844-890"/>
+</suppressions>

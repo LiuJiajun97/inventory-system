@@ -1,0 +1,237 @@
+// 客户管理(一期新增)
+// 列表分页 + admin 新建/编辑 Drawer,operator/viewer 只读
+
+import { useEffect, useState } from "react";
+import { Button, Drawer, Form, Input, InputNumber, Select, Space, Table } from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { customerApi, dictApi } from "../../api";
+import type { Customer } from "../../types/phase1";
+import { getUser } from "../../auth/useAuth";
+import { ListPageShell } from "../../components/ListPageShell";
+import { StatusTag } from "../../components/StatusTag";
+
+interface FormValues {
+  customerCode: string;
+  customerName: string;
+  taxNo?: string;
+  defaultTaxRate?: number;
+  contact?: string;
+  phone?: string;
+  address?: string;
+  settleMethod?: string;
+  payTermDays?: number;
+  remark?: string;
+}
+
+export function CustomerPage() {
+  const user = getUser();
+  const isAdmin = user?.role === "admin";
+  const [rows, setRows] = useState<Customer[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [loading, setLoading] = useState(false);
+  const [keyword, setKeyword] = useState<string>();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState<Customer | null>(null);
+  const [settleOptions, setSettleOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [form] = Form.useForm<FormValues>();
+
+  const onSearch = async (kw?: string, pg = 1, ps = 20) => {
+    setLoading(true);
+    try {
+      const res = await customerApi.list({ keyword: kw, page: pg, pageSize: ps });
+      setRows(res.rows);
+      setTotal(res.total);
+    } catch {
+      // 拦截器已处理
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    onSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    dictApi
+      .getType("settleMethod")
+      .then((opts) => setSettleOptions(opts.map((o) => ({ label: o.label, value: o.code }))))
+      .catch(() => undefined);
+  }, []);
+
+  const openCreate = () => {
+    setEditing(null);
+    form.resetFields();
+    setDrawerOpen(true);
+  };
+
+  const openEdit = (row: Customer) => {
+    setEditing(row);
+    form.setFieldsValue({
+      customerCode: row.customerCode,
+      customerName: row.customerName,
+      taxNo: row.taxNo ?? undefined,
+      defaultTaxRate: Number(row.defaultTaxRate ?? 13),
+      contact: row.contact ?? undefined,
+      phone: row.phone ?? undefined,
+      address: row.address ?? undefined,
+      settleMethod: row.settleMethod ?? undefined,
+      payTermDays: row.payTermDays ?? undefined,
+      remark: row.remark ?? undefined,
+    });
+    setDrawerOpen(true);
+  };
+
+  const onSubmit = async () => {
+    const v = await form.validateFields();
+    if (editing) {
+      await customerApi.update(editing.id, { ...v });
+    } else {
+      await customerApi.create({ ...v, defaultTaxRate: v.defaultTaxRate ?? 13 });
+    }
+    setDrawerOpen(false);
+    onSearch(keyword, page, pageSize);
+  };
+
+  const columns: ColumnsType<Customer> = [
+    { title: "编码", dataIndex: "customerCode", width: 140 },
+    { title: "名称", dataIndex: "customerName", ellipsis: true },
+    { title: "联系人", dataIndex: "contact", width: 100, render: (v) => v ?? "-" },
+    { title: "电话", dataIndex: "phone", width: 130, render: (v) => v ?? "-" },
+    {
+      title: "默认税率(%)",
+      dataIndex: "defaultTaxRate",
+      width: 110,
+      align: "right",
+      className: "num-cell",
+      render: (v) => (v == null ? "-" : Number(v).toFixed(2)),
+    },
+    {
+      title: "结算方式",
+      dataIndex: "settleMethod",
+      width: 100,
+      render: (v: string | null) =>
+        v ? settleOptions.find((o) => o.value === v)?.label ?? v : "-",
+    },
+    {
+      title: "状态",
+      dataIndex: "status",
+      width: 80,
+      render: (v: number) =>
+        v === 1 ? <StatusTag status="enabled" /> : <StatusTag status="disabled" />,
+    },
+    ...(isAdmin
+      ? ([
+          {
+            title: "操作",
+            width: 80,
+            fixed: "right" as const,
+            render: (_v: unknown, row: Customer) => (
+              <a onClick={() => openEdit(row)}>编辑</a>
+            ),
+          },
+        ] as ColumnsType<Customer>)
+      : []),
+  ];
+
+  return (
+    <>
+      <ListPageShell
+        title="客户管理"
+        extra={
+          isAdmin && (
+            <Button type="primary" onClick={openCreate}>
+              新建客户
+            </Button>
+          )
+        }
+        filter={
+          <Space>
+            <Input.Search
+              placeholder="编码/名称关键字"
+              allowClear
+              style={{ width: 240 }}
+              onSearch={(v) => {
+                setKeyword(v || undefined);
+                setPage(1);
+                onSearch(v || undefined, 1, pageSize);
+              }}
+            />
+          </Space>
+        }
+        tableProps={{
+          rowKey: "id",
+          loading,
+          columns,
+          dataSource: rows,
+          scroll: { x: 900 },
+          pagination: {
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            onChange: (p, ps) => {
+              setPage(p);
+              setPageSize(ps);
+              onSearch(keyword, p, ps);
+            },
+            showTotal: (t) => `共 ${t} 条`,
+          },
+        }}
+      />
+
+      <Drawer
+        title={editing ? `编辑客户 - ${editing.customerCode}` : "新建客户"}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        width={480}
+        extra={
+          <Button type="primary" onClick={onSubmit}>
+            保存
+          </Button>
+        }
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item
+            label="客户编码"
+            name="customerCode"
+            rules={[{ required: true, message: "客户编码必填" }]}
+          >
+            <Input disabled={!!editing} placeholder="如 CUS-001" />
+          </Form.Item>
+          <Form.Item
+            label="客户名称"
+            name="customerName"
+            rules={[{ required: true, message: "客户名称必填" }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item label="税号" name="taxNo">
+            <Input />
+          </Form.Item>
+          <Form.Item label="默认税率(%)" name="defaultTaxRate" initialValue={13}>
+            <InputNumber min={0} max={100} step={0.01} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item label="联系人" name="contact">
+            <Input />
+          </Form.Item>
+          <Form.Item label="联系电话" name="phone">
+            <Input />
+          </Form.Item>
+          <Form.Item label="地址" name="address">
+            <Input.TextArea rows={2} />
+          </Form.Item>
+          <Form.Item label="结算方式" name="settleMethod">
+            <Select allowClear showSearch optionFilterProp="label" options={settleOptions} />
+          </Form.Item>
+          <Form.Item label="账期天数" name="payTermDays">
+            <InputNumber min={0} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item label="备注" name="remark">
+            <Input.TextArea rows={2} />
+          </Form.Item>
+        </Form>
+      </Drawer>
+    </>
+  );
+}

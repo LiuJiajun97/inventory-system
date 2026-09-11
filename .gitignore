@@ -1,0 +1,23 @@
+node_modules/
+dist/
+build/
+.next/
+.env
+.env.local
+*.log
+.DS_Store
+coverage/
+.vite/
+*.tsbuildinfo
+
+# Maven / Java
+target/
+*.class
+
+# 工作临时目录(任务书、截图、代理运行日志等,不进版本库)
+.tmp/
+.playwright-mcp/
+
+# IDEA:只提交运行配置,其余本地个人设置不提交
+.idea/*
+!.idea/runConfigurations/
