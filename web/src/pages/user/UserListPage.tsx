@@ -1,13 +1,13 @@
 // 用户管理(SPEC-WEB V2 2.10)
+// ProTable 版:筛选字段由 columns 配置驱动(关键字),新建按钮经 optionRender 放筛选行右侧
 // 编辑 Drawer(角色 Select、状态 Switch、重置密码按钮+二次确认 Modal,显示新密码一次性)
 
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import {
   Form,
   Input,
   Select,
   Button,
-  Table,
   Drawer,
   Modal,
   Switch,
@@ -20,10 +20,10 @@ import {
   KeyOutlined,
   CopyOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
+import { ProTable } from "@ant-design/pro-components";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { userApi } from "../../api";
-import type { Role, UserInfo } from "../../types";
-import { ListPageShell } from "../../components/ListPageShell";
+import type { UserInfo } from "../../types";
 import { fmtDateTime } from "../../utils/format";
 import { RoleTag, StatusTag } from "../../components/StatusTag";
 
@@ -43,59 +43,48 @@ function genPassword(): string {
 }
 
 export function UserListPage() {
-  const [rows, setRows] = useState<UserInfo[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<UserInfo | null>(null);
   const [resetTarget, setResetTarget] = useState<UserInfo | null>(null);
   const [resetPwd, setResetPwd] = useState<string>("");
   const [createForm] = Form.useForm();
   const [editForm] = Form.useForm();
-  const [filterForm] = Form.useForm();
+  const actionRef = useRef<ActionType>();
   const { message } = App.useApp();
 
-  const load = async (pg = 1, ps = pageSize) => {
-    setLoading(true);
-    try {
-      const res = await userApi.list({
-        keyword: filterForm.getFieldValue("keyword") || undefined,
-        page: pg,
-        pageSize: ps,
-      });
-      setRows(res.rows);
-      setTotal(res.total);
-      setPage(pg);
-      setPageSize(ps);
-    } catch {
-      // 拦截器已处理
-    } finally {
-      setLoading(false);
-    }
+  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+  const request = async (params: {
+    current?: number;
+    pageSize?: number;
+    keyword?: string;
+  }) => {
+    const res = await userApi.list({
+      keyword: params.keyword || undefined,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
+    return { data: res.rows, success: true, total: res.total };
   };
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  const columns: ColumnsType<UserInfo> = [
-    { title: "ID", dataIndex: "id", width: 60 },
-    { title: "用户名", dataIndex: "username", width: 140 },
-    { title: "姓名", dataIndex: "name", width: 140 },
+  const columns: ProColumns<UserInfo>[] = [
+    { title: "ID", dataIndex: "id", width: 60, search: false },
+    { title: "用户名", dataIndex: "username", width: 140, search: false },
+    { title: "姓名", dataIndex: "name", width: 140, search: false },
     {
       title: "角色",
       dataIndex: "role",
       width: 100,
-      render: (v: Role) => <RoleTag role={v} />,
+      search: false,
+      render: (_v, r) => <RoleTag role={r.role} />,
     },
     {
       title: "状态",
       dataIndex: "status",
       width: 90,
-      render: (v: number) =>
-        v === 1 ? (
+      search: false,
+      render: (_v, r) =>
+        r.status === 1 ? (
           <StatusTag status="enabled" />
         ) : (
           <StatusTag status="disabled" />
@@ -105,12 +94,14 @@ export function UserListPage() {
       title: "创建时间",
       dataIndex: "createdAt",
       width: 170,
-      render: (v: string) =>
-        fmtDateTime(v),
+      search: false,
+      render: (_v, r) =>
+        r.createdAt ? fmtDateTime(r.createdAt) : "-",
     },
     {
       title: "操作",
       width: 100,
+      search: false,
       render: (_v, r) => (
         <a
           onClick={() => {
@@ -135,7 +126,7 @@ export function UserListPage() {
       message.success("用户创建成功");
       setCreateOpen(false);
       createForm.resetFields();
-      load(page, pageSize);
+      actionRef.current?.reload();
     } catch {
       // 拦截器已处理
     }
@@ -152,7 +143,7 @@ export function UserListPage() {
       });
       message.success("更新成功");
       setEditTarget(null);
-      load(page, pageSize);
+      actionRef.current?.reload();
     } catch {
       // 拦截器已处理
     }
@@ -172,59 +163,36 @@ export function UserListPage() {
 
   return (
     <>
-      <ListPageShell
-        extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setCreateOpen(true)}
-          >
-            新建用户
-          </Button>
-        }
-        filter={
-          <Form
-            form={filterForm}
-            layout="inline"
-            onFinish={() => {
-              setPage(1);
-              load(1, pageSize);
-            }}
-          >
-            <Form.Item label="关键字" name="keyword">
-              <Input allowClear placeholder="用户名/姓名" style={{ width: 180 }} />
-            </Form.Item>
-            <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit">
-                  查询
-                </Button>
-                <Button
-                  onClick={() => {
-                    filterForm.resetFields();
-                    setPage(1);
-                    load(1, pageSize);
-                  }}
-                >
-                  重置
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        }
-        tableProps={{
-          rowKey: "id",
-          loading,
-          columns,
-          dataSource: rows,
-          pagination: {
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            onChange: (p, ps) => load(p, ps),
-            showTotal: (t) => `共 ${t} 条`,
+      <ProTable<UserInfo>
+        rowKey="id"
+        actionRef={actionRef}
+        columns={[
+          {
+            title: "关键字",
+            dataIndex: "keyword",
+            hideInTable: true,
+            fieldProps: { placeholder: "用户名/姓名", allowClear: true },
           },
+          ...columns,
+        ]}
+        request={request}
+        headerTitle={false}
+        options={false}
+        search={{
+          labelWidth: "auto",
+          defaultCollapsed: false,
+          // 新建按钮放筛选行右侧(替代默认工具栏行)
+          optionRender: (_searchConfig, _props, dom) => [
+            ...dom,
+            <Button key="new" type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+              新建用户
+            </Button>,
+          ],
+        }}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (t) => `共 ${t} 条`,
         }}
       />
 

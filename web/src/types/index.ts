@@ -8,6 +8,7 @@ export interface UserInfo {
   name: string;
   role: Role;
   status?: number;
+  createdAt?: string;
 }
 
 export interface LoginResponse {

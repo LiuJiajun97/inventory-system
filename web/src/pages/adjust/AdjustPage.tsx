@@ -1,61 +1,47 @@
 // 库存调整单(一期新增)
+// ProTable 版:筛选字段由 columns 配置驱动,新建按钮经 search.optionRender 放筛选行右侧
 // gain 盘盈入库 / loss 盘亏出库;审批即执行库存动作;盘点差异生成 + 手工调整共用
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import { ProTable } from "@ant-design/pro-components";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
 import { adjustApi, itemApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
 import type { StockAdjustDoc } from "../../types/phase1";
 import { getUser } from "../../auth/useAuth";
-import { ListPageShell } from "../../components/ListPageShell";
 import { DocStatusTag } from "../../components/DocStatusTag";
 import { fmtDate } from "../../utils/format";
 
 const TYPE_LABEL: Record<string, string> = { gain: "盘盈(入库)", loss: "盘亏(出库)" };
 
+// 状态机枚举:筛选下拉用 valueEnum,表格单元格仍用 DocStatusTag 自定义渲染(样式不变)
+const STATUS_ENUM = {
+  draft: { text: "草稿" },
+  pending: { text: "待审批" },
+  completed: { text: "已完成" },
+  rejected: { text: "已驳回" },
+  voided: { text: "已作废" },
+};
+
 export function AdjustPage() {
   const user = getUser();
-  const isAdmin = user?.role === "admin";
   const isWriter = user?.role === "admin" || user?.role === "operator";
-  const [rows, setRows] = useState<StockAdjustDoc[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [loading, setLoading] = useState(false);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [detail, setDetail] = useState<StockAdjustDoc | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<StockAdjustDoc | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form] = Form.useForm();
+  const [createForm] = Form.useForm();
+  const actionRef = useRef<ActionType>();
   const [adjustType, setAdjustType] = useState<"gain" | "loss">("loss");
   const [lines, setLines] = useState<Array<{ key: number; itemId?: number; qty?: number; unitPrice?: number; reason?: string }>>([{ key: 1 }]);
 
   const whName = (id: number) => warehouses.find((w) => w.id === id)?.warehouseName ?? `#${id}`;
 
-  const onSearch = async (values: Record<string, unknown>, pg = 1, ps = 20) => {
-    setLoading(true);
-    try {
-      const res = await adjustApi.list({
-        warehouseId: values.warehouseId as number | undefined,
-        adjustType: values.adjustType as string | undefined,
-        docNo: values.docNo as string | undefined,
-        status: values.status as string | undefined,
-        page: pg,
-        pageSize: ps,
-      });
-      setRows(res.rows);
-      setTotal(res.total);
-    } catch {
-      // 拦截器已处理
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 仓库/物品下拉数据源(异步加载,仅用于筛选项与名称展示)
   useEffect(() => {
     warehouseApi
       .list({ page: 1, pageSize: 200 })
@@ -65,30 +51,47 @@ export function AdjustPage() {
       .list({ page: 1, pageSize: 200 })
       .then((r) => setItems(r.rows))
       .catch(() => undefined);
-    onSearch({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const refresh = () => onSearch(form.getFieldsValue(), page, pageSize);
+  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+  const request = async (params: {
+    current?: number;
+    pageSize?: number;
+    docNo?: string;
+    warehouseId?: number;
+    adjustType?: string;
+    status?: string;
+  }) => {
+    const res = await adjustApi.list({
+      docNo: params.docNo,
+      warehouseId: params.warehouseId,
+      adjustType: params.adjustType,
+      status: params.status,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    return { data: res.rows, success: true, total: res.total };
+  };
 
   const doAction = async (fn: () => Promise<unknown>, msg: string) => {
     try {
       await fn();
       Modal.success({ content: msg });
-      refresh();
+      actionRef.current?.reload();
     } catch {
       // 拦截器已提示
     }
   };
 
   const openCreate = () => {
+    createForm.resetFields();
     setAdjustType("loss");
     setLines([{ key: 1 }]);
     setCreateOpen(true);
   };
 
   const onCreate = async () => {
-    const head = form.getFieldsValue(["docDate", "warehouseId", "remark"]);
+    const head = createForm.getFieldsValue(["docDate", "warehouseId", "remark"]);
     if (!head.docDate || !head.warehouseId) {
       Modal.error({ content: "请选择调整日期和仓库" });
       return;
@@ -114,7 +117,7 @@ export function AdjustPage() {
       });
       Modal.success({ content: "调整单已创建(草稿)" });
       setCreateOpen(false);
-      refresh();
+      actionRef.current?.reload();
     } catch {
       // 拦截器已提示
     } finally {
@@ -122,46 +125,76 @@ export function AdjustPage() {
     }
   };
 
-  const columns: ColumnsType<StockAdjustDoc> = [
+  const columns: ProColumns<StockAdjustDoc>[] = [
     {
       title: "单号",
       dataIndex: "docNo",
       width: 160,
-      render: (v: string, row) => (
+      fieldProps: { placeholder: "单号", allowClear: true },
+      render: (_v, row) => (
         <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => setDetail(row)}>
-          {v}
+          {row.docNo}
         </a>
       ),
     },
-    { title: "调整日期", dataIndex: "docDate", width: 110, render: (v: string) => fmtDate(v) },
-    { title: "仓库", width: 130, ellipsis: true, render: (_v, r) => whName(r.warehouseId) },
+    {
+      title: "仓库",
+      dataIndex: "warehouseId",
+      valueType: "select",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+    },
     {
       title: "类型",
       dataIndex: "adjustType",
       width: 110,
-      render: (v: string) => (
-        <span style={{ color: v === "gain" ? "#389e0d" : "#cf1322" }}>
-          {TYPE_LABEL[v] ?? v}
+      valueType: "select",
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: [
+          { label: "盘盈(入库)", value: "gain" },
+          { label: "盘亏(出库)", value: "loss" },
+        ],
+      },
+      render: (_v, r) => (
+        <span style={{ color: r.adjustType === "gain" ? "#389e0d" : "#cf1322" }}>
+          {TYPE_LABEL[r.adjustType] ?? r.adjustType}
         </span>
       ),
+    },
+    {
+      title: "状态",
+      dataIndex: "status",
+      width: 90,
+      valueEnum: STATUS_ENUM,
+      render: (_v, r) => <DocStatusTag status={r.status} />,
+    },
+    { title: "调整日期", dataIndex: "docDate", width: 110, search: false, render: (_v, r) => fmtDate(r.docDate) },
+    {
+      title: "仓库",
+      width: 130,
+      ellipsis: true,
+      search: false,
+      render: (_v, r) => whName(r.warehouseId),
     },
     {
       title: "来源",
       dataIndex: "refDocNo",
       width: 150,
-      render: (v: string | null) => v ?? "-",
+      search: false,
+      render: (_v, r) => r.refDocNo ?? "-",
     },
-    { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true },
-    {
-      title: "状态",
-      dataIndex: "status",
-      width: 90,
-      render: (v: string) => <DocStatusTag status={v} />,
-    },
+    { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true, search: false },
     {
       title: "操作",
       width: 220,
       fixed: "right" as const,
+      search: false,
       render: (_v, row) => {
         const s = row.status;
         const btns: React.ReactNode[] = [];
@@ -194,74 +227,35 @@ export function AdjustPage() {
     },
   ];
 
-  const statusOptions = [
-    { label: "草稿", value: "draft" },
-    { label: "待审批", value: "pending" },
-    { label: "已完成", value: "completed" },
-    { label: "已驳回", value: "rejected" },
-    { label: "已作废", value: "voided" },
-  ];
-
   const itemOptions = items.map((it) => ({ label: `${it.itemCode} ${it.itemName}`, value: it.id }));
 
   return (
     <>
-      <ListPageShell
-        extra={
-          isWriter && (
-            <Button type="primary" onClick={openCreate}>
-              新建调整单
-            </Button>
-          )
-        }
-        filter={
-          <Form form={form} layout="inline" onFinish={(v) => { setPage(1); onSearch(v); }}>
-            <Form.Item label="单号" name="docNo">
-              <Input allowClear style={{ width: 150 }} />
-            </Form.Item>
-            <Form.Item label="仓库" name="warehouseId">
-              <Select allowClear placeholder="全部" style={{ width: 160 }} options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))} />
-            </Form.Item>
-            <Form.Item label="类型" name="adjustType">
-              <Select
-                allowClear
-                placeholder="全部"
-                style={{ width: 130 }}
-                options={[
-                  { label: "盘盈(入库)", value: "gain" },
-                  { label: "盘亏(出库)", value: "loss" },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item label="状态" name="status">
-              <Select allowClear placeholder="全部" style={{ width: 120 }} options={statusOptions} />
-            </Form.Item>
-            <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit">查询</Button>
-                <Button onClick={() => { form.resetFields(); setPage(1); onSearch({}); }}>重置</Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        }
-        tableProps={{
-          rowKey: "id",
-          loading,
-          columns,
-          dataSource: rows,
-          scroll: { x: 1050 },
-          pagination: {
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-              onSearch(form.getFieldsValue(), p, ps);
-            },
-            showTotal: (t) => `共 ${t} 条`,
-          },
+      <ProTable<StockAdjustDoc>
+        rowKey="id"
+        actionRef={actionRef}
+        columns={columns}
+        request={request}
+        headerTitle={false}
+        options={false}
+        scroll={{ x: 1050 }}
+        search={{
+          labelWidth: "auto",
+          defaultCollapsed: false,
+          // 新建按钮放筛选行右侧(替代默认工具栏行)
+          optionRender: (_searchConfig, _props, dom) => [
+            ...dom,
+            isWriter && (
+              <Button key="new" type="primary" onClick={openCreate}>
+                新建调整单
+              </Button>
+            ),
+          ],
+        }}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (t) => `共 ${t} 条`,
         }}
       />
 
@@ -276,7 +270,7 @@ export function AdjustPage() {
           </Button>
         }
       >
-        <Form form={form} layout="vertical">
+        <Form form={createForm} layout="vertical">
           <Space wrap size={24}>
             <Form.Item label="调整类型" required>
               <Select
@@ -425,25 +419,47 @@ export function AdjustPage() {
         )}
       </Modal>
 
-      <Modal
-        title={`驳回调整单 - ${rejectTarget?.docNo ?? ""}`}
-        open={!!rejectTarget}
-        onCancel={() => { setRejectTarget(null); form.setFieldValue("reason", ""); }}
-        onOk={() => {
-          const v = form.getFieldValue("reason") as string;
-          if (!v?.trim()) return;
-          doAction(() => adjustApi.reject(rejectTarget!.id, v.trim()), "已驳回");
+      <RejectModal
+        target={rejectTarget}
+        onClose={() => setRejectTarget(null)}
+        onConfirm={(reason) => {
+          if (rejectTarget) doAction(() => adjustApi.reject(rejectTarget.id, reason), "已驳回");
           setRejectTarget(null);
-          form.setFieldValue("reason", "");
         }}
-        okButtonProps={{ disabled: !form.getFieldValue("reason")?.trim() }}
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item label="驳回原因(必填)" name="reason">
-            <Input.TextArea rows={3} />
-          </Form.Item>
-        </Form>
-      </Modal>
+      />
     </>
+  );
+}
+
+// 驳回弹窗(独立组件:表单实例与列表筛选解耦,避免原"共用 form"的坑)
+function RejectModal({
+  target,
+  onClose,
+  onConfirm,
+}: {
+  target: StockAdjustDoc | null;
+  onClose: () => void;
+  onConfirm: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState("");
+  return (
+    <Modal
+      title={`驳回调整单 - ${target?.docNo ?? ""}`}
+      open={!!target}
+      onCancel={onClose}
+      onOk={() => {
+        if (!reason.trim()) return;
+        onConfirm(reason.trim());
+        setReason("");
+      }}
+      okButtonProps={{ disabled: !reason.trim() }}
+    >
+      <Input.TextArea
+        rows={3}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="驳回原因(必填)"
+      />
+    </Modal>
   );
 }

@@ -1,87 +1,87 @@
 // 库位管理(SPEC-WEB V2 2.10)
-// 筛选仓库 + 新建/编辑库位;编辑时编码与所属仓库锁死
+// ProTable 版:筛选字段由 columns 配置驱动(仓库),新建按钮经 optionRender 放筛选行右侧
+// 新建/编辑库位;编辑时编码与所属仓库锁死
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   Input,
   Select,
   Button,
-  Table,
   Modal,
-  Space,
   App,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
+import { ProTable } from "@ant-design/pro-components";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { warehouseApi } from "../../api";
 import type { Location, Warehouse } from "../../types";
 import { getUser } from "../../auth/useAuth";
-import { ListPageShell } from "../../components/ListPageShell";
 
 export function LocationListPage() {
-  const [rows, setRows] = useState<Location[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Location | null>(null);
   const [form] = Form.useForm();
-  const [filterForm] = Form.useForm();
+  const actionRef = useRef<ActionType>();
   const user = getUser();
   const { message } = App.useApp();
 
-  /** 读取筛选表单里的仓库 ID。 */
-  const getFilterWarehouseId = () =>
-    filterForm.getFieldValue("warehouseId") as number | undefined;
-
-  const load = async (wid?: number, pg = 1, ps = pageSize) => {
-    setLoading(true);
-    try {
-      const res = await warehouseApi.listLocations({ warehouseId: wid, page: pg, pageSize: ps });
-      setRows(res.rows);
-      setTotal(res.total);
-      setPage(pg);
-      setPageSize(ps);
-    } catch {
-      // 拦截器已处理
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 仓库下拉数据源(异步加载,仅用于筛选项与名称展示)
   useEffect(() => {
-    warehouseApi.list({ page: 1, pageSize: 200 }).then((r) => setWarehouses(r.rows)).catch(() => undefined);
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    warehouseApi
+      .list({ page: 1, pageSize: 200 })
+      .then((r) => setWarehouses(r.rows))
+      .catch(() => undefined);
   }, []);
 
   const warehouseNameOf = (id: number) =>
     warehouses.find((w) => w.id === id)?.warehouseName ?? id;
 
-  const columns: ColumnsType<Location> = [
+  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+  const request = async (params: {
+    current?: number;
+    pageSize?: number;
+    warehouseId?: number;
+  }) => {
+    const res = await warehouseApi.listLocations({
+      warehouseId: params.warehouseId,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
+    return { data: res.rows, success: true, total: res.total };
+  };
+
+  const columns: ProColumns<Location>[] = [
     {
       title: "仓库",
       dataIndex: "warehouseId",
       width: 200,
-      render: (id: number) => warehouseNameOf(id),
+      valueType: "select",
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+      render: (_v, r) => warehouseNameOf(r.warehouseId),
     },
     {
       title: "编码",
       dataIndex: "locationCode",
       width: 160,
-      render: (v: string) => (
-        <span style={{ fontFamily: "monospace" }}>{v}</span>
+      search: false,
+      render: (_v, r) => (
+        <span style={{ fontFamily: "monospace" }}>{r.locationCode}</span>
       ),
     },
-    { title: "名称", dataIndex: "locationName", ellipsis: true },
+    { title: "名称", dataIndex: "locationName", ellipsis: true, search: false },
     ...(user?.role === "admin"
       ? [
           {
             title: "操作",
             width: 80,
+            search: false,
             render: (_v: unknown, r: Location) => (
               <Button type="link" size="small" onClick={() => openEdit(r)}>
                 编辑
@@ -128,7 +128,7 @@ export function LocationListPage() {
       setOpen(false);
       form.resetFields();
       setEditing(null);
-      load(getFilterWarehouseId(), page, pageSize);
+      actionRef.current?.reload();
     } catch {
       // 拦截器已处理
     }
@@ -142,65 +142,30 @@ export function LocationListPage() {
 
   return (
     <>
-      <ListPageShell
-        extra={
-          user?.role === "admin" && (
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              新建库位
-            </Button>
-          )
-        }
-        filter={
-          <Form
-            form={filterForm}
-            layout="inline"
-            onFinish={(v) => {
-              setPage(1);
-              load(v.warehouseId as number | undefined, 1, pageSize);
-            }}
-          >
-            <Form.Item label="仓库" name="warehouseId">
-              <Select
-                allowClear
-                placeholder="全部"
-                style={{ width: 160 }}
-                options={warehouses.map((w) => ({
-                  label: w.warehouseName,
-                  value: w.id,
-                }))}
-              />
-            </Form.Item>
-            <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit">
-                  查询
-                </Button>
-                <Button
-                  onClick={() => {
-                    filterForm.resetFields();
-                    setPage(1);
-                    load(undefined, 1, pageSize);
-                  }}
-                >
-                  重置
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        }
-        tableProps={{
-          rowKey: "id",
-          loading,
-          columns,
-          dataSource: rows,
-          pagination: {
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            onChange: (p, ps) => load(getFilterWarehouseId(), p, ps),
-            showTotal: (t) => `共 ${t} 条`,
-          },
+      <ProTable<Location>
+        rowKey="id"
+        actionRef={actionRef}
+        columns={columns}
+        request={request}
+        headerTitle={false}
+        options={false}
+        search={{
+          labelWidth: "auto",
+          defaultCollapsed: false,
+          // 新建按钮放筛选行右侧(替代默认工具栏行)
+          optionRender: (_searchConfig, _props, dom) => [
+            ...dom,
+            user?.role === "admin" && (
+              <Button key="new" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                新建库位
+              </Button>
+            ),
+          ],
+        }}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (t) => `共 ${t} 条`,
         }}
       />
 

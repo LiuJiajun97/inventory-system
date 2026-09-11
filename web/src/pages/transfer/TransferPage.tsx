@@ -1,35 +1,47 @@
 // 调拨单(一期新增)
-// 列表 + 新建 Drawer + 详情 + 状态机操作(提交/审批执行/驳回/作废)
+// ProTable 版:筛选字段由 columns 配置驱动,新建按钮经 search.optionRender 放筛选行右侧
+// 新建 Drawer + 详情 + 状态机操作(提交/审批执行/驳回/作废)
 // 审批即执行:同一事务源仓扣减 + 目的仓入库
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import { ProTable } from "@ant-design/pro-components";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
 import { fmtDate } from "../../utils/format";
 import { itemApi, transferApi, warehouseApi } from "../../api";
 import type { Item, Location, Warehouse } from "../../types";
 import type { TransferDoc } from "../../types/phase1";
 import { getUser } from "../../auth/useAuth";
-import { ListPageShell } from "../../components/ListPageShell";
 import { DocStatusTag } from "../../components/DocStatusTag";
+
+// ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
+// 部分路径(弹层选择)可能传 dayjs,两种都兼容
+function toDay(v: unknown): string | undefined {
+  if (v == null) return undefined;
+  return typeof v === "string" ? v : (v as dayjs.Dayjs).format("YYYY-MM-DD");
+}
+
+// 状态机枚举:筛选下拉用 valueEnum,表格单元格仍用 DocStatusTag 自定义渲染(样式不变)
+const STATUS_ENUM = {
+  draft: { text: "草稿" },
+  pending: { text: "待审批" },
+  completed: { text: "已完成" },
+  rejected: { text: "已驳回" },
+  voided: { text: "已作废" },
+};
 
 export function TransferPage() {
   const user = getUser();
-  const isAdmin = user?.role === "admin";
   const isWriter = user?.role === "admin" || user?.role === "operator";
-  const [rows, setRows] = useState<TransferDoc[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [loading, setLoading] = useState(false);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [detail, setDetail] = useState<TransferDoc | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<TransferDoc | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form] = Form.useForm();
+  const [createForm] = Form.useForm();
+  const actionRef = useRef<ActionType>();
   const [lines, setLines] = useState<Array<{ key: number; itemId?: number; qty?: number; unitPrice?: number; fromLocationId?: number; toLocationId?: number }>>([{ key: 1 }]);
   const [fromWh, setFromWh] = useState<number>();
   const [toWh, setToWh] = useState<number>();
@@ -42,28 +54,7 @@ export function TransferPage() {
 
   const whName = (id: number) => warehouses.find((w) => w.id === id)?.warehouseName ?? `#${id}`;
 
-  const onSearch = async (values: Record<string, unknown>, pg = 1, ps = 20) => {
-    setLoading(true);
-    try {
-      const res = await transferApi.list({
-        fromWarehouseId: values.fromWarehouseId as number | undefined,
-        toWarehouseId: values.toWarehouseId as number | undefined,
-        docNo: values.docNo as string | undefined,
-        status: values.status as string | undefined,
-        from: (values.range as [Dayjs, Dayjs] | null)?.[0]?.format("YYYY-MM-DD"),
-        to: (values.range as [Dayjs, Dayjs] | null)?.[1]?.format("YYYY-MM-DD"),
-        page: pg,
-        pageSize: ps,
-      });
-      setRows(res.rows);
-      setTotal(res.total);
-    } catch {
-      // 拦截器已处理
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 仓库/物品下拉数据源(异步加载,仅用于筛选项与名称展示)
   useEffect(() => {
     warehouseApi
       .list({ page: 1, pageSize: 200 })
@@ -73,8 +64,6 @@ export function TransferPage() {
       .list({ page: 1, pageSize: 200 })
       .then((r) => setItems(r.rows))
       .catch(() => undefined);
-    onSearch({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -95,19 +84,42 @@ export function TransferPage() {
     }
   }, [toWh]);
 
-  const refresh = () => onSearch(form.getFieldsValue(), page, pageSize);
+  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+  const request = async (params: {
+    current?: number;
+    pageSize?: number;
+    docNo?: string;
+    fromWarehouseId?: number;
+    toWarehouseId?: number;
+    status?: string;
+    from?: string;
+    to?: string;
+  }) => {
+    const res = await transferApi.list({
+      docNo: params.docNo,
+      fromWarehouseId: params.fromWarehouseId,
+      toWarehouseId: params.toWarehouseId,
+      status: params.status,
+      from: params.from,
+      to: params.to,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    return { data: res.rows, success: true, total: res.total };
+  };
 
   const doAction = async (fn: () => Promise<unknown>, msg: string) => {
     try {
       await fn();
       Modal.success({ content: msg });
-      refresh();
+      actionRef.current?.reload();
     } catch {
       // 拦截器已提示
     }
   };
 
   const openCreate = () => {
+    createForm.resetFields();
     setLines([{ key: 1 }]);
     setFromWh(undefined);
     setToWh(undefined);
@@ -126,7 +138,7 @@ export function TransferPage() {
       Modal.error({ content: "源仓与目的仓不能相同" });
       return;
     }
-    const head = form.getFieldsValue(["docDate", "fromWarehouseId", "toWarehouseId", "remark"]);
+    const remark = createForm.getFieldValue("remark");
     const valid = lines.filter((l) => l.itemId && l.qty);
     if (valid.length === 0) {
       Modal.error({ content: "请至少填写一行调拨明细" });
@@ -147,7 +159,7 @@ export function TransferPage() {
         docDate: docDate.format("YYYY-MM-DD"),
         fromWarehouseId: fromWh,
         toWarehouseId: toWh,
-        remark: head.remark,
+        remark,
         items: valid.map((l) => ({
           itemId: l.itemId!,
           qty: l.qty!,
@@ -158,7 +170,7 @@ export function TransferPage() {
       });
       Modal.success({ content: "调拨单已创建(草稿)" });
       setCreateOpen(false);
-      refresh();
+      actionRef.current?.reload();
     } catch {
       // 拦截器已提示
     } finally {
@@ -166,26 +178,70 @@ export function TransferPage() {
     }
   };
 
-  const columns: ColumnsType<TransferDoc> = [
+  const columns: ProColumns<TransferDoc>[] = [
     {
       title: "单号",
       dataIndex: "docNo",
       width: 160,
-      render: (v: string, row) => (
+      fieldProps: { placeholder: "单号", allowClear: true },
+      render: (_v, row) => (
         <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => setDetail(row)}>
-          {v}
+          {row.docNo}
         </a>
       ),
     },
-    { title: "调拨日期", dataIndex: "docDate", width: 110, render: (v: string) => fmtDate(v) },
+    {
+      title: "源仓",
+      dataIndex: "fromWarehouseId",
+      valueType: "select",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+    },
+    {
+      title: "目的仓",
+      dataIndex: "toWarehouseId",
+      valueType: "select",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+    },
+    {
+      title: "状态",
+      dataIndex: "status",
+      width: 90,
+      valueEnum: STATUS_ENUM,
+      render: (_v, r) => <DocStatusTag status={r.status} />,
+    },
+    {
+      title: "日期",
+      dataIndex: "range",
+      valueType: "dateRange",
+      hideInTable: true,
+      search: {
+        transform: (value: [unknown, unknown]) => ({
+          from: toDay(value[0]),
+          to: toDay(value[1]),
+        }),
+      },
+    },
+    { title: "调拨日期", dataIndex: "docDate", width: 110, search: false, render: (_v, r) => fmtDate(r.docDate) },
     {
       title: "源仓 → 目的仓",
       width: 240,
+      search: false,
       render: (_v, r) => `${whName(r.fromWarehouseId)} → ${whName(r.toWarehouseId)}`,
     },
     {
       title: "行数",
       width: 70,
+      search: false,
       render: (_v, r) => r.items?.length ?? "-",
     },
     {
@@ -194,19 +250,15 @@ export function TransferPage() {
       width: 110,
       align: "right",
       className: "num-cell",
-      render: (v: string) => Number(v).toFixed(2),
+      search: false,
+      render: (_v, r) => Number(r.totalAmount).toFixed(2),
     },
-    { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true },
-    {
-      title: "状态",
-      dataIndex: "status",
-      width: 90,
-      render: (v: string) => <DocStatusTag status={v} />,
-    },
+    { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true, search: false },
     {
       title: "操作",
       width: 220,
       fixed: "right" as const,
+      search: false,
       render: (_v, row) => {
         const s = row.status;
         const btns: React.ReactNode[] = [];
@@ -239,69 +291,35 @@ export function TransferPage() {
     },
   ];
 
-  const statusOptions = [
-    { label: "草稿", value: "draft" },
-    { label: "待审批", value: "pending" },
-    { label: "已完成", value: "completed" },
-    { label: "已驳回", value: "rejected" },
-    { label: "已作废", value: "voided" },
-  ];
-
   const itemOptions = items.map((it) => ({ label: `${it.itemCode} ${it.itemName}`, value: it.id }));
 
   return (
     <>
-      <ListPageShell
-        extra={
-          isWriter && (
-            <Button type="primary" onClick={openCreate}>
-              新建调拨单
-            </Button>
-          )
-        }
-        filter={
-          <Form form={form} layout="inline" onFinish={(v) => { setPage(1); onSearch(v); }}>
-            <Form.Item label="单号" name="docNo">
-              <Input allowClear style={{ width: 150 }} />
-            </Form.Item>
-            <Form.Item label="源仓" name="fromWarehouseId">
-              <Select allowClear placeholder="全部" style={{ width: 160 }} options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))} />
-            </Form.Item>
-            <Form.Item label="目的仓" name="toWarehouseId">
-              <Select allowClear placeholder="全部" style={{ width: 160 }} options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))} />
-            </Form.Item>
-            <Form.Item label="状态" name="status">
-              <Select allowClear placeholder="全部" style={{ width: 120 }} options={statusOptions} />
-            </Form.Item>
-            <Form.Item label="日期" name="range">
-              <DatePicker.RangePicker />
-            </Form.Item>
-            <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit">查询</Button>
-                <Button onClick={() => { form.resetFields(); setPage(1); onSearch({}); }}>重置</Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        }
-        tableProps={{
-          rowKey: "id",
-          loading,
-          columns,
-          dataSource: rows,
-          scroll: { x: 1000 },
-          pagination: {
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-              onSearch(form.getFieldsValue(), p, ps);
-            },
-            showTotal: (t) => `共 ${t} 条`,
-          },
+      <ProTable<TransferDoc>
+        rowKey="id"
+        actionRef={actionRef}
+        columns={columns}
+        request={request}
+        headerTitle={false}
+        options={false}
+        scroll={{ x: 1000 }}
+        search={{
+          labelWidth: "auto",
+          defaultCollapsed: false,
+          // 新建按钮放筛选行右侧(替代默认工具栏行)
+          optionRender: (_searchConfig, _props, dom) => [
+            ...dom,
+            isWriter && (
+              <Button key="new" type="primary" onClick={openCreate}>
+                新建调拨单
+              </Button>
+            ),
+          ],
+        }}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (t) => `共 ${t} 条`,
         }}
       />
 
@@ -316,7 +334,7 @@ export function TransferPage() {
           </Button>
         }
       >
-        <Form layout="vertical">
+        <Form form={createForm} layout="vertical">
           <Space wrap size={24}>
             <Form.Item label="调拨日期">
               <DatePicker value={docDate} onChange={(d) => setDocDate(d ?? dayjs())} />
@@ -340,11 +358,8 @@ export function TransferPage() {
               />
             </Form.Item>
           </Space>
-          <Form.Item label="备注">
-            <Input.TextArea
-              rows={2}
-              onChange={(e) => form.setFieldValue("remark", e.target.value)}
-            />
+          <Form.Item label="备注" name="remark">
+            <Input.TextArea rows={2} />
           </Form.Item>
         </Form>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>调拨明细(批次跟随源批,库存审批时扣减)</div>
@@ -485,25 +500,47 @@ export function TransferPage() {
         )}
       </Modal>
 
-      <Modal
-        title={`驳回调拨单 - ${rejectTarget?.docNo ?? ""}`}
-        open={!!rejectTarget}
-        onCancel={() => { setRejectTarget(null); form.setFieldValue("reason", ""); }}
-        onOk={() => {
-          const v = form.getFieldValue("reason") as string;
-          if (!v?.trim()) return;
-          doAction(() => transferApi.reject(rejectTarget!.id, v.trim()), "已驳回");
+      <RejectModal
+        target={rejectTarget}
+        onClose={() => setRejectTarget(null)}
+        onConfirm={(reason) => {
+          if (rejectTarget) doAction(() => transferApi.reject(rejectTarget.id, reason), "已驳回");
           setRejectTarget(null);
-          form.setFieldValue("reason", "");
         }}
-        okButtonProps={{ disabled: !form.getFieldValue("reason")?.trim() }}
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item label="驳回原因(必填)" name="reason">
-            <Input.TextArea rows={3} />
-          </Form.Item>
-        </Form>
-      </Modal>
+      />
     </>
+  );
+}
+
+// 驳回弹窗(独立组件:表单实例与列表筛选解耦,避免原"共用 form"的坑)
+function RejectModal({
+  target,
+  onClose,
+  onConfirm,
+}: {
+  target: TransferDoc | null;
+  onClose: () => void;
+  onConfirm: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState("");
+  return (
+    <Modal
+      title={`驳回调拨单 - ${target?.docNo ?? ""}`}
+      open={!!target}
+      onCancel={onClose}
+      onOk={() => {
+        if (!reason.trim()) return;
+        onConfirm(reason.trim());
+        setReason("");
+      }}
+      okButtonProps={{ disabled: !reason.trim() }}
+    >
+      <Input.TextArea
+        rows={3}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="驳回原因(必填)"
+      />
+    </Modal>
   );
 }

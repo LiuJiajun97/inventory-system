@@ -1,13 +1,13 @@
 // 仓库管理(SPEC-WEB V2 2.10)
+// ProTable 版:筛选字段由 columns 配置驱动(关键字/类型),新建按钮经 optionRender 放筛选行右侧
 // Drawer 双态:新建 / 编辑(编码锁死不可改);4 个 enable 开关联动:开保质期自动开批次
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   Input,
   Select,
   Button,
-  Table,
   Drawer,
   Row,
   Col,
@@ -16,74 +16,69 @@ import {
   Tag,
   App,
 } from "antd";
-import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined } from "@ant-design/icons";
+import { ProTable } from "@ant-design/pro-components";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { warehouseApi, dictApi } from "../../api";
 import type { Warehouse } from "../../types";
 import { getUser } from "../../auth/useAuth";
-import { ListPageShell } from "../../components/ListPageShell";
 import { StatusTag } from "../../components/StatusTag";
 
 export function WarehouseListPage() {
-  const [rows, setRows] = useState<Warehouse[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [loading, setLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
   const [form] = Form.useForm();
-  const [filterForm] = Form.useForm();
+  const actionRef = useRef<ActionType>();
   const { message } = App.useApp();
   const user = getUser();
   const [enableBatch, setEnableBatch] = useState(false);
   const [enableExpiry, setEnableExpiry] = useState(false);
   const [typeOptions, setTypeOptions] = useState<Array<{ code: string; label: string }>>([]);
 
-  const load = async (pg = 1, ps = pageSize) => {
-    setLoading(true);
-    try {
-      const res = await warehouseApi.list({
-        keyword: filterForm.getFieldValue("keyword") || undefined,
-        warehouseType: filterForm.getFieldValue("warehouseType") || undefined,
-        page: pg,
-        pageSize: ps,
-      });
-      setRows(res.rows);
-      setTotal(res.total);
-      setPage(pg);
-      setPageSize(ps);
-    } catch {
-      // 拦截器已处理
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 类型下拉数据源(异步加载,仅用于筛选项与列展示)
   useEffect(() => {
-    load();
     dictApi.getType("warehouseType").then(setTypeOptions).catch(() => undefined);
   }, []);
 
-  const columns: ColumnsType<Warehouse> = [
+  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+  const request = async (params: {
+    current?: number;
+    pageSize?: number;
+    keyword?: string;
+    warehouseType?: string;
+  }) => {
+    const res = await warehouseApi.list({
+      keyword: params.keyword || undefined,
+      warehouseType: params.warehouseType || undefined,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
+    return { data: res.rows, success: true, total: res.total };
+  };
+
+  const columns: ProColumns<Warehouse>[] = [
     {
       title: "编码",
       dataIndex: "warehouseCode",
       width: 140,
-      render: (v: string) => (
-        <span style={{ fontFamily: "monospace" }}>{v}</span>
+      search: false,
+      render: (_v, r) => (
+        <span style={{ fontFamily: "monospace" }}>{r.warehouseCode}</span>
       ),
     },
-    { title: "名称", dataIndex: "warehouseName", width: 180 },
+    { title: "名称", dataIndex: "warehouseName", width: 180, search: false },
     {
       title: "类型",
       dataIndex: "warehouseType",
       width: 100,
-      render: (v: string) => <Tag>{typeOptions.find((d) => d.code === v)?.label ?? v}</Tag>,
+      search: false,
+      render: (_v, r) => <Tag>{typeOptions.find((d) => d.code === r.warehouseType)?.label ?? r.warehouseType}</Tag>,
     },
     {
       title: "配置",
       width: 320,
+      search: false,
       render: (_v, r) => (
         <Space wrap size={[4, 4]}>
           <Tag bordered>批次 {r.enableBatch ? "✓" : "✗"}</Tag>
@@ -98,14 +93,16 @@ export function WarehouseListPage() {
       dataIndex: "creator",
       width: 100,
       ellipsis: true,
-      render: (v?: string | null) => v ?? "-",
+      search: false,
+      render: (_v, r) => r.creator ?? "-",
     },
     {
       title: "状态",
       dataIndex: "status",
       width: 90,
-      render: (v: number) =>
-        v === 1 ? (
+      search: false,
+      render: (_v, r) =>
+        r.status === 1 ? (
           <StatusTag status="enabled" />
         ) : (
           <StatusTag status="disabled" />
@@ -116,6 +113,7 @@ export function WarehouseListPage() {
           {
             title: "操作",
             width: 80,
+            search: false,
             render: (_v: unknown, r: Warehouse) => (
               <Button type="link" size="small" onClick={() => openEdit(r)}>
                 编辑
@@ -180,7 +178,7 @@ export function WarehouseListPage() {
       setEnableBatch(false);
       setEnableExpiry(false);
       setEditing(null);
-      load(page, pageSize);
+      actionRef.current?.reload();
     } catch {
       // 拦截器已处理
     }
@@ -196,69 +194,49 @@ export function WarehouseListPage() {
 
   return (
     <>
-      <ListPageShell
-        extra={
-          user?.role === "admin" && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={openCreate}
-            >
-              新建仓库
-            </Button>
-          )
-        }
-        filter={
-          <Form
-            form={filterForm}
-            layout="inline"
-            onFinish={() => {
-              setPage(1);
-              load(1, pageSize);
-            }}
-          >
-            <Form.Item label="关键字" name="keyword">
-              <Input allowClear placeholder="编码/名称" style={{ width: 150 }} />
-            </Form.Item>
-            <Form.Item label="类型" name="warehouseType">
-              <Select
-                allowClear
-                placeholder="全部"
-                style={{ width: 140 }}
-                options={typeOptions.map((d) => ({ label: d.label, value: d.code }))}
-              />
-            </Form.Item>
-            <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit">
-                  查询
-                </Button>
-                <Button
-                  onClick={() => {
-                    filterForm.resetFields();
-                    setPage(1);
-                    load(1, pageSize);
-                  }}
-                >
-                  重置
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        }
-        tableProps={{
-          rowKey: "id",
-          loading,
-          columns,
-          dataSource: rows,
-          pagination: {
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            onChange: (p, ps) => load(p, ps),
-            showTotal: (t) => `共 ${t} 条`,
+      <ProTable<Warehouse>
+        rowKey="id"
+        actionRef={actionRef}
+        columns={[
+          {
+            title: "关键字",
+            dataIndex: "keyword",
+            hideInTable: true,
+            fieldProps: { placeholder: "编码/名称", allowClear: true },
           },
+          {
+            title: "类型",
+            dataIndex: "warehouseType",
+            valueType: "select",
+            hideInTable: true,
+            fieldProps: {
+              allowClear: true,
+              placeholder: "全部",
+              options: typeOptions.map((d) => ({ label: d.label, value: d.code })),
+            },
+          },
+          ...columns,
+        ]}
+        request={request}
+        headerTitle={false}
+        options={false}
+        search={{
+          labelWidth: "auto",
+          defaultCollapsed: false,
+          // 新建按钮放筛选行右侧(替代默认工具栏行)
+          optionRender: (_searchConfig, _props, dom) => [
+            ...dom,
+            user?.role === "admin" && (
+              <Button key="new" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                新建仓库
+              </Button>
+            ),
+          ],
+        }}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (t) => `共 ${t} 条`,
         }}
       />
 

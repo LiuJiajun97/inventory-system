@@ -1,13 +1,14 @@
 // 客户管理(一期新增)
+// ProTable 版:筛选字段由 columns 配置驱动(关键字),新建按钮经 optionRender 放筛选行右侧
 // 列表分页 + admin 新建/编辑 Drawer,operator/viewer 只读
 
-import { useEffect, useState } from "react";
-import { Button, Drawer, Form, Input, InputNumber, Select, Space, Table } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import { useEffect, useRef, useState } from "react";
+import { Button, Drawer, Form, Input, InputNumber, Select } from "antd";
+import { ProTable } from "@ant-design/pro-components";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { customerApi, dictApi } from "../../api";
 import type { Customer } from "../../types/phase1";
 import { getUser } from "../../auth/useAuth";
-import { ListPageShell } from "../../components/ListPageShell";
 import { StatusTag } from "../../components/StatusTag";
 
 interface FormValues {
@@ -26,39 +27,34 @@ interface FormValues {
 export function CustomerPage() {
   const user = getUser();
   const isAdmin = user?.role === "admin";
-  const [rows, setRows] = useState<Customer[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [loading, setLoading] = useState(false);
-  const [keyword, setKeyword] = useState<string>();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [settleOptions, setSettleOptions] = useState<Array<{ label: string; value: string }>>([]);
   const [form] = Form.useForm<FormValues>();
-  const [filterForm] = Form.useForm();
+  const actionRef = useRef<ActionType>();
 
-  const onSearch = async (kw?: string, pg = 1, ps = 20) => {
-    setLoading(true);
-    try {
-      const res = await customerApi.list({ keyword: kw, page: pg, pageSize: ps });
-      setRows(res.rows);
-      setTotal(res.total);
-    } catch {
-      // 拦截器已处理
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 结算方式字典数据源(异步加载,仅用于列展示)
   useEffect(() => {
-    onSearch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     dictApi
       .getType("settleMethod")
       .then((opts) => setSettleOptions(opts.map((o) => ({ label: o.label, value: o.code }))))
       .catch(() => undefined);
   }, []);
+
+  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+  const request = async (params: {
+    current?: number;
+    pageSize?: number;
+    keyword?: string;
+  }) => {
+    const res = await customerApi.list({
+      keyword: params.keyword || undefined,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
+    return { data: res.rows, success: true, total: res.total };
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -91,42 +87,46 @@ export function CustomerPage() {
       await customerApi.create({ ...v, defaultTaxRate: v.defaultTaxRate ?? 13 });
     }
     setDrawerOpen(false);
-    onSearch(keyword, page, pageSize);
+    actionRef.current?.reload();
   };
 
-  const columns: ColumnsType<Customer> = [
-    { title: "编码", dataIndex: "customerCode", width: 140 },
-    { title: "名称", dataIndex: "customerName", ellipsis: true },
-    { title: "联系人", dataIndex: "contact", width: 100, render: (v) => v ?? "-" },
-    { title: "电话", dataIndex: "phone", width: 130, render: (v) => v ?? "-" },
+  const columns: ProColumns<Customer>[] = [
+    { title: "编码", dataIndex: "customerCode", width: 140, search: false },
+    { title: "名称", dataIndex: "customerName", ellipsis: true, search: false },
+    { title: "联系人", dataIndex: "contact", width: 100, search: false, render: (v) => v ?? "-" },
+    { title: "电话", dataIndex: "phone", width: 130, search: false, render: (v) => v ?? "-" },
     {
       title: "默认税率(%)",
       dataIndex: "defaultTaxRate",
       width: 110,
       align: "right",
       className: "num-cell",
+      search: false,
       render: (v) => (v == null ? "-" : Number(v).toFixed(2)),
     },
     {
       title: "结算方式",
       dataIndex: "settleMethod",
       width: 100,
-      render: (v: string | null) =>
-        v ? settleOptions.find((o) => o.value === v)?.label ?? v : "-",
+      search: false,
+      render: (_v, r) =>
+        r.settleMethod ? settleOptions.find((o) => o.value === r.settleMethod)?.label ?? r.settleMethod : "-",
     },
     {
       title: "创建人",
       dataIndex: "creator",
       width: 100,
       ellipsis: true,
-      render: (v?: string | null) => v ?? "-",
+      search: false,
+      render: (_v, r) => r.creator ?? "-",
     },
     {
       title: "状态",
       dataIndex: "status",
       width: 80,
-      render: (v: number) =>
-        v === 1 ? <StatusTag status="enabled" /> : <StatusTag status="disabled" />,
+      search: false,
+      render: (_v, r) =>
+        r.status === 1 ? <StatusTag status="enabled" /> : <StatusTag status="disabled" />,
     },
     ...(isAdmin
       ? ([
@@ -134,74 +134,50 @@ export function CustomerPage() {
             title: "操作",
             width: 80,
             fixed: "right" as const,
+            search: false,
             render: (_v: unknown, row: Customer) => (
               <a onClick={() => openEdit(row)}>编辑</a>
             ),
           },
-        ] as ColumnsType<Customer>)
+        ] as ProColumns<Customer>[])
       : []),
   ];
 
   return (
     <>
-      <ListPageShell
-        extra={
-          isAdmin && (
-            <Button type="primary" onClick={openCreate}>
-              新建客户
-            </Button>
-          )
-        }
-        filter={
-          <Form
-            form={filterForm}
-            layout="inline"
-            onFinish={(v) => {
-              setKeyword(v.keyword || undefined);
-              setPage(1);
-              onSearch(v.keyword || undefined, 1, pageSize);
-            }}
-          >
-            <Form.Item label="关键字" name="keyword">
-              <Input allowClear placeholder="编码/名称" style={{ width: 180 }} />
-            </Form.Item>
-            <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit">
-                  查询
-                </Button>
-                <Button
-                  onClick={() => {
-                    filterForm.resetFields();
-                    setKeyword(undefined);
-                    setPage(1);
-                    onSearch(undefined, 1, pageSize);
-                  }}
-                >
-                  重置
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        }
-        tableProps={{
-          rowKey: "id",
-          loading,
-          columns,
-          dataSource: rows,
-          scroll: { x: 900 },
-          pagination: {
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-              onSearch(keyword, p, ps);
-            },
-            showTotal: (t) => `共 ${t} 条`,
+      <ProTable<Customer>
+        rowKey="id"
+        actionRef={actionRef}
+        columns={[
+          {
+            title: "关键字",
+            dataIndex: "keyword",
+            hideInTable: true,
+            fieldProps: { placeholder: "编码/名称", allowClear: true },
           },
+          ...columns,
+        ]}
+        request={request}
+        headerTitle={false}
+        options={false}
+        scroll={{ x: 900 }}
+        search={{
+          labelWidth: "auto",
+          defaultCollapsed: false,
+          // 新建按钮放筛选行右侧(替代默认工具栏行)
+          optionRender: (_searchConfig, _props, dom) => [
+            ...dom,
+            isAdmin && (
+              <Button key="new" type="primary" onClick={openCreate}>
+                新建客户
+              </Button>
+            ),
+          ],
+        }}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (t) => `共 ${t} 条`,
         }}
       />
 

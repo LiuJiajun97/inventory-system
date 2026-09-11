@@ -1,25 +1,25 @@
 // 物品列表 + 新建/编辑抽屉(SPEC-WEB V2 2.9)
+// ProTable 版:筛选字段由 columns 配置驱动(关键字/分类),新建按钮经 optionRender 放筛选行右侧
 // 属性 KV 动态行:加行/删行,JSON 自动拼
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   Input,
   InputNumber,
   Select,
   Button,
-  Table,
   Drawer,
   Space,
   App,
   Tooltip,
 } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
+import { ProTable } from "@ant-design/pro-components";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { itemApi, dictApi } from "../../api";
 import type { Item } from "../../types";
 import { getUser } from "../../auth/useAuth";
-import { ListPageShell } from "../../components/ListPageShell";
 
 interface AttrRow {
   key: string;
@@ -27,55 +27,48 @@ interface AttrRow {
 }
 
 export function ItemListPage() {
-  const [rows, setRows] = useState<Item[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [loading, setLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<Item | null>(null);
   const [attrs, setAttrs] = useState<AttrRow[]>([{ key: "", value: "" }]);
   const [categoryOptions, setCategoryOptions] = useState<Array<{ code: string; label: string }>>([]);
   const [form] = Form.useForm();
-  const [filterForm] = Form.useForm();
+  const actionRef = useRef<ActionType>();
   const user = getUser();
   const { message } = App.useApp();
 
-  const load = async (pg = 1, ps = pageSize) => {
-    setLoading(true);
-    try {
-      const res = await itemApi.list({
-        keyword: filterForm.getFieldValue("keyword") || undefined,
-        itemCategory: filterForm.getFieldValue("itemCategory") || undefined,
-        page: pg,
-        pageSize: ps,
-      });
-      setRows(res.rows);
-      setTotal(res.total);
-      setPage(pg);
-      setPageSize(ps);
-    } catch {
-      // 拦截器已处理
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 分类下拉数据源(异步加载,仅用于筛选项与列展示)
   useEffect(() => {
-    load();
     dictApi.getType("itemCategory").then(setCategoryOptions).catch(() => undefined);
   }, []);
 
-  const columns: ColumnsType<Item> = [
-    { title: "编码", dataIndex: "itemCode", width: 180 },
-    { title: "名称", dataIndex: "itemName", width: 180 },
-    { title: "单位", dataIndex: "unit", width: 80 },
-    { title: "规格", dataIndex: "spec", width: 140, ellipsis: true },
+  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+  const request = async (params: {
+    current?: number;
+    pageSize?: number;
+    keyword?: string;
+    itemCategory?: string;
+  }) => {
+    const res = await itemApi.list({
+      keyword: params.keyword || undefined,
+      itemCategory: params.itemCategory || undefined,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
+    return { data: res.rows, success: true, total: res.total };
+  };
+
+  const columns: ProColumns<Item>[] = [
+    { title: "编码", dataIndex: "itemCode", width: 180, search: false },
+    { title: "名称", dataIndex: "itemName", width: 180, search: false },
+    { title: "单位", dataIndex: "unit", width: 80, search: false },
+    { title: "规格", dataIndex: "spec", width: 140, ellipsis: true, search: false },
     {
       title: "分类",
       dataIndex: "category",
       width: 90,
-      render: (v?: string | null) => categoryOptions.find((d) => d.code === v)?.label ?? v ?? "-",
+      search: false,
+      render: (_v, r) => categoryOptions.find((d) => d.code === r.category)?.label ?? r.category ?? "-",
     },
     {
       title: "最低库存",
@@ -83,7 +76,8 @@ export function ItemListPage() {
       width: 90,
       align: "right",
       className: "num-cell",
-      render: (v?: string | number | null) => (v == null ? "-" : String(v)),
+      search: false,
+      render: (_v, r) => (r.minStock == null ? "-" : String(r.minStock)),
     },
     {
       title: "默认税率(%)",
@@ -91,14 +85,17 @@ export function ItemListPage() {
       width: 100,
       align: "right",
       className: "num-cell",
-      render: (v?: string | number | null) =>
-        v == null ? "-" : Number(v).toFixed(2),
+      search: false,
+      render: (_v, r) =>
+        r.defaultTaxRate == null ? "-" : Number(r.defaultTaxRate).toFixed(2),
     },
     {
       title: "扩展属性",
       dataIndex: "attributes",
       width: 240,
-      render: (v?: string | null) => {
+      search: false,
+      render: (_v, r) => {
+        const v = r.attributes;
         if (!v) return "-";
         const display = v.length > 40 ? v.slice(0, 40) + "..." : v;
         return (
@@ -122,13 +119,15 @@ export function ItemListPage() {
       dataIndex: "creator",
       width: 100,
       ellipsis: true,
-      render: (v?: string | null) => v ?? "-",
+      search: false,
+      render: (_v, r) => r.creator ?? "-",
     },
     ...(user?.role === "admin"
       ? [
           {
             title: "操作",
             width: 80,
+            search: false,
             render: (_v: unknown, r: Item) => (
               <Button
                 type="link"
@@ -214,7 +213,7 @@ export function ItemListPage() {
       form.resetFields();
       setAttrs([{ key: "", value: "" }]);
       setEditing(null);
-      load(page, pageSize);
+      actionRef.current?.reload();
     } catch {
       // 拦截器已处理
     }
@@ -227,73 +226,51 @@ export function ItemListPage() {
     setEditing(null);
   };
 
-  const filterNode = (
-    <Form
-      form={filterForm}
-      layout="inline"
-      onFinish={() => {
-        setPage(1);
-        load(1, pageSize);
-      }}
-    >
-      <Form.Item label="关键字" name="keyword">
-        <Input allowClear placeholder="编码/名称" style={{ width: 180 }} />
-      </Form.Item>
-      <Form.Item label="分类" name="itemCategory">
-        <Select
-          allowClear
-          placeholder="全部"
-          style={{ width: 140 }}
-          options={categoryOptions.map((d) => ({ label: d.label, value: d.code }))}
-        />
-      </Form.Item>
-      <Form.Item>
-        <Space>
-          <Button type="primary" htmlType="submit">
-            查询
-          </Button>
-          <Button
-            onClick={() => {
-              filterForm.resetFields();
-              setPage(1);
-              load(1, pageSize);
-            }}
-          >
-            重置
-          </Button>
-        </Space>
-      </Form.Item>
-    </Form>
-  );
-
   return (
     <>
-      <ListPageShell
-        extra={
-          user?.role === "admin" && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={openCreate}
-            >
-              新建物品
-            </Button>
-          )
-        }
-        filter={filterNode}
-        tableProps={{
-          rowKey: "id",
-          loading,
-          columns,
-          dataSource: rows,
-          pagination: {
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            onChange: (p, ps) => load(p, ps),
-            showTotal: (t) => `共 ${t} 条`,
+      <ProTable<Item>
+        rowKey="id"
+        actionRef={actionRef}
+        columns={[
+          {
+            title: "关键字",
+            dataIndex: "keyword",
+            hideInTable: true,
+            fieldProps: { placeholder: "编码/名称", allowClear: true },
           },
+          {
+            title: "分类",
+            dataIndex: "itemCategory",
+            valueType: "select",
+            hideInTable: true,
+            fieldProps: {
+              allowClear: true,
+              placeholder: "全部",
+              options: categoryOptions.map((d) => ({ label: d.label, value: d.code })),
+            },
+          },
+          ...columns,
+        ]}
+        request={request}
+        headerTitle={false}
+        options={false}
+        search={{
+          labelWidth: "auto",
+          defaultCollapsed: false,
+          // 新建按钮放筛选行右侧(替代默认工具栏行)
+          optionRender: (_searchConfig, _props, dom) => [
+            ...dom,
+            user?.role === "admin" && (
+              <Button key="new" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                新建物品
+              </Button>
+            ),
+          ],
+        }}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (t) => `共 ${t} 条`,
         }}
       />
 

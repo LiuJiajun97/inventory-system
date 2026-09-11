@@ -1,7 +1,8 @@
 // 字典管理页(传统类型列表 + Drawer 二级管理弹窗)
+// ProTable 版:主表全量返回(非分页,pagination=false),关键字筛选保持前端内存过滤
 // admin 可见操作列;viewer 只读
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useRef } from "react";
 import {
   Table,
   Switch,
@@ -19,16 +20,13 @@ import {
   Typography,
 } from "antd";
 import { PlusOutlined, EditOutlined, ToolOutlined } from "@ant-design/icons";
+import { ProTable } from "@ant-design/pro-components";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { dictApi } from "../../api";
 import type { DictItem, DictTypeItem } from "../../types/phase1";
-import type { ColumnsType } from "antd/es/table";
-import { ListPageShell } from "../../components/ListPageShell";
 
 export function DictPage() {
   const { message } = App.useApp();
-  // 类型列表
-  const [types, setTypes] = useState<DictTypeItem[]>([]);
-  const [typesLoading, setTypesLoading] = useState(false);
   // 新建类型弹窗
   const [typeModalOpen, setTypeModalOpen] = useState(false);
   const [typeForm] = Form.useForm();
@@ -45,40 +43,28 @@ export function DictPage() {
   // 新建字典项弹窗
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [itemForm] = Form.useForm();
-  // 角色
+  // 角色(接口全量返回成功即视为 admin,保持原逻辑)
   const [isAdmin, setIsAdmin] = useState(false);
-  // 关键字筛选(后端全量返回,前端内存过滤)
-  const [keyword, setKeyword] = useState("");
-  const [filterForm] = Form.useForm();
+  const actionRef = useRef<ActionType>();
 
-  const filteredTypes = types.filter((t) => {
-    const kw = keyword.trim().toLowerCase();
-    if (!kw) return true;
-    return (
-      t.typeCode.toLowerCase().includes(kw) || t.typeName.toLowerCase().includes(kw)
-    );
-  });
-
-  // 加载类型列表
-  const loadTypes = useCallback(async () => {
-    setTypesLoading(true);
+  // 数据全量返回(非分页):后端 getTypes() + 前端内存按关键字过滤
+  const request = async (params: { current?: number; pageSize?: number; keyword?: string }) => {
     try {
-      const res = await dictApi.getTypes();
-      setTypes(res);
+      const types = await dictApi.getTypes();
       setIsAdmin(true);
+      const kw = (params.keyword ?? "").trim().toLowerCase();
+      const data = types.filter(
+        (t) => !kw || t.typeCode.toLowerCase().includes(kw) || t.typeName.toLowerCase().includes(kw)
+      );
+      return { data, success: true, total: data.length };
     } catch {
       setIsAdmin(false);
-    } finally {
-      setTypesLoading(false);
+      return { data: [] as DictTypeItem[], success: true, total: 0 };
     }
-  }, []);
-
-  useEffect(() => {
-    loadTypes();
-  }, [loadTypes]);
+  };
 
   // 加载 Drawer 内字典项
-  const loadItems = useCallback(async (typeCode: string) => {
+  const loadItems = async (typeCode: string) => {
     setItemsLoading(true);
     try {
       const res = await dictApi.getAll(typeCode);
@@ -88,7 +74,7 @@ export function DictPage() {
     } finally {
       setItemsLoading(false);
     }
-  }, []);
+  };
 
   // 打开 Drawer
   const openDrawer = (record: DictTypeItem) => {
@@ -102,7 +88,7 @@ export function DictPage() {
     setDrawerOpen(false);
     setDrawerType(null);
     setItems([]);
-    loadTypes();
+    actionRef.current?.reload();
   };
 
   // 新建类型
@@ -117,7 +103,7 @@ export function DictPage() {
       message.success("类型创建成功");
       setTypeModalOpen(false);
       typeForm.resetFields();
-      loadTypes();
+      actionRef.current?.reload();
     } catch {
       // 拦截器已处理
     }
@@ -146,7 +132,7 @@ export function DictPage() {
       setEditModalOpen(false);
       setEditingType(null);
       editForm.resetFields();
-      loadTypes();
+      actionRef.current?.reload();
       // 如果 Drawer 打开着该类型，同步更新标题
       if (drawerType?.typeCode === editingType.typeCode) {
         setDrawerType((prev) =>
@@ -164,7 +150,7 @@ export function DictPage() {
     try {
       await dictApi.updateType(typeCode, { status: newStatus });
       message.success(newStatus === 1 ? "已启用" : "已停用");
-      loadTypes();
+      actionRef.current?.reload();
     } catch {
       // 拦截器已处理
     }
@@ -185,21 +171,28 @@ export function DictPage() {
       setItemModalOpen(false);
       itemForm.resetFields();
       loadItems(drawerType!.typeCode);
-      loadTypes(); // 刷新 enabledCount
+      actionRef.current?.reload(); // 刷新 enabledCount
     } catch {
       // 拦截器已处理
     }
   };
 
-  // 类型列表表格列
-  const typeColumns: ColumnsType<DictTypeItem> = [
+  // 类型列表表格列(关键字为纯筛选项,不入表格)
+  const typeColumns: ProColumns<DictTypeItem>[] = [
+    {
+      title: "关键字",
+      dataIndex: "keyword",
+      hideInTable: true,
+      fieldProps: { placeholder: "编码/名称", allowClear: true },
+    },
     {
       title: "类型编码",
       dataIndex: "typeCode",
       key: "typeCode",
-      render: (text: string) => (
+      search: false,
+      render: (_v, record) => (
         <Typography.Text code style={{ fontSize: 13 }}>
-          {text}
+          {record.typeCode}
         </Typography.Text>
       ),
     },
@@ -207,20 +200,23 @@ export function DictPage() {
       title: "类型名称",
       dataIndex: "typeName",
       key: "typeName",
+      search: false,
     },
     {
       title: "备注",
       dataIndex: "remark",
       key: "remark",
-      render: (text: string) => text || <span style={{ color: "#ccc" }}>-</span>,
+      search: false,
+      render: (_v, record) => record.remark || <span style={{ color: "#ccc" }}>-</span>,
     },
     {
       title: "启用项数",
       dataIndex: "enabledCount",
       key: "enabledCount",
       width: 100,
-      render: (count: number) => (
-        <Badge count={count} style={{ backgroundColor: "#52c41a" }} showZero />
+      search: false,
+      render: (_v, record) => (
+        <Badge count={record.enabledCount} style={{ backgroundColor: "#52c41a" }} showZero />
       ),
     },
     {
@@ -228,8 +224,9 @@ export function DictPage() {
       dataIndex: "status",
       key: "status",
       width: 80,
-      render: (status: number) =>
-        status === 1 ? (
+      search: false,
+      render: (_v, record) =>
+        record.status === 1 ? (
           <Tag color="success">启用</Tag>
         ) : (
           <Tag color="default">停用</Tag>
@@ -241,6 +238,7 @@ export function DictPage() {
             title: "操作",
             key: "action",
             width: 220,
+            search: false,
             render: (_: unknown, record: DictTypeItem) => (
               <Space size="small">
                 <Button
@@ -289,58 +287,39 @@ export function DictPage() {
       : []),
   ];
 
-  // 关键字筛选表单
-  const filterNode = (
-    <Form
-      form={filterForm}
-      layout="inline"
-      onFinish={(v: Record<string, unknown>) => setKeyword((v.keyword as string) || "")}
-    >
-      <Form.Item label="关键字" name="keyword">
-        <Input allowClear placeholder="编码/名称" style={{ width: 180 }} />
-      </Form.Item>
-      <Form.Item>
-        <Space>
-          <Button type="primary" htmlType="submit">查询</Button>
-          <Button
-            onClick={() => {
-              filterForm.resetFields();
-              setKeyword("");
-            }}
-          >
-            重置
-          </Button>
-        </Space>
-      </Form.Item>
-    </Form>
-  );
-
   return (
-    <ListPageShell
-      filter={filterNode}
-      extra={
-        isAdmin && (
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              typeForm.resetFields();
-              setTypeModalOpen(true);
-            }}
-          >
-            新建类型
-          </Button>
-        )
-      }
-      tableProps={{
-        rowKey: "typeCode",
-        columns: typeColumns,
-        dataSource: filteredTypes,
-        loading: typesLoading,
-        pagination: false,
-        size: "middle",
-      }}
-    >
+    <>
+      <ProTable<DictTypeItem>
+        rowKey="typeCode"
+        actionRef={actionRef}
+        columns={typeColumns}
+        request={request}
+        headerTitle={false}
+        options={false}
+        size="middle"
+        search={{
+          labelWidth: "auto",
+          defaultCollapsed: false,
+          // 新建类型按钮放筛选行右侧(替代默认工具栏行,仅 admin)
+          optionRender: (_searchConfig, _props, dom) => [
+            ...dom,
+            isAdmin && (
+              <Button
+                key="new"
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  typeForm.resetFields();
+                  setTypeModalOpen(true);
+                }}
+              >
+                新建类型
+              </Button>
+            ),
+          ],
+        }}
+        pagination={false}
+      />
 
       {/* 新建类型弹窗 */}
       <Modal
@@ -485,7 +464,7 @@ export function DictPage() {
                         await dictApi.setStatus(record.id, newStatus);
                         message.success(newStatus === 1 ? "已启用" : "已停用");
                         loadItems(drawerType!.typeCode);
-                        loadTypes();
+                        actionRef.current?.reload();
                       } catch {
                         // 拦截器已处理
                       }
@@ -536,7 +515,7 @@ export function DictPage() {
       <style>{`
         .dict-row-disabled td { opacity: 0.5; }
       `}</style>
-    </ListPageShell>
+    </>
   );
 }
 

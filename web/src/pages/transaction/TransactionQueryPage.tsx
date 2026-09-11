@@ -1,82 +1,136 @@
 // 流水查询(SPEC-WEB V2 2.8)
+// ProTable 版:筛选字段由 columns 配置驱动(仓库/物品/业务/日期区间)
 // 变动量正绿负红 + tabular-nums + 业务 Tag 入库=blue 出库=orange
+// 日期区间显式转本地时间串:from=当天 00:00:00,to=结束当天 23:59:59(含结束当天)
 
 import { useEffect, useState } from "react";
-import { Form, Select, DatePicker, Button, Table, Space } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import { ProTable } from "@ant-design/pro-components";
+import type { ProColumns } from "@ant-design/pro-components";
+import dayjs from "dayjs";
 import { itemApi, transactionApi, warehouseApi } from "../../api";
 import type { Item, StockTransaction, Warehouse } from "../../types";
-import { ListPageShell } from "../../components/ListPageShell";
 import { fmtDateTime } from "../../utils/format";
 import { BizTag, BIZ_OPTIONS } from "../../components/StatusTag";
 
+// ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
+// 部分路径(弹层选择)可能传 dayjs,两种都兼容
+function dayPart(v: unknown): string | undefined {
+  if (v == null) return undefined;
+  return typeof v === "string" ? v : (v as dayjs.Dayjs).format("YYYY-MM-DD");
+}
+
 export function TransactionQueryPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [rows, setRows] = useState<StockTransaction[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
-  const [form] = Form.useForm();
 
+  // 仓库/物品下拉数据源(异步加载,仅用于筛选项)
   useEffect(() => {
-    warehouseApi.list({ page: 1, pageSize: 200 }).then((r) => setWarehouses(r.rows)).catch(() => undefined);
-    itemApi.list({ page: 1, pageSize: 200 }).then((r) => setItems(r.rows)).catch(() => undefined);
-    // 进入页面即按默认条件(最新流水,每页 20)拉取,避免初始"暂无数据"
-    onSearch({}, 1, 20);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    warehouseApi
+      .list({ page: 1, pageSize: 200 })
+      .then((r) => setWarehouses(r.rows))
+      .catch(() => undefined);
+    itemApi
+      .list({ page: 1, pageSize: 200 })
+      .then((r) => setItems(r.rows))
+      .catch(() => undefined);
   }, []);
 
-  // p/ps 显式传参,避免读到 setState 前的旧闭包值
-  const onSearch = async (
-    values: {
-      warehouseId?: number;
-      itemId?: number;
-      bizCode?: string;
-      range?: [string, string];
-    },
-    p: number = page,
-    ps: number = pageSize,
-  ) => {
-    setLoading(true);
-    try {
-      const res = await transactionApi.query({
-        warehouseId: values.warehouseId,
-        itemId: values.itemId,
-        bizCode: values.bizCode as "inbound" | "outbound" | undefined,
-        from: values.range?.[0],
-        to: values.range?.[1],
-        page: p,
-        pageSize: ps,
-      });
-      setRows(res.rows);
-      setTotal(res.total);
-    } catch {
-      // 拦截器已处理
-    } finally {
-      setLoading(false);
-    }
+  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+  const request = async (params: {
+    current?: number;
+    pageSize?: number;
+    warehouseId?: number;
+    itemId?: number;
+    bizCode?: string;
+    from?: string;
+    to?: string;
+  }) => {
+    const res = await transactionApi.query({
+      warehouseId: params.warehouseId,
+      itemId: params.itemId,
+      bizCode: params.bizCode as "inbound" | "outbound" | undefined,
+      from: params.from,
+      to: params.to,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
+    return { data: res.rows, success: true, total: res.total };
   };
 
-  const columns: ColumnsType<StockTransaction> = [
+  const columns: ProColumns<StockTransaction>[] = [
+    {
+      title: "仓库",
+      dataIndex: "warehouseId",
+      valueType: "select",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部仓库",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+    },
+    {
+      title: "物品",
+      dataIndex: "itemId",
+      valueType: "select",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        showSearch: true,
+        optionFilterProp: "label",
+        placeholder: "全部",
+        options: items.map((it) => ({ label: `${it.itemCode} ${it.itemName}`, value: it.id })),
+      },
+    },
+    {
+      title: "业务",
+      dataIndex: "bizCode",
+      width: 80,
+      valueType: "select",
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: BIZ_OPTIONS,
+      },
+      render: (_v, r) => <BizTag biz={r.bizCode} />,
+    },
+    {
+      title: "日期范围",
+      dataIndex: "range",
+      valueType: "dateRange",
+      hideInTable: true,
+      search: {
+        // 统一约定:东八区本地时间,空格分隔;开始=当天 00:00:00,结束=当天 23:59:59(含结束当天)
+        transform: (value: [unknown, unknown]) => {
+          const from = dayPart(value[0]);
+          const to = dayPart(value[1]);
+          return {
+            from: from == null ? undefined : from + " 00:00:00",
+            to: to == null ? undefined : to + " 23:59:59",
+          };
+        },
+      },
+    },
     {
       title: "时间",
       dataIndex: "createdAt",
       width: 170,
-      render: (v: string) =>
-        fmtDateTime(v),
+      search: false,
+      render: (_v, r) => fmtDateTime(r.createdAt),
     },
     {
       title: "仓库",
       dataIndex: ["warehouse", "warehouseName"],
       width: 140,
       ellipsis: true,
+      search: false,
     },
     {
       title: "物品",
       width: 200,
       ellipsis: true,
+      search: false,
       render: (_v, r) => (
         <span>
           {r.item?.itemName ?? "-"}
@@ -93,21 +147,17 @@ export function TransactionQueryPage() {
       dataIndex: ["batch", "batchNo"],
       width: 130,
       ellipsis: true,
-    },
-    {
-      title: "业务",
-      dataIndex: "bizCode",
-      width: 80,
-      render: (v: string) => <BizTag biz={v} />,
+      search: false,
     },
     {
       title: "单号",
       dataIndex: "docNo",
       width: 180,
       ellipsis: true,
-      render: (v?: string | null) =>
-        v ? (
-          <span style={{ fontFamily: "monospace", fontSize: 12 }}>{v}</span>
+      search: false,
+      render: (_v, r) =>
+        r.docNo ? (
+          <span style={{ fontFamily: "monospace", fontSize: 12 }}>{r.docNo}</span>
         ) : (
           "-"
         ),
@@ -118,8 +168,9 @@ export function TransactionQueryPage() {
       width: 130,
       align: "right",
       className: "num-cell",
-      render: (v: string | number) => {
-        const n = Number(v);
+      search: false,
+      render: (_v, r) => {
+        const n = Number(r.changeQty);
         return (
           <span className={n >= 0 ? "qty-positive" : "qty-negative"}>
             {n >= 0 ? "+" : ""}
@@ -134,92 +185,24 @@ export function TransactionQueryPage() {
       width: 120,
       align: "right",
       className: "num-cell",
-      render: (v: string | number) => Number(v).toFixed(4),
+      search: false,
+      render: (_v, r) => Number(r.afterQty).toFixed(4),
     },
-    { title: "操作人", dataIndex: "operator", width: 100, ellipsis: true },
+    { title: "操作人", dataIndex: "operator", width: 100, ellipsis: true, search: false },
   ];
 
-  const filterNode = (
-    <Form
-      form={form}
-      layout="inline"
-      onFinish={(v) => {
-        setPage(1);
-        onSearch(v, 1, pageSize);
-      }}
-    >
-      <Form.Item label="仓库" name="warehouseId">
-        <Select
-          allowClear
-          placeholder="全部仓库"
-          style={{ width: 180 }}
-          options={warehouses.map((w) => ({
-            label: w.warehouseName,
-            value: w.id,
-          }))}
-        />
-      </Form.Item>
-      <Form.Item label="物品" name="itemId">
-        <Select
-          allowClear
-          showSearch
-          placeholder="全部"
-          style={{ width: 180 }}
-          optionFilterProp="label"
-          options={items.map((it) => ({ label: `${it.itemCode} ${it.itemName}`, value: it.id }))}
-        />
-      </Form.Item>
-      <Form.Item label="业务" name="bizCode">
-        <Select
-          allowClear
-          placeholder="全部"
-          style={{ width: 140 }}
-          options={BIZ_OPTIONS}
-        />
-      </Form.Item>
-      <Form.Item label="日期范围" name="range">
-        <DatePicker.RangePicker />
-      </Form.Item>
-      <Form.Item>
-        <Space>
-          <Button type="primary" htmlType="submit">
-            查询
-          </Button>
-          <Button
-            onClick={() => {
-              form.resetFields();
-              setPage(1);
-              setPageSize(20);
-              onSearch({}, 1, 20);
-            }}
-          >
-            重置
-          </Button>
-        </Space>
-      </Form.Item>
-    </Form>
-  );
-
   return (
-    <ListPageShell
-      filter={filterNode}
-      tableProps={{
-        rowKey: "id",
-        loading,
-        columns,
-        dataSource: rows,
-        pagination: {
-          current: page,
-          pageSize,
-          total,
-          showSizeChanger: true,
-          onChange: (p, ps) => {
-            setPage(p);
-            setPageSize(ps);
-            onSearch(form.getFieldsValue(), p, ps);
-          },
-          showTotal: (t) => `共 ${t} 条`,
-        },
+    <ProTable<StockTransaction>
+      rowKey="id"
+      columns={columns}
+      request={request}
+      headerTitle={false}
+      options={false}
+      search={{ labelWidth: "auto", defaultCollapsed: false }}
+      pagination={{
+        pageSize: 20,
+        showSizeChanger: true,
+        showTotal: (t) => `共 ${t} 条`,
       }}
     />
   );

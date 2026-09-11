@@ -1,85 +1,118 @@
 // 出库单列表(SPEC-WEB V2 2.5)
+// ProTable 版:筛选字段由 columns 配置驱动(单号/仓库/状态/日期区间)
 
-import { useEffect, useState } from "react";
-import { DatePicker, Form, Input, Select, Button, Table, Modal, Descriptions, Tag, Space } from "antd";
+import { useEffect, useRef, useState } from "react";
+import { Button, Descriptions, Modal, Space, Table, Tag } from "antd";
+import { ProTable } from "@ant-design/pro-components";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
-
-const { RangePicker } = DatePicker;
-import type { ColumnsType } from "antd/es/table";
 import { outboundApi, warehouseApi } from "../../api";
 import type { OutboundDoc, Warehouse } from "../../types";
 import { getUser } from "../../auth/useAuth";
-import { ListPageShell } from "../../components/ListPageShell";
 import { fmtDateTime } from "../../utils/format";
 import { StatusTag } from "../../components/StatusTag";
 
+// ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
+// 部分路径(弹层选择)可能传 dayjs,两种都兼容
+function toDay(v: unknown): string | undefined {
+  if (v == null) return undefined;
+  return typeof v === "string" ? v : (v as dayjs.Dayjs).format("YYYY-MM-DD");
+}
+
 export function OutboundListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [rows, setRows] = useState<OutboundDoc[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [loading, setLoading] = useState(false);
   const [detail, setDetail] = useState<OutboundDoc | null>(null);
-  const [form] = Form.useForm();
+  const actionRef = useRef<ActionType>();
   const user = getUser();
   const location = useLocation();
 
+  // 仓库下拉数据源(异步加载,仅用于筛选项)
   useEffect(() => {
-    warehouseApi.list({ page: 1, pageSize: 200 }).then((r) => setWarehouses(r.rows)).catch(() => undefined);
-    onSearch({}, 1, 20);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    warehouseApi
+      .list({ page: 1, pageSize: 200 })
+      .then((r) => setWarehouses(r.rows))
+      .catch(() => undefined);
   }, []);
 
+  // 从新建页带 ?refresh= 跳回时自动重载列表
   useEffect(() => {
-    if (location.search.includes("refresh")) onSearch(form.getFieldsValue(), 1, pageSize);
+    if (location.search.includes("refresh")) actionRef.current?.reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  const onSearch = async (
-    values: {
-      docNo?: string;
-      status?: string;
-      warehouseId?: number;
-      range?: [dayjs.Dayjs, dayjs.Dayjs] | null;
-    },
-    pg = page,
-    ps = pageSize,
-  ) => {
-    setLoading(true);
-    try {
-      const res = await outboundApi.list({
-        docNo: values.docNo,
-        status: values.status,
-        warehouseId: values.warehouseId,
-        from: values.range?.[0]?.format("YYYY-MM-DD"),
-        to: values.range?.[1]?.format("YYYY-MM-DD"),
-        page: pg,
-        pageSize: ps,
-      });
-      setRows(res.rows);
-      setTotal(res.total);
-    } catch {
-      // 拦截器已处理
-    } finally {
-      setLoading(false);
-    }
+  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+  const request = async (params: {
+    current?: number;
+    pageSize?: number;
+    docNo?: string;
+    status?: string;
+    warehouseId?: number;
+    from?: string;
+    to?: string;
+  }) => {
+    const res = await outboundApi.list({
+      docNo: params.docNo,
+      status: params.status,
+      warehouseId: params.warehouseId,
+      from: params.from,
+      to: params.to,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
+    return { data: res.rows, success: true, total: res.total };
   };
 
-  const columns: ColumnsType<OutboundDoc> = [
+  const columns: ProColumns<OutboundDoc>[] = [
     {
       title: "单号",
       dataIndex: "docNo",
       width: 220,
-      render: (v: string) => (
-        <span style={{ fontFamily: "monospace", fontSize: 13 }}>{v}</span>
+      fieldProps: { placeholder: "出库单号", allowClear: true },
+      render: (_v, r) => (
+        <span style={{ fontFamily: "monospace", fontSize: 13 }}>{r.docNo}</span>
       ),
+    },
+    {
+      title: "仓库",
+      dataIndex: "warehouseId",
+      valueType: "select",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+    },
+    {
+      title: "状态",
+      dataIndex: "status",
+      valueEnum: { finished: { text: "已完成" } },
+      render: (_v, r) =>
+        r.status === "finished" ? (
+          <StatusTag status="outbound" label="已完成" />
+        ) : (
+          <Tag bordered>{r.status}</Tag>
+        ),
+    },
+    {
+      title: "日期",
+      dataIndex: "range",
+      valueType: "dateRange",
+      hideInTable: true,
+      search: {
+        transform: (value: [unknown, unknown]) => ({
+          from: toDay(value[0]),
+          to: toDay(value[1]),
+        }),
+      },
     },
     {
       title: "仓库",
       width: 140,
       ellipsis: true,
+      search: false,
       // 后端嵌入 warehouse 对象;缺失时用本地仓库列表兑底,避免显示 ID
       render: (_v, r) =>
         r.warehouse?.warehouseName ??
@@ -89,18 +122,21 @@ export function OutboundListPage() {
     {
       title: "关联单据",
       width: 150,
+      search: false,
       render: (_v, r) => r.refDocNo ?? "-",
     },
     {
       title: "客户",
       width: 130,
       ellipsis: true,
+      search: false,
       render: (_v, r) => r.customerName ?? "-",
     },
     {
       title: "物品摘要",
       width: 240,
       ellipsis: true,
+      search: false,
       render: (_v, r) => {
         const items = r.items ?? [];
         if (items.length === 0) return "-";
@@ -117,119 +153,56 @@ export function OutboundListPage() {
       width: 100,
       align: "right",
       className: "num-cell",
+      search: false,
       render: (_v, r) =>
         (r.items ?? [])
           .reduce((s, it) => s + Number(it.quantity), 0)
           .toFixed(4),
     },
-    { title: "创建人", dataIndex: "creator", width: 100, ellipsis: true },
+    { title: "创建人", dataIndex: "creator", width: 100, ellipsis: true, search: false },
     {
       title: "创建时间",
       dataIndex: "createdAt",
       width: 170,
-      render: (v: string) =>
-        fmtDateTime(v),
-    },
-    {
-      title: "状态",
-      dataIndex: "status",
-      width: 90,
-      render: (v: string) =>
-        v === "finished" ? (
-          <StatusTag status="outbound" label="已完成" />
-        ) : (
-          <Tag bordered>{v}</Tag>
-        ),
+      search: false,
+      render: (_v, r) => fmtDateTime(r.createdAt),
     },
     {
       title: "操作",
       width: 80,
       fixed: "right" as const,
+      search: false,
       render: (_v, row) => <a onClick={() => setDetail(row)}>查看详情</a>,
     },
   ];
 
-  const statusOptions = [
-    { label: "已完成", value: "finished" },
-  ];
-
-  const filterNode = (
-    <Form
-      form={form}
-      layout="inline"
-      onFinish={(v) => {
-        setPage(1);
-        onSearch(v);
-      }}
-    >
-      <Form.Item label="单号" name="docNo">
-        <Input allowClear placeholder="出库单号" style={{ width: 150 }} />
-      </Form.Item>
-      <Form.Item label="仓库" name="warehouseId">
-        <Select
-          allowClear
-          placeholder="全部"
-          style={{ width: 160 }}
-          options={warehouses.map((w) => ({
-            label: w.warehouseName,
-            value: w.id,
-          }))}
-        />
-      </Form.Item>
-      <Form.Item label="状态" name="status">
-        <Select allowClear placeholder="全部" style={{ width: 120 }} options={statusOptions} />
-      </Form.Item>
-      <Form.Item label="日期" name="range">
-        <RangePicker />
-      </Form.Item>
-      <Form.Item>
-        <Space>
-          <Button type="primary" htmlType="submit">
-            查询
-          </Button>
-          <Button
-            onClick={() => {
-              form.resetFields();
-              setPage(1);
-              onSearch({}, 1, pageSize);
-            }}
-          >
-            重置
-          </Button>
-        </Space>
-      </Form.Item>
-    </Form>
-  );
-
   return (
     <>
-      <ListPageShell
-        extra={
-          user?.role !== "viewer" && (
-            <Link to="/outbound/new">
-              <Button type="primary">新建出库单</Button>
-            </Link>
-          )
-        }
-        filter={filterNode}
-        tableProps={{
-          rowKey: "id",
-          loading,
-          columns,
-          dataSource: rows,
-          scroll: { x: 1480 },
-          pagination: {
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-              onSearch(form.getFieldsValue(), p, ps);
-            },
-            showTotal: (t) => `共 ${t} 条`,
-          },
+      <ProTable<OutboundDoc>
+        rowKey="id"
+        actionRef={actionRef}
+        columns={columns}
+        request={request}
+        headerTitle={false}
+        options={false}
+        scroll={{ x: 1480 }}
+        search={{
+          labelWidth: "auto",
+          defaultCollapsed: false,
+          // 新建按钮放筛选行右侧(替代默认工具栏行)
+          optionRender: (_searchConfig, _props, dom) => [
+            ...dom,
+            user?.role !== "viewer" && (
+              <Link key="new" to="/outbound/new">
+                <Button type="primary">新建出库单</Button>
+              </Link>
+            ),
+          ],
+        }}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          showTotal: (t) => `共 ${t} 条`,
         }}
       />
 
