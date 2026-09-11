@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 import lombok.Getter;
 import lombok.Setter;
+import java.math.BigDecimal;
 
 /**
  * 物品表实体(表 Item)。
@@ -36,9 +37,9 @@ public class ItemDO {
     /** 物料分类(轻量单级,可空)。 */
     private String category;
     /** 最低库存预警线(可空,非空才参与低库存预警)。 */
-    private java.math.BigDecimal minStock;
+    private BigDecimal minStock;
     /** 默认税率(百分数,默认 13.00,单据行取默认可改)。 */
-    private java.math.BigDecimal defaultTaxRate;
+    private BigDecimal defaultTaxRate;
     /** 状态:1 启用。 */
     private Integer status;
     /** 创建人。 */
@@ -53,23 +54,5 @@ public class ItemDO {
     /** 修改时间。 */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
-
-    /**
-     * 获取最低库存预警线。
-     *
-     * @return 最低库存预警线
-     */
-    public java.math.BigDecimal getMinStock() {
-        return minStock;
-    }
-
-    /**
-     * 获取默认税率。
-     *
-     * @return 默认税率
-     */
-    public java.math.BigDecimal getDefaultTaxRate() {
-        return defaultTaxRate;
-    }
 
 }

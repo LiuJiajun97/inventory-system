@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 import lombok.Getter;
 import lombok.Setter;
+import java.time.LocalDate;
 
 /**
  * 出库单表实体(表 OutboundDoc)。
@@ -49,15 +50,6 @@ public class OutboundDocDO {
     /** 关联销售订单 ID(可空)。 */
     private Long refDocId;
     /** 单据日期(可空)。 */
-    private java.time.LocalDate docDate;
-
-    /**
-     * 获取单据日期(可空)。
-     *
-     * @return 单据日期(可空)
-     */
-    public java.time.LocalDate getDocDate() {
-        return docDate;
-    }
+    private LocalDate docDate;
 
 }

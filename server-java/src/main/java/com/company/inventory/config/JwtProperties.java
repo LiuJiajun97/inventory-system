@@ -1,10 +1,7 @@
 package com.company.inventory.config;
 
-
-
-
-
-
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -12,6 +9,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @author inventory
  */
+@Getter
+@Setter
 @ConfigurationProperties(prefix = "jwt")
 public class JwtProperties {
 
@@ -20,40 +19,4 @@ public class JwtProperties {
 
     /** 过期秒数,默认 8 小时。 */
     private long expiresSeconds = 28800L;
-
-    /**
-     * 获取签名密钥。
-     *
-     * @return 密钥
-     */
-    public String getSecret() {
-        return secret;
-    }
-
-    /**
-     * 设置签名密钥。
-     *
-     * @param secret 密钥
-     */
-    public void setSecret(String secret) {
-        this.secret = secret;
-    }
-
-    /**
-     * 获取过期秒数。
-     *
-     * @return 过期秒数
-     */
-    public long getExpiresSeconds() {
-        return expiresSeconds;
-    }
-
-    /**
-     * 设置过期秒数。
-     *
-     * @param expiresSeconds 过期秒数
-     */
-    public void setExpiresSeconds(long expiresSeconds) {
-        this.expiresSeconds = expiresSeconds;
-    }
 }

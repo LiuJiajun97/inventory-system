@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 
 import lombok.Getter;
 import lombok.Setter;
+import java.time.LocalDate;
 
 /**
  * 入库单行表实体(表 InboundDocItem)。
@@ -41,28 +42,10 @@ public class InboundDocItemDO {
     /** 批次号(新批次或已有批次,可空)。 */
     private String batchNo;
     /** 生产日期(建批次用,可空)。 */
-    private java.time.LocalDate productionDate;
+    private LocalDate productionDate;
     /** 到期日期(建批次用,可空)。 */
-    private java.time.LocalDate expiryDate;
+    private LocalDate expiryDate;
     /** 关联采购订单行 ID(可空)。 */
     private Long refLineId;
-
-    /**
-     * 获取生产日期(建批次用,可空)。
-     *
-     * @return 生产日期(建批次用,可空)
-     */
-    public java.time.LocalDate getProductionDate() {
-        return productionDate;
-    }
-
-    /**
-     * 获取到期日期(建批次用,可空)。
-     *
-     * @return 到期日期(建批次用,可空)
-     */
-    public java.time.LocalDate getExpiryDate() {
-        return expiryDate;
-    }
 
 }
