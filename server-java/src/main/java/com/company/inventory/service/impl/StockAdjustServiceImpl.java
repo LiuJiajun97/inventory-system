@@ -30,6 +30,7 @@ import com.company.inventory.model.vo.stock.StockLine;
 import com.company.inventory.model.vo.warehouse.WarehouseVO;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 import org.slf4j.Logger;
@@ -115,22 +116,7 @@ public class StockAdjustServiceImpl implements StockAdjustService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public StockAdjustDocVO create(StockAdjustCreateDTO dto, String username) {
-        WarehouseDO warehouse = warehouseMapper.selectById(dto.warehouseId());
-        if (warehouse == null) {
-            throw new BizException("仓库不存在: id=" + dto.warehouseId());
-        }
-        if (!ErrorCode.ADJUST_TYPE_GAIN.equals(dto.adjustType())
-                && !ErrorCode.ADJUST_TYPE_LOSS.equals(dto.adjustType())
-                && !ErrorCode.ADJUST_TYPE_SCRAP.equals(dto.adjustType())) {
-            throw new BizException("调整类型仅支持 gain/loss/scrap");
-        }
-        Set<Long> itemIds = dto.items().stream().map(StockAdjustLineDTO::itemId).collect(Collectors.toSet());
-        List<ItemDO> items = itemIds.isEmpty() ? List.of() : itemMasterMapper.selectByIds(itemIds);
-        Map<Long, ItemDO> itemMap = new HashMap<>();
-        for (ItemDO it : items) {
-            itemMap.put(it.getId(), it);
-        }
-
+        validateDto(dto);
         StockAdjustDocDO doc = new StockAdjustDocDO();
         doc.setDocNo(docNoService.generateAdjustDocNo());
         doc.setDocDate(dto.docDate());
@@ -142,6 +128,81 @@ public class StockAdjustServiceImpl implements StockAdjustService {
         doc.setCreator(username);
         doc.setCreatedAt(LocalDateTime.now());
         docMapper.insert(doc);
+        insertLines(doc.getId(), dto);
+        LOGGER.info("新建调整单: docNo={}, 类型={}, 行数={}, operator={}",
+                doc.getDocNo(), dto.adjustType(), dto.items().size(), username);
+        return get(doc.getId());
+    }
+
+    /**
+     * 编辑调整单(仅 draft/rejected 可编辑,行明细全量替换;已驳回编辑后回 draft 并清空驳回原因)。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public StockAdjustDocVO update(long id, StockAdjustCreateDTO dto, String username) {
+        StockAdjustDocDO doc = requireDoc(id);
+        stateSupport.assertWritable(doc.getStatus(), DOC_NAME);
+        if (!DocStatus.DRAFT.equals(doc.getStatus()) && !DocStatus.REJECTED.equals(doc.getStatus())) {
+            throw new BizException(DOC_NAME + "仅草稿/已驳回状态可编辑");
+        }
+        validateDto(dto);
+        doc.setDocDate(dto.docDate());
+        doc.setWarehouseId(dto.warehouseId());
+        doc.setAdjustType(dto.adjustType());
+        doc.setRefDocNo(dto.refDocNo());
+        doc.setRemark(dto.remark());
+        doc.setUpdater(username);
+        doc.setUpdatedAt(LocalDateTime.now());
+        boolean wasRejected = DocStatus.REJECTED.equals(doc.getStatus());
+        if (wasRejected) {
+            doc.setStatus(DocStatus.DRAFT);
+            doc.setRejectReason(null);
+        }
+        itemMapper.delete(new LambdaQueryWrapper<StockAdjustDocItemDO>()
+                .eq(StockAdjustDocItemDO::getDocId, id));
+        insertLines(id, dto);
+        // updateById 默认忽略 null 字段,已驳回单的驳回原因需显式 SET NULL 才能清空
+        LambdaUpdateWrapper<StockAdjustDocDO> updateWrapper = new LambdaUpdateWrapper<StockAdjustDocDO>()
+                .eq(StockAdjustDocDO::getId, id);
+        if (wasRejected) {
+            updateWrapper.set(StockAdjustDocDO::getRejectReason, null);
+        }
+        docMapper.update(doc, updateWrapper);
+        LOGGER.info("编辑调整单: id={}, docNo={}, 类型={}, 行数={}, operator={}",
+                id, doc.getDocNo(), dto.adjustType(), dto.items().size(), username);
+        return get(id);
+    }
+
+    /**
+     * 校验调整单入参(仓库存在、调整类型合法)。
+     *
+     * @param dto 入参
+     */
+    private void validateDto(StockAdjustCreateDTO dto) {
+        WarehouseDO warehouse = warehouseMapper.selectById(dto.warehouseId());
+        if (warehouse == null) {
+            throw new BizException("仓库不存在: id=" + dto.warehouseId());
+        }
+        if (!ErrorCode.ADJUST_TYPE_GAIN.equals(dto.adjustType())
+                && !ErrorCode.ADJUST_TYPE_LOSS.equals(dto.adjustType())
+                && !ErrorCode.ADJUST_TYPE_SCRAP.equals(dto.adjustType())) {
+            throw new BizException("调整类型仅支持 gain/loss/scrap");
+        }
+    }
+
+    /**
+     * 批量插入调整行(新建/编辑共用,行级物品规格单位快照由服务端带出)。
+     *
+     * @param docId 调整单 ID(必须已落库)
+     * @param dto   入参
+     */
+    private void insertLines(long docId, StockAdjustCreateDTO dto) {
+        Set<Long> itemIds = dto.items().stream().map(StockAdjustLineDTO::itemId).collect(Collectors.toSet());
+        List<ItemDO> items = itemIds.isEmpty() ? List.of() : itemMasterMapper.selectByIds(itemIds);
+        Map<Long, ItemDO> itemMap = new HashMap<>();
+        for (ItemDO it : items) {
+            itemMap.put(it.getId(), it);
+        }
         for (int i = 0; i < dto.items().size(); i++) {
             StockAdjustLineDTO line = dto.items().get(i);
             ItemDO item = itemMap.get(line.itemId());
@@ -149,7 +210,7 @@ public class StockAdjustServiceImpl implements StockAdjustService {
                 throw new BizException("物品不存在: id=" + line.itemId());
             }
             StockAdjustDocItemDO oi = new StockAdjustDocItemDO();
-            oi.setDocId(doc.getId());
+            oi.setDocId(docId);
             oi.setLineNo(i + 1);
             oi.setItemId(line.itemId());
             oi.setSpecSnapshot(item.getSpec());
@@ -161,9 +222,6 @@ public class StockAdjustServiceImpl implements StockAdjustService {
             oi.setReason(line.reason());
             itemMapper.insert(oi);
         }
-        LOGGER.info("新建调整单: docNo={}, 类型={}, 行数={}, operator={}",
-                doc.getDocNo(), dto.adjustType(), dto.items().size(), username);
-        return get(doc.getId());
     }
 
     /**

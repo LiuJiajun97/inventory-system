@@ -14,7 +14,7 @@ import { getUser } from "../../auth/useAuth";
 import { DocStatusTag } from "../../components/DocStatusTag";
 import { fmtDate } from "../../utils/format";
 
-const TYPE_LABEL: Record<string, string> = { gain: "盘盈(入库)", loss: "盘亏(出库)" };
+const TYPE_LABEL: Record<string, string> = { gain: "盘盈(入库)", loss: "盘亏(出库)", scrap: "报损(出库)" };
 
 // 状态机枚举:筛选下拉用 valueEnum,表格单元格仍用 DocStatusTag 自定义渲染(样式不变)
 const STATUS_ENUM = {
@@ -32,12 +32,14 @@ export function AdjustPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [detail, setDetail] = useState<StockAdjustDoc | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  // 非空为编辑模式(草稿/已驳回单),Drawer 复用新建表单
+  const [editId, setEditId] = useState<number | null>(null);
   const [rejectTarget, setRejectTarget] = useState<StockAdjustDoc | null>(null);
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
-  const [adjustType, setAdjustType] = useState<"gain" | "loss">("loss");
-  const [lines, setLines] = useState<Array<{ key: number; itemId?: number; qty?: number; unitPrice?: number; reason?: string }>>([{ key: 1 }]);
+  const [adjustType, setAdjustType] = useState<"gain" | "loss" | "scrap">("loss");
+  const [lines, setLines] = useState<Array<{ key: number; itemId?: number; qty?: number; unitPrice?: number; reason?: string; batchId?: number; locationId?: number }>>([{ key: 1 }]);
 
   const whName = (id: number) => warehouses.find((w) => w.id === id)?.warehouseName ?? `#${id}`;
 
@@ -87,7 +89,35 @@ export function AdjustPage() {
     createForm.resetFields();
     setAdjustType("loss");
     setLines([{ key: 1 }]);
+    setEditId(null);
     setCreateOpen(true);
+  };
+
+  // 编辑:GET 详情回填表头 + 行明细(行 key 用 1..n;批次/库位原样保留不展示编辑)
+  const openEdit = (row: StockAdjustDoc) => {
+    adjustApi
+      .get(row.id)
+      .then((doc) => {
+        createForm.resetFields();
+        createForm.setFieldsValue({
+          docDate: dayjs(doc.docDate),
+          warehouseId: doc.warehouseId,
+          remark: doc.remark ?? "",
+        });
+        setAdjustType(doc.adjustType as "gain" | "loss" | "scrap");
+        setLines((doc.items ?? []).map((l, i) => ({
+          key: i + 1,
+          itemId: l.itemId,
+          qty: Number(l.qty),
+          unitPrice: l.unitPrice != null ? Number(l.unitPrice) : undefined,
+          reason: l.reason ?? undefined,
+          batchId: l.batchId ? l.batchId : undefined,
+          locationId: l.locationId ? l.locationId : undefined,
+        })));
+        setEditId(doc.id);
+        setCreateOpen(true);
+      })
+      .catch(() => undefined);
   };
 
   const onCreate = async () => {
@@ -103,7 +133,7 @@ export function AdjustPage() {
     }
     setSaving(true);
     try {
-      await adjustApi.create({
+      const payload = {
         warehouseId: head.warehouseId,
         docDate: (head.docDate as Dayjs).format("YYYY-MM-DD"),
         adjustType,
@@ -113,10 +143,19 @@ export function AdjustPage() {
           qty: l.qty!,
           unitPrice: l.unitPrice,
           reason: l.reason,
+          batchId: l.batchId,
+          locationId: l.locationId,
         })),
-      });
-      Modal.success({ content: "调整单已创建(草稿)" });
+      };
+      if (editId != null) {
+        await adjustApi.update(editId, payload);
+        Modal.success({ content: "调整单已保存(仍为可编辑状态)" });
+      } else {
+        await adjustApi.create(payload);
+        Modal.success({ content: "调整单已创建(草稿)" });
+      }
       setCreateOpen(false);
+      setEditId(null);
       actionRef.current?.reload();
     } catch {
       // 拦截器已提示
@@ -200,6 +239,9 @@ export function AdjustPage() {
         const btns: React.ReactNode[] = [];
         if (isWriter && (s === "draft" || s === "rejected")) {
           btns.push(
+            <a key="edit" className="action-edit" onClick={() => openEdit(row)}>
+              编辑
+            </a>,
             <a key="submit" className="action-submit" onClick={() => doAction(() => adjustApi.submit(row.id), "已提交审批")}>
               提交
             </a>,
@@ -261,13 +303,13 @@ export function AdjustPage() {
       />
 
       <Drawer
-        title="新建库存调整单"
+        title={editId != null ? "编辑库存调整单" : "新建库存调整单"}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         width={640}
         extra={
           <Button type="primary" loading={saving} onClick={onCreate}>
-            保存为草稿
+            {editId != null ? "保存" : "保存为草稿"}
           </Button>
         }
       >
@@ -281,6 +323,8 @@ export function AdjustPage() {
                 options={[
                   { label: "盘盈(入库)", value: "gain" },
                   { label: "盘亏(出库)", value: "loss" },
+                  // 报损单仅编辑态可能出现(手工报损),新建保持盘盈/盘亏两项
+                  ...(editId != null ? [{ label: "报损(出库)", value: "scrap" }] : []),
                 ]}
               />
             </Form.Item>

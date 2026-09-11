@@ -150,7 +150,7 @@ export interface StocktakeCreatePayload {
 export interface AdjustCreatePayload {
   warehouseId: number;
   docDate: string;
-  adjustType: "gain" | "loss";
+  adjustType: "gain" | "loss" | "scrap";
   refDocNo?: string;
   remark?: string;
   items: Array<{
@@ -269,6 +269,8 @@ export const adjustApi = {
   get: (id: number) => http.get<unknown, StockAdjustDoc>(`/stock-adjusts/${id}`),
   create: (data: AdjustCreatePayload) =>
     http.post<unknown, StockAdjustDoc>("/stock-adjusts", data),
+  update: (id: number, data: AdjustCreatePayload) =>
+    http.put<unknown, StockAdjustDoc>(`/stock-adjusts/${id}`, data),
   submit: (id: number) => http.post(`/stock-adjusts/${id}/submit`),
   approve: (id: number) => http.post(`/stock-adjusts/${id}/approve`),
   reject: (id: number, rejectReason: string) =>

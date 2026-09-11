@@ -14,7 +14,7 @@ import {
   ProFormTextArea,
 } from "@ant-design/pro-components";
 import type { ProColumns } from "@ant-design/pro-components";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { App } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { itemApi, purchaseApi, supplierApi, userApi } from "../../api";
@@ -36,6 +36,10 @@ let lineSeq = 2;
 export function PurchaseOrderNewPage() {
   const navigate = useNavigate();
   const { message } = App.useApp();
+  const { id: editIdParam } = useParams<{ id?: string }>();
+  // 路由 /purchase-orders/new/:id? 携带 id 时为编辑模式(草稿/已驳回单)
+  const editId = editIdParam ? Number(editIdParam) : null;
+  const [docNo, setDocNo] = useState("");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [users, setUsers] = useState<UserInfo[]>([]);
@@ -46,6 +50,38 @@ export function PurchaseOrderNewPage() {
   const [saving, setSaving] = useState(false);
   const [headerForm] = ProForm.useForm();
   const [lineForm] = ProForm.useForm();
+
+  // 编辑模式:GET 详情回填表头 + 行明细(行 key 用 1..n,与新建的自增 key 规则一致)
+  useEffect(() => {
+    if (editId == null) return;
+    purchaseApi
+      .get(editId)
+      .then((doc) => {
+        setDocNo(doc.docNo);
+        headerForm.setFieldsValue({
+          docDate: dayjs(doc.docDate),
+          supplierId: doc.supplierId,
+          buyerId: doc.buyerId,
+          allowOverReceiptRate: Number(doc.allowOverReceiptRate),
+          remark: doc.remark ?? undefined,
+        });
+        const rows: LineRow[] = (doc.items ?? []).map((l, i) => ({
+          key: i + 1,
+          itemId: l.itemId,
+          orderedQty: Number(l.orderedQty),
+          expectedDeliveryDate: l.expectedDeliveryDate ? dayjs(l.expectedDeliveryDate) : undefined,
+          unitPrice: Number(l.unitPrice),
+          taxRate: Number(l.taxRate),
+          lineRemark: l.lineRemark ?? undefined,
+        }));
+        setData(rows);
+        setEditableKeys(rows.map((r) => r.key));
+        // 防止新建时"添加行"自增 key 与回填行 key 冲突
+        lineSeq = Math.max(lineSeq, rows.length + 1);
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId]);
 
   useEffect(() => {
     supplierApi
@@ -174,7 +210,7 @@ export function PurchaseOrderNewPage() {
     }
     setSaving(true);
     try {
-      await purchaseApi.create({
+      const payload = {
         docDate: (values.docDate as Dayjs).format("YYYY-MM-DD"),
         supplierId: values.supplierId as number,
         buyerId: values.buyerId as number,
@@ -191,8 +227,14 @@ export function PurchaseOrderNewPage() {
           taxRate: l.taxRate ?? 13,
           lineRemark: l.lineRemark,
         })),
-      });
-      message.success("采购订单已创建(草稿)");
+      };
+      if (editId != null) {
+        await purchaseApi.update(editId, payload);
+        message.success("采购订单已保存(仍为可编辑状态)");
+      } else {
+        await purchaseApi.create(payload);
+        message.success("采购订单已创建(草稿)");
+      }
       navigate("/purchase-orders");
     } catch {
       // 拦截器已提示
@@ -204,7 +246,7 @@ export function PurchaseOrderNewPage() {
   return (
     <Space direction="vertical" size={16} style={{ width: "100%" }}>
       <ProCard
-        title="表头信息"
+        title={editId != null ? `编辑采购订单 - ${docNo || "..."}` : "表头信息"}
         extra={
           <Link to="/purchase-orders">
             <Button>返回列表</Button>
@@ -290,7 +332,7 @@ export function PurchaseOrderNewPage() {
         <Space style={{ marginTop: 16 }} align="center">
           <Button onClick={addLine}>+ 添加行</Button>
           <Button type="primary" loading={saving} onClick={onSubmit}>
-            保存为草稿
+            {editId != null ? "保存" : "保存为草稿"}
           </Button>
         </Space>
       </ProCard>

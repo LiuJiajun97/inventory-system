@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Descriptions, Input, Modal, Popconfirm, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { fmtDate, fmtDateTime } from "../../utils/format";
 import { salesApi, customerApi, warehouseApi } from "../../api";
@@ -37,6 +37,7 @@ const STATUS_ENUM = {
 export function SalesOrderListPage() {
   const user = getUser();
   const isWriter = user?.role === "admin" || user?.role === "operator";
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<SalesOrder | null>(null);
@@ -162,6 +163,9 @@ export function SalesOrderListPage() {
         const btns: React.ReactNode[] = [];
         if (isWriter && (s === "draft" || s === "rejected")) {
           btns.push(
+            <a key="edit" className="action-edit" onClick={() => navigate(`/sales-orders/new/${row.id}`)}>
+              编辑
+            </a>,
             <a
               key="submit"
               className="action-submit"

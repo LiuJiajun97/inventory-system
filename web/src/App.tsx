@@ -71,7 +71,7 @@ export default function App() {
               <Route path="customers" element={<CustomerPage />} />
               <Route path="purchase-orders" element={<PurchaseOrderListPage />} />
               <Route
-                path="purchase-orders/new"
+                path="purchase-orders/new/:id?"
                 element={
                   <RequireAuth roles={["admin", "operator"]}>
                     <PurchaseOrderNewPage />
@@ -80,7 +80,7 @@ export default function App() {
               />
               <Route path="sales-orders" element={<SalesOrderListPage />} />
               <Route
-                path="sales-orders/new"
+                path="sales-orders/new/:id?"
                 element={
                   <RequireAuth roles={["admin", "operator"]}>
                     <SalesOrderNewPage />

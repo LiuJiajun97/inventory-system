@@ -22,6 +22,17 @@ public interface StockAdjustService {
     StockAdjustDocVO create(StockAdjustCreateDTO dto, String username);
 
     /**
+     * 编辑调整单(仅 draft/rejected 可编辑,已驳回编辑后回 draft 并清空驳回原因)。
+     *
+     * @param id       调整单 ID
+     * @param dto      入参(与新建同结构,行明细全量替换)
+     * @param username 当前登录用户名
+     * @return 更新后的调整单
+     * @throws BizException 调整单不存在、状态不可编辑或入参校验失败时抛出
+     */
+    StockAdjustDocVO update(long id, StockAdjustCreateDTO dto, String username);
+
+    /**
      * 调整单分页列表。
      *
      * @param query 查询条件

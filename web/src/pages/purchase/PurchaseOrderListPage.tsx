@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Descriptions, Input, Modal, Popconfirm, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { fmtDate, fmtDateTime } from "../../utils/format";
 import { purchaseApi, supplierApi } from "../../api";
@@ -37,6 +37,7 @@ const STATUS_ENUM = {
 export function PurchaseOrderListPage() {
   const user = getUser();
   const isWriter = user?.role === "admin" || user?.role === "operator";
+  const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [detail, setDetail] = useState<PurchaseOrder | null>(null);
   const [rejectTarget, setRejectTarget] = useState<PurchaseOrder | null>(null);
@@ -144,6 +145,9 @@ export function PurchaseOrderListPage() {
         const btns: React.ReactNode[] = [];
         if (isWriter && (s === "draft" || s === "rejected")) {
           btns.push(
+            <a key="edit" className="action-edit" onClick={() => navigate(`/purchase-orders/new/${row.id}`)}>
+              编辑
+            </a>,
             <a key="submit" className="action-submit" onClick={() => doAction(() => purchaseApi.submit(row.id), "已提交审批")}>
               提交
             </a>,

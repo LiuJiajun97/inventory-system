@@ -1,9 +1,9 @@
 # 库存管理系统
 
-> 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5)。
+> 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable)。
 > 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占 + 基础出入库,17 个 Controller,前端 24 个页面(20 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **93 条测试全绿**,阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **109 条测试全绿**,阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -65,7 +65,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 87 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 109 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -97,6 +97,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | 物品 / 仓库 / 库位:增改 / 查 | ✅ / 查 | 查 | 查 |
 | 入库单 / 出库单 创建 | ✅ | ✅ | ❌ |
 | 采购 / 销售 / 调拨 / 盘点 / 调整 单据创建 | ✅ | ✅ | ❌ |
+| 草稿 / 已驳回单据编辑(采购、销售、调拨、调整,已驳回编辑后回草稿) | ✅ | ✅ | ❌ |
 | 单据审批 / 驳回(采购、销售、调拨、盘点、调整) | ✅(可自批) | ✅(禁自批) | ❌ |
 | 低库存 / 临期预警 查询 | ✅ | ✅ | ✅ |
 | 字典:读 | ✅ | ✅ | ✅ |
@@ -123,11 +124,11 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | GET/POST | `/inbound` | 手工入库单 | 登录 / admin+operator |
 | GET/POST | `/outbound` | 手工出库单 | 登录 / admin+operator |
 | GET/POST/PUT | `/suppliers` `/customers` | 供应商 / 客户 | 登录 / admin |
-| GET/POST | `/purchase-orders` `/purchase-orders/:id/...` | 采购订单 + 提交/审批/驳回/到货 | 登录 / admin+operator |
-| GET/POST | `/sales-orders` `/sales-orders/:id/...` | 销售订单 + 提交/审批/驳回/发货 | 登录 / admin+operator |
-| GET/POST | `/transfers` | 调拨单(原子一步:出+入同事务) | 登录 / admin+operator |
+| GET/POST/PUT | `/purchase-orders` `/purchase-orders/:id/...` | 采购订单 + 提交/审批/驳回/到货(PUT 编辑,仅草稿/已驳回) | 登录 / admin+operator |
+| GET/POST/PUT | `/sales-orders` `/sales-orders/:id/...` | 销售订单 + 提交/审批/驳回/发货(PUT 编辑,仅草稿/已驳回) | 登录 / admin+operator |
+| GET/POST/PUT | `/transfers` | 调拨单(原子一步:出+入同事务;PUT 编辑仅草稿/已驳回) | 登录 / admin+operator |
 | GET/POST | `/stocktakes` `/stocktakes/:id/...` | 盘点单 + 录入实盘/审批 | 登录 / admin+operator |
-| GET/POST | `/stock-adjusts` | 库存调整单(盘盈亏等,含审批) | 登录 / admin+operator |
+| GET/POST/PUT | `/stock-adjusts` | 库存调整单(盘盈亏/报损,含审批;PUT 编辑仅草稿/已驳回) | 登录 / admin+operator |
 | GET | `/alerts/low-stock` `/alerts/expiry` | 低库存 / 临期预警 | 登录 |
 | GET | `/dicts` `/dicts/all` | 字典查询(登录 / admin) | 登录 / admin |
 | GET/POST/PUT | `/dicts/types` `/dicts/types/:typeCode` | 字典类型列表/新建/编辑(admin 可写) | 登录 / admin |
@@ -186,7 +187,7 @@ inventory-system/
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
 │   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,seed}.sql
-│   └── src/test/java/         14 个测试类,93 条(库存核心/并发/采购/销售/调拨/盘点/权限/字典/预警/仓库库位编辑/审计字段)
+│   └── src/test/java/         16 个测试类,109 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/

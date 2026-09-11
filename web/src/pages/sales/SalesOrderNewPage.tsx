@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Card, DatePicker, Form, Input, InputNumber, message, Select, Space, Table } from "antd";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import dayjs, { type Dayjs } from "dayjs";
 import { itemApi, salesApi, customerApi, userApi, warehouseApi } from "../../api";
 import type { Warehouse } from "../../types";
@@ -24,6 +24,10 @@ let lineSeq = 1;
 
 export function SalesOrderNewPage() {
   const navigate = useNavigate();
+  const { id: editIdParam } = useParams<{ id?: string }>();
+  // 路由 /sales-orders/new/:id? 携带 id 时为编辑模式(草稿/已驳回单)
+  const editId = editIdParam ? Number(editIdParam) : null;
+  const [docNo, setDocNo] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [users, setUsers] = useState<UserInfo[]>([]);
@@ -51,6 +55,37 @@ export function SalesOrderNewPage() {
       .catch(() => undefined);
   }, []);
 
+  // 编辑模式:GET 详情回填表头 + 行明细(行 key 用 1..n,与新建的自增 key 规则一致)
+  useEffect(() => {
+    if (editId == null) return;
+    salesApi
+      .get(editId)
+      .then((doc) => {
+        setDocNo(doc.docNo);
+        form.setFieldsValue({
+          docDate: dayjs(doc.docDate),
+          customerId: doc.customerId,
+          salespersonId: doc.salespersonId,
+          warehouseId: doc.warehouseId,
+          remark: doc.remark ?? undefined,
+        });
+        const rows: LineRow[] = (doc.items ?? []).map((l, i) => ({
+          key: i + 1,
+          itemId: l.itemId,
+          orderedQty: Number(l.orderedQty),
+          customerDeliveryDate: l.customerDeliveryDate ? dayjs(l.customerDeliveryDate) : undefined,
+          unitPrice: Number(l.unitPrice),
+          taxRate: Number(l.taxRate),
+          lineRemark: l.lineRemark ?? undefined,
+        }));
+        setLines(rows);
+        // 防止新建时"添加行"自增 key 与回填行 key 冲突
+        lineSeq = Math.max(lineSeq, rows.length + 1);
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editId]);
+
   const itemOptions = items.map((it) => ({ label: `${it.itemCode} ${it.itemName}`, value: it.id }));
 
   const onItemChange = (key: number, itemId: number) => {
@@ -73,7 +108,7 @@ export function SalesOrderNewPage() {
     }
     setSaving(true);
     try {
-      await salesApi.create({
+      const payload = {
         docDate: v.docDate.format("YYYY-MM-DD"),
         customerId: v.customerId,
         salespersonId: v.salespersonId,
@@ -87,8 +122,14 @@ export function SalesOrderNewPage() {
           taxRate: l.taxRate ?? 13,
           lineRemark: l.lineRemark,
         })),
-      });
-      message.success("销售订单已创建(草稿)");
+      };
+      if (editId != null) {
+        await salesApi.update(editId, payload);
+        message.success("销售订单已保存(仍为可编辑状态)");
+      } else {
+        await salesApi.create(payload);
+        message.success("销售订单已创建(草稿)");
+      }
       navigate("/sales-orders");
     } catch {
       // 拦截器已提示
@@ -198,7 +239,7 @@ export function SalesOrderNewPage() {
 
   return (
     <Card
-      title="新建销售订单"
+      title={editId != null ? `编辑销售订单 - ${docNo || "..."}` : "新建销售订单"}
       extra={
         <Link to="/sales-orders">
           <Button>返回列表</Button>
@@ -268,7 +309,7 @@ export function SalesOrderNewPage() {
           添加行
         </Button>
         <Button type="primary" loading={saving} onClick={onSubmit}>
-          保存为草稿
+          {editId != null ? "保存" : "保存为草稿"}
         </Button>
       </Space>
     </Card>

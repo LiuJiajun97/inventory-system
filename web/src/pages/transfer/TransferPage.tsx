@@ -38,6 +38,8 @@ export function TransferPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [detail, setDetail] = useState<TransferDoc | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  // 非空为编辑模式(草稿/已驳回单),Drawer 复用新建表单
+  const [editId, setEditId] = useState<number | null>(null);
   const [rejectTarget, setRejectTarget] = useState<TransferDoc | null>(null);
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
@@ -126,7 +128,32 @@ export function TransferPage() {
     setFromLocations([]);
     setToLocations([]);
     setDocDate(dayjs());
+    setEditId(null);
     setCreateOpen(true);
+  };
+
+  // 编辑:GET 详情回填表头 + 行明细(行 key 用 1..n,与新建的自增 key 规则一致)
+  const openEdit = (row: TransferDoc) => {
+    transferApi
+      .get(row.id)
+      .then((doc) => {
+        createForm.resetFields();
+        createForm.setFieldsValue({ remark: doc.remark ?? "" });
+        setLines((doc.items ?? []).map((l, i) => ({
+          key: i + 1,
+          itemId: l.itemId,
+          qty: Number(l.qty),
+          unitPrice: l.unitPrice != null ? Number(l.unitPrice) : undefined,
+          fromLocationId: l.fromLocationId ?? undefined,
+          toLocationId: l.toLocationId ?? undefined,
+        })));
+        setFromWh(doc.fromWarehouseId);
+        setToWh(doc.toWarehouseId);
+        setDocDate(dayjs(doc.docDate));
+        setEditId(doc.id);
+        setCreateOpen(true);
+      })
+      .catch(() => undefined);
   };
 
   const onCreate = async () => {
@@ -155,7 +182,7 @@ export function TransferPage() {
     }
     setSaving(true);
     try {
-      await transferApi.create({
+      const payload = {
         docDate: docDate.format("YYYY-MM-DD"),
         fromWarehouseId: fromWh,
         toWarehouseId: toWh,
@@ -167,9 +194,16 @@ export function TransferPage() {
           fromLocationId: l.fromLocationId,
           toLocationId: l.toLocationId,
         })),
-      });
-      Modal.success({ content: "调拨单已创建(草稿)" });
+      };
+      if (editId != null) {
+        await transferApi.update(editId, payload);
+        Modal.success({ content: "调拨单已保存(仍为可编辑状态)" });
+      } else {
+        await transferApi.create(payload);
+        Modal.success({ content: "调拨单已创建(草稿)" });
+      }
       setCreateOpen(false);
+      setEditId(null);
       actionRef.current?.reload();
     } catch {
       // 拦截器已提示
@@ -264,6 +298,9 @@ export function TransferPage() {
         const btns: React.ReactNode[] = [];
         if (isWriter && (s === "draft" || s === "rejected")) {
           btns.push(
+            <a key="edit" className="action-edit" onClick={() => openEdit(row)}>
+              编辑
+            </a>,
             <a key="submit" className="action-submit" onClick={() => doAction(() => transferApi.submit(row.id), "已提交审批")}>
               提交
             </a>,
@@ -325,13 +362,13 @@ export function TransferPage() {
       />
 
       <Drawer
-        title="新建调拨单"
+        title={editId != null ? "编辑调拨单" : "新建调拨单"}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         width={860}
         extra={
           <Button type="primary" loading={saving} onClick={onCreate}>
-            保存为草稿
+            {editId != null ? "保存" : "保存为草稿"}
           </Button>
         }
       >

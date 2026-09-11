@@ -25,6 +25,13 @@ import java.time.format.DateTimeParseException;
  */
 public final class DateRangeSupport {
 
+    /** 纯日期区间止归一化时点:23。 */
+    private static final int END_OF_DAY_HOUR = 23;
+    /** 纯日期区间止归一化时点:59。 */
+    private static final int END_OF_DAY_MINUTE = 59;
+    /** 纯日期区间止归一化时点:59。 */
+    private static final int END_OF_DAY_SECOND = 59;
+
     private DateRangeSupport() {
         // 工具类禁止实例化
     }
@@ -94,7 +101,8 @@ public final class DateRangeSupport {
             // 纯日期:起视为当天 00:00:00,止视为当天 23:59:59
             if (text.length() == 10) {
                 LocalDate day = LocalDate.parse(text, DateTimeFormatter.ISO_LOCAL_DATE);
-                return isEnd ? day.atTime(23, 59, 59) : day.atStartOfDay();
+                return isEnd ? day.atTime(END_OF_DAY_HOUR, END_OF_DAY_MINUTE, END_OF_DAY_SECOND)
+                        : day.atStartOfDay();
             }
             // 含时间部分:空格分隔归一化为 ISO 的 T 分隔后再解析(ISO_LOCAL_DATE_TIME 只认 T)
             String normalized = text.replace(' ', 'T');

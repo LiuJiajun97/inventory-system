@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -69,6 +70,23 @@ public class StockAdjustController {
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stockAdjustService.create(dto, username);
+    }
+
+    /**
+     * 编辑调整单(admin/operator,仅草稿/已驳回可编辑)。
+     *
+     * @param id      调整单 ID
+     * @param dto     入参(与新建同结构)
+     * @param request 请求(取当前用户名)
+     * @return 更新后的调整单
+     */
+    @Operation(summary = "编辑调整单")
+    @PutMapping("/{id}")
+    @RequireRole({"admin", "operator"})
+    public StockAdjustDocVO update(@PathVariable long id,
+            @Valid @RequestBody StockAdjustCreateDTO dto, HttpServletRequest request) {
+        String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
+        return stockAdjustService.update(id, dto, username);
     }
 
     /**
