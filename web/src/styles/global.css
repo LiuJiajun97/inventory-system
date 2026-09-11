@@ -311,6 +311,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  height: 100%;
+  justify-content: center;
   transition: all 200ms ease;
 }
 

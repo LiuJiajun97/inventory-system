@@ -182,7 +182,7 @@ export function DashboardPage() {
 
         {/* 临期预警(30 天) - 0 时恢复普通样式 */}
         <Col xs={24} sm={12} md={6}>
-          <Link to="/alerts">
+          <Link to="/alerts" style={{ display: "block", height: "100%" }}>
             <div className={`stat-card clickable${expiryCount > 0 ? " alert-red" : ""}`}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div className={`stat-icon ${expiryCount > 0 ? "red" : "blue"}`}>
@@ -200,7 +200,7 @@ export function DashboardPage() {
 
         {/* 低库存预警 - 0 时恢复普通样式 */}
         <Col xs={24} sm={12} md={6}>
-          <Link to="/alerts">
+          <Link to="/alerts" style={{ display: "block", height: "100%" }}>
             <div className={`stat-card clickable${lowStockCount > 0 ? " alert-orange" : ""}`}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div className={`stat-icon ${lowStockCount > 0 ? "orange" : "cyan"}`}>
