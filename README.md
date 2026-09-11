@@ -172,7 +172,7 @@ inventory-system/
 ├── scripts/mvn.sh             Maven 包装脚本(本机 bash 路径兼容)
 ├── docs/迭代日志.md            迭代流水账(每次实质变更追加一条)
 ├── server-java/               Spring Boot 后端(阿里规范)
-│   ├── pom.xml                Boot 3.5.x / MyBatis-Plus 3.5.x / jjwt / springdoc / checkstyle
+│   ├── pom.xml                Boot 3.5.x / MyBatis-Plus 3.5.x / jjwt / springdoc / Lombok / checkstyle
 │   ├── checkstyle.xml         阿里规范规则集(中文 Javadoc 适配)
 │   ├── src/main/java/com/company/inventory/
 │   │   ├── InventoryApplication.java  入口(@MapperScan mapper 包;JVM 时区锁 Asia/Shanghai)
