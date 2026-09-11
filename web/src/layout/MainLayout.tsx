@@ -275,7 +275,8 @@ export function MainLayout() {
     ALL_ITEMS.find(
       (it) =>
         (location.pathname === it.path ||
-          (it.path !== "/" && location.pathname.startsWith(it.path))) &&
+          (it.path !== "/" &&
+            location.pathname.startsWith(it.path + "/"))) &&
         !it.parent,
     )?.key ?? "dashboard";
 

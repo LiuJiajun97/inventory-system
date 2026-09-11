@@ -223,12 +223,13 @@ export function WarehouseListPage() {
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
+          span: 6,
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
             user?.role === "admin" && (
               <Button key="new" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                新建仓库
+                新建
               </Button>
             ),
           ],

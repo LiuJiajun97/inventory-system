@@ -300,6 +300,7 @@ export function DictPage() {
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
+          span: 6,
           // 新建类型按钮放筛选行右侧(替代默认工具栏行,仅 admin)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
@@ -313,7 +314,7 @@ export function DictPage() {
                   setTypeModalOpen(true);
                 }}
               >
-                新建类型
+                新建
               </Button>
             ),
           ],

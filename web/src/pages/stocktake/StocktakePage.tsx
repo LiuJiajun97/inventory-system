@@ -286,12 +286,13 @@ export function StocktakePage() {
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
+          span: 6,
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
             isWriter && (
               <Button key="new" type="primary" onClick={() => setCreateOpen(true)}>
-                新建盘点单
+                新建
               </Button>
             ),
           ],

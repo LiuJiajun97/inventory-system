@@ -143,6 +143,7 @@ export function AlertPage() {
                 search={{
                   labelWidth: "auto",
                   defaultCollapsed: false,
+                  span: 6,
                   // 刷新按钮放临期 tab 筛选行右侧;点击两个表都 reload
                   optionRender: (_searchConfig, _props, dom) => [
                     ...dom,
@@ -177,7 +178,7 @@ export function AlertPage() {
                 request={requestLow}
                 headerTitle={false}
                 options={false}
-                search={{ labelWidth: "auto", defaultCollapsed: false }}
+                search={{ labelWidth: "auto", defaultCollapsed: false, span: 6 }}
                 pagination={{
                   pageSize: 20,
                   showSizeChanger: true,

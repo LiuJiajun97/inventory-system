@@ -162,7 +162,7 @@ export function StockQueryPage() {
       request={request}
       headerTitle={false}
       options={false}
-      search={{ labelWidth: "auto", defaultCollapsed: false }}
+      search={{ labelWidth: "auto", defaultCollapsed: false, span: 6 }}
       pagination={{
         pageSize: 20,
         showSizeChanger: true,

@@ -181,11 +181,12 @@ export function UserListPage() {
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
+          span: 6,
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
             <Button key="new" type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
-              新建用户
+              新建
             </Button>,
           ],
         }}

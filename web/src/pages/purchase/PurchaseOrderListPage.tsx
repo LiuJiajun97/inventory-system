@@ -104,18 +104,9 @@ export function PurchaseOrderListPage() {
       render: (_v, r) =>
         suppliers.find((s) => s.id === r.supplierId)?.supplierName ?? `#${r.supplierId}`,
     },
-    {
-      title: "金额/税额/价税合计",
-      width: 220,
-      align: "right",
-      search: false,
-      render: (_v, r) => (
-        <span className="num-cell">
-          {Number(r.totalAmount).toFixed(2)} / {Number(r.totalTaxAmount).toFixed(2)} /{" "}
-          <b>{Number(r.totalTaxInclusive).toFixed(2)}</b>
-        </span>
-      ),
-    },
+    { title: "金额", dataIndex: "totalAmount", width: 110, align: "right", className: "num-cell", search: false, render: (_v, r) => Number(r.totalAmount).toFixed(2) },
+    { title: "税额", dataIndex: "totalTaxAmount", width: 110, align: "right", className: "num-cell", search: false, render: (_v, r) => Number(r.totalTaxAmount).toFixed(2) },
+    { title: "价税合计", dataIndex: "totalTaxInclusive", width: 130, align: "right", className: "num-cell", search: false, render: (_v, r) => <b>{Number(r.totalTaxInclusive).toFixed(2)}</b> },
     { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true, search: false },
     {
       title: "创建时间",
@@ -199,16 +190,17 @@ export function PurchaseOrderListPage() {
         request={request}
         headerTitle={false}
         options={false}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 1360 }}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
+          span: 6,
           // 新建按钮放筛选行右侧(替代默认工具栏行);4 字段单行放得下,不显示展开/收起
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
             isWriter && (
               <Link key="new" to="/purchase-orders/new">
-                <Button type="primary">新建采购订单</Button>
+                <Button type="primary">新建</Button>
               </Link>
             ),
           ],

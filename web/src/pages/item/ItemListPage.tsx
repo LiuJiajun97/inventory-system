@@ -93,11 +93,11 @@ export function ItemListPage() {
       title: "扩展属性",
       dataIndex: "attributes",
       width: 240,
+      ellipsis: true,
       search: false,
       render: (_v, r) => {
         const v = r.attributes;
         if (!v) return "-";
-        const display = v.length > 40 ? v.slice(0, 40) + "..." : v;
         return (
           <Tooltip title={v} placement="topLeft">
             <code
@@ -106,9 +106,10 @@ export function ItemListPage() {
                 background: "#f8fafc",
                 padding: "2px 6px",
                 borderRadius: 4,
+                whiteSpace: "nowrap",
               }}
             >
-              {display}
+              {v}
             </code>
           </Tooltip>
         );
@@ -257,12 +258,13 @@ export function ItemListPage() {
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
+          span: 6,
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
             user?.role === "admin" && (
               <Button key="new" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                新建物品
+                新建
               </Button>
             ),
           ],

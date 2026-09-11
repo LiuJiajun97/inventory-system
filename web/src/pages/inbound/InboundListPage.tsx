@@ -190,12 +190,13 @@ export function InboundListPage() {
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
+          span: 6,
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
             user?.role !== "viewer" && (
               <Link key="new" to="/inbound/new">
-                <Button type="primary">新建入库单</Button>
+                <Button type="primary">新建</Button>
               </Link>
             ),
           ],
