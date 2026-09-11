@@ -1,14 +1,14 @@
 package com.company.inventory.warehouse;
 
 import com.company.inventory.common.exception.BizException;
-import com.company.inventory.dto.location.LocationUpdateDTO;
-import com.company.inventory.dto.warehouse.WarehouseUpdateDTO;
-import com.company.inventory.entity.item.ItemDO;
-import com.company.inventory.entity.location.LocationDO;
-import com.company.inventory.entity.stock.SerialDO;
-import com.company.inventory.entity.stock.StockDO;
-import com.company.inventory.entity.user.UserDO;
-import com.company.inventory.entity.warehouse.WarehouseDO;
+import com.company.inventory.model.dto.location.LocationUpdateDTO;
+import com.company.inventory.model.dto.warehouse.WarehouseUpdateDTO;
+import com.company.inventory.model.entity.item.ItemDO;
+import com.company.inventory.model.entity.location.LocationDO;
+import com.company.inventory.model.entity.stock.SerialDO;
+import com.company.inventory.model.entity.stock.StockDO;
+import com.company.inventory.model.entity.user.UserDO;
+import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.ItemMapper;
 import com.company.inventory.mapper.LocationMapper;
 import com.company.inventory.mapper.SerialMapper;
@@ -17,8 +17,8 @@ import com.company.inventory.mapper.UserMapper;
 import com.company.inventory.mapper.WarehouseMapper;
 import com.company.inventory.service.LocationService;
 import com.company.inventory.service.WarehouseService;
-import com.company.inventory.vo.location.LocationVO;
-import com.company.inventory.vo.warehouse.WarehouseVO;
+import com.company.inventory.model.vo.location.LocationVO;
+import com.company.inventory.model.vo.warehouse.WarehouseVO;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.junit.jupiter.api.BeforeAll;

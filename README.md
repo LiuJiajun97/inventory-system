@@ -28,7 +28,7 @@
                    └──────────────────────┘
 ```
 
-后端分层:`controller → service(/impl) → mapper → entity(DO)`,层内按功能分文件夹(`dto/purchase/`、`entity/sales/` 等)。
+后端分层:`controller → service(/impl) → mapper → model`(model 下 entity(DO)/dto/vo/query 四包,按功能再分文件夹,如 `model/dto/purchase/`)。
 出入库/采购/销售/调拨在单个事务内完成(`StockCoreService`),出库扣减为条件 `UPDATE ... WHERE quantity >= qty`,affected rows=0 即"库存不足"整单回滚。
 
 > 说明:PG 库表名/列名为 PascalCase/camelCase(建库时带引号),实体 DO 通过
@@ -178,14 +178,14 @@ inventory-system/
 │   │   ├── common/            错误码 / BizException / 全局异常 / 分页 / ApprovalGuard
 │   │   ├── config/            MybatisPlus / Jwt / @RequireRole / Swagger / Jackson(东八区+格式)
 │   │   ├── controller/        17 个 Controller
-│   │   ├── dto/  entity/  vo/  query/  层内按功能分包
+│   │   ├── model/             数据层:entity(DO)/dto/vo/query 四包,按功能再分包
 │   │   ├── mapper/            27 个 Mapper + resources/mapper/*.xml
 │   │   ├── service/ (+impl/)  业务层;StockCoreService = 库存核心
 │   │   └── support/           DictReferenceRegistry(字典引用校验注册表)
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
-│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,seed}.sql
-│   └── src/test/java/         13 个测试类,87 条(库存核心/并发/采购/销售/调拨/盘点/权限/字典/预警/仓库库位编辑)
+│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,seed}.sql
+│   └── src/test/java/         14 个测试类,93 条(库存核心/并发/采购/销售/调拨/盘点/权限/字典/预警/仓库库位编辑/审计字段)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/

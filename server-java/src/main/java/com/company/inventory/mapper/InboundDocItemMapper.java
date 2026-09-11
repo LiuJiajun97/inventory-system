@@ -1,6 +1,6 @@
 package com.company.inventory.mapper;
 
-import com.company.inventory.entity.inbound.InboundDocItemDO;
+import com.company.inventory.model.entity.inbound.InboundDocItemDO;
 
 
 

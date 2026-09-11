@@ -1,9 +1,9 @@
 package com.company.inventory.mapper;
 
-import com.company.inventory.query.ExpiryAlertQuery;
-import com.company.inventory.query.LowStockQuery;
-import com.company.inventory.vo.alert.ExpiryAlertRow;
-import com.company.inventory.vo.alert.LowStockRow;
+import com.company.inventory.model.query.ExpiryAlertQuery;
+import com.company.inventory.model.query.LowStockQuery;
+import com.company.inventory.model.vo.alert.ExpiryAlertRow;
+import com.company.inventory.model.vo.alert.LowStockRow;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;

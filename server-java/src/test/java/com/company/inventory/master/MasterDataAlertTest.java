@@ -2,32 +2,32 @@ package com.company.inventory.master;
 
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.customer.CustomerCreateDTO;
-import com.company.inventory.dto.customer.CustomerUpdateDTO;
-import com.company.inventory.dto.item.ItemCreateDTO;
-import com.company.inventory.dto.item.ItemUpdateDTO;
-import com.company.inventory.dto.supplier.SupplierCreateDTO;
-import com.company.inventory.dto.supplier.SupplierUpdateDTO;
-import com.company.inventory.entity.item.ItemDO;
-import com.company.inventory.entity.stock.BatchDO;
-import com.company.inventory.entity.stock.StockDO;
-import com.company.inventory.entity.warehouse.WarehouseDO;
+import com.company.inventory.model.dto.customer.CustomerCreateDTO;
+import com.company.inventory.model.dto.customer.CustomerUpdateDTO;
+import com.company.inventory.model.dto.item.ItemCreateDTO;
+import com.company.inventory.model.dto.item.ItemUpdateDTO;
+import com.company.inventory.model.dto.supplier.SupplierCreateDTO;
+import com.company.inventory.model.dto.supplier.SupplierUpdateDTO;
+import com.company.inventory.model.entity.item.ItemDO;
+import com.company.inventory.model.entity.stock.BatchDO;
+import com.company.inventory.model.entity.stock.StockDO;
+import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.BatchMapper;
 import com.company.inventory.mapper.CustomerMapper;
 import com.company.inventory.mapper.ItemMapper;
 import com.company.inventory.mapper.StockMapper;
 import com.company.inventory.mapper.WarehouseMapper;
-import com.company.inventory.query.ExpiryAlertQuery;
-import com.company.inventory.query.LowStockQuery;
+import com.company.inventory.model.query.ExpiryAlertQuery;
+import com.company.inventory.model.query.LowStockQuery;
 import com.company.inventory.service.AlertService;
 import com.company.inventory.service.CustomerService;
 import com.company.inventory.service.ItemService;
 import com.company.inventory.service.SupplierService;
-import com.company.inventory.vo.alert.ExpiryAlertVO;
-import com.company.inventory.vo.alert.LowStockVO;
-import com.company.inventory.vo.customer.CustomerVO;
-import com.company.inventory.vo.item.ItemVO;
-import com.company.inventory.vo.supplier.SupplierVO;
+import com.company.inventory.model.vo.alert.ExpiryAlertVO;
+import com.company.inventory.model.vo.alert.LowStockVO;
+import com.company.inventory.model.vo.customer.CustomerVO;
+import com.company.inventory.model.vo.item.ItemVO;
+import com.company.inventory.model.vo.supplier.SupplierVO;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -128,7 +128,7 @@ class MasterDataAlertTest {
         assertEquals("测试供应商改", updated.supplierName());
         assertThrows(BizException.class, () -> supplierService.create(new SupplierCreateDTO("MD-SP-1", "重复",
                 null, null, null, null, null, null, null, null), "md_test"));
-        assertTrue(supplierService.list(new com.company.inventory.query.SupplierQuery()).rows().size() >= 1);
+        assertTrue(supplierService.list(new com.company.inventory.model.query.SupplierQuery()).rows().size() >= 1);
     }
 
     /**
@@ -141,7 +141,7 @@ class MasterDataAlertTest {
         assertNotNull(cu.id());
         assertThrows(BizException.class, () -> customerService.create(new CustomerCreateDTO("MD-CU-1", "重复",
                 null, null, null, null, null, null, null, null), "md_test"));
-        assertTrue(customerService.list(new com.company.inventory.query.CustomerQuery()).rows().size() >= 1);
+        assertTrue(customerService.list(new com.company.inventory.model.query.CustomerQuery()).rows().size() >= 1);
     }
 
     /**

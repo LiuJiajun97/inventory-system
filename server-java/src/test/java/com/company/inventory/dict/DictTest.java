@@ -1,9 +1,9 @@
 package com.company.inventory.dict;
 
-import com.company.inventory.entity.dict.DictDO;
+import com.company.inventory.model.entity.dict.DictDO;
 import com.company.inventory.mapper.DictMapper;
 import com.company.inventory.service.DictService;
-import com.company.inventory.vo.dict.DictOptionVO;
+import com.company.inventory.model.vo.dict.DictOptionVO;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

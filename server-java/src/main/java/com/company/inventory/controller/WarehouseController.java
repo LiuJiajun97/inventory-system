@@ -2,16 +2,16 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.RequireRole;
-import com.company.inventory.dto.location.LocationCreateDTO;
-import com.company.inventory.dto.location.LocationUpdateDTO;
-import com.company.inventory.dto.warehouse.WarehouseCreateDTO;
-import com.company.inventory.dto.warehouse.WarehouseUpdateDTO;
-import com.company.inventory.query.LocationQuery;
-import com.company.inventory.query.WarehouseQuery;
+import com.company.inventory.model.dto.location.LocationCreateDTO;
+import com.company.inventory.model.dto.location.LocationUpdateDTO;
+import com.company.inventory.model.dto.warehouse.WarehouseCreateDTO;
+import com.company.inventory.model.dto.warehouse.WarehouseUpdateDTO;
+import com.company.inventory.model.query.LocationQuery;
+import com.company.inventory.model.query.WarehouseQuery;
 import com.company.inventory.service.LocationService;
 import com.company.inventory.service.WarehouseService;
-import com.company.inventory.vo.location.LocationVO;
-import com.company.inventory.vo.warehouse.WarehouseVO;
+import com.company.inventory.model.vo.location.LocationVO;
+import com.company.inventory.model.vo.warehouse.WarehouseVO;
 
 
 

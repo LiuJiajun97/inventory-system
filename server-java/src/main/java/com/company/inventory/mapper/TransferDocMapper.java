@@ -1,6 +1,6 @@
 package com.company.inventory.mapper;
 
-import com.company.inventory.entity.transfer.TransferDocDO;
+import com.company.inventory.model.entity.transfer.TransferDocDO;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 

@@ -3,11 +3,11 @@ package com.company.inventory.controller;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.config.RequireRole;
-import com.company.inventory.dto.sales.SalesActionDTO;
-import com.company.inventory.dto.sales.SalesOrderCreateDTO;
-import com.company.inventory.query.SalesOrderQuery;
+import com.company.inventory.model.dto.sales.SalesActionDTO;
+import com.company.inventory.model.dto.sales.SalesOrderCreateDTO;
+import com.company.inventory.model.query.SalesOrderQuery;
 import com.company.inventory.service.SalesOrderService;
-import com.company.inventory.vo.sales.SalesOrderVO;
+import com.company.inventory.model.vo.sales.SalesOrderVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

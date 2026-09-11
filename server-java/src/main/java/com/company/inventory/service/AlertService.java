@@ -1,10 +1,10 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.query.ExpiryAlertQuery;
-import com.company.inventory.query.LowStockQuery;
-import com.company.inventory.vo.alert.ExpiryAlertVO;
-import com.company.inventory.vo.alert.LowStockVO;
+import com.company.inventory.model.query.ExpiryAlertQuery;
+import com.company.inventory.model.query.LowStockQuery;
+import com.company.inventory.model.vo.alert.ExpiryAlertVO;
+import com.company.inventory.model.vo.alert.LowStockVO;
 
 /**
  * 预警查询服务:临期(到期日 N 天内)+ 低库存(全仓可用 < minStock),仅查询聚合不做推送。

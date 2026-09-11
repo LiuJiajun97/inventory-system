@@ -4,13 +4,13 @@ import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.constant.RoleEnum;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.user.UserCreateDTO;
-import com.company.inventory.dto.user.UserUpdateDTO;
-import com.company.inventory.entity.user.UserDO;
+import com.company.inventory.model.dto.user.UserCreateDTO;
+import com.company.inventory.model.dto.user.UserUpdateDTO;
+import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.UserMapper;
-import com.company.inventory.query.UserQuery;
+import com.company.inventory.model.query.UserQuery;
 import com.company.inventory.service.UserService;
-import com.company.inventory.vo.user.UserVO;
+import com.company.inventory.model.vo.user.UserVO;
 
 
 

@@ -46,7 +46,7 @@ docker compose up -d                   # 起 PG
 
 ## 架构约定
 
-- 后端分层:`controller → service(/impl) → mapper → entity(DO)`,层内按功能分包(dto/purchase/ 等)
+- 后端分层:`controller → service(/impl) → mapper → model(数据层:entity(DO)/dto/vo/query 四包,按功能再分包)`
 - 列表接口统一:Query DTO 绑定(@Valid)+ 全量分页,返回 `{rows,total,page,pageSize}`;错误体 `{statusCode,error,message}`
 - 时间:东八区(JVM 已锁 Asia/Shanghai),接口格式 `yyyy-MM-dd HH:mm:ss`,日期 `yyyy-MM-dd`
 - 权限:写接口加 `@RequireRole("admin")`;审批动作必须走 `common/support/ApprovalGuard`(admin 可自批、operator 禁自批),不要手写角色判断

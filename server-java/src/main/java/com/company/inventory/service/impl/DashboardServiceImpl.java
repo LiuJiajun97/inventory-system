@@ -1,10 +1,10 @@
 package com.company.inventory.service.impl;
 
 import com.company.inventory.common.util.QtyUtils;
-import com.company.inventory.entity.inbound.InboundDocDO;
-import com.company.inventory.entity.inbound.InboundDocItemDO;
-import com.company.inventory.entity.outbound.OutboundDocDO;
-import com.company.inventory.entity.outbound.OutboundDocItemDO;
+import com.company.inventory.model.entity.inbound.InboundDocDO;
+import com.company.inventory.model.entity.inbound.InboundDocItemDO;
+import com.company.inventory.model.entity.outbound.OutboundDocDO;
+import com.company.inventory.model.entity.outbound.OutboundDocItemDO;
 import com.company.inventory.mapper.InboundDocItemMapper;
 import com.company.inventory.mapper.InboundDocMapper;
 import com.company.inventory.mapper.ItemMapper;
@@ -13,7 +13,7 @@ import com.company.inventory.mapper.OutboundDocMapper;
 import com.company.inventory.mapper.StockMapper;
 import com.company.inventory.mapper.WarehouseMapper;
 import com.company.inventory.service.DashboardService;
-import com.company.inventory.vo.dashboard.DashboardVO;
+import com.company.inventory.model.vo.dashboard.DashboardVO;
 
 
 

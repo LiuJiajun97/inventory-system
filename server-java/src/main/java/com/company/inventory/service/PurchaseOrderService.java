@@ -1,12 +1,12 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.purchase.PurchaseActionDTO;
-import com.company.inventory.dto.purchase.PurchaseOrderCreateDTO;
-import com.company.inventory.dto.purchase.ArrivalLine;
-import com.company.inventory.query.PurchaseOrderQuery;
-import com.company.inventory.vo.purchase.PurchaseOrderItemVO;
-import com.company.inventory.vo.purchase.PurchaseOrderVO;
+import com.company.inventory.model.dto.purchase.PurchaseActionDTO;
+import com.company.inventory.model.dto.purchase.PurchaseOrderCreateDTO;
+import com.company.inventory.model.dto.purchase.ArrivalLine;
+import com.company.inventory.model.query.PurchaseOrderQuery;
+import com.company.inventory.model.vo.purchase.PurchaseOrderItemVO;
+import com.company.inventory.model.vo.purchase.PurchaseOrderVO;
 
 import java.util.List;
 import java.util.Map;

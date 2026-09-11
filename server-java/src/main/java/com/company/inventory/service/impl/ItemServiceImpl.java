@@ -3,13 +3,13 @@ package com.company.inventory.service.impl;
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.item.ItemCreateDTO;
-import com.company.inventory.dto.item.ItemUpdateDTO;
-import com.company.inventory.entity.item.ItemDO;
+import com.company.inventory.model.dto.item.ItemCreateDTO;
+import com.company.inventory.model.dto.item.ItemUpdateDTO;
+import com.company.inventory.model.entity.item.ItemDO;
 import com.company.inventory.mapper.ItemMapper;
-import com.company.inventory.query.ItemQuery;
+import com.company.inventory.model.query.ItemQuery;
 import com.company.inventory.service.ItemService;
-import com.company.inventory.vo.item.ItemVO;
+import com.company.inventory.model.vo.item.ItemVO;
 
 
 

@@ -1,10 +1,10 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.location.LocationCreateDTO;
-import com.company.inventory.dto.location.LocationUpdateDTO;
-import com.company.inventory.query.LocationQuery;
-import com.company.inventory.vo.location.LocationVO;
+import com.company.inventory.model.dto.location.LocationCreateDTO;
+import com.company.inventory.model.dto.location.LocationUpdateDTO;
+import com.company.inventory.model.query.LocationQuery;
+import com.company.inventory.model.vo.location.LocationVO;
 
 
 

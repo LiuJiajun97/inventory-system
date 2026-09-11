@@ -2,11 +2,11 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.RequireRole;
-import com.company.inventory.dto.item.ItemCreateDTO;
-import com.company.inventory.dto.item.ItemUpdateDTO;
-import com.company.inventory.query.ItemQuery;
+import com.company.inventory.model.dto.item.ItemCreateDTO;
+import com.company.inventory.model.dto.item.ItemUpdateDTO;
+import com.company.inventory.model.query.ItemQuery;
 import com.company.inventory.service.ItemService;
-import com.company.inventory.vo.item.ItemVO;
+import com.company.inventory.model.vo.item.ItemVO;
 
 
 

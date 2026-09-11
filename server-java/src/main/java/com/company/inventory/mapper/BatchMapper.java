@@ -1,6 +1,6 @@
 package com.company.inventory.mapper;
 
-import com.company.inventory.entity.stock.BatchDO;
+import com.company.inventory.model.entity.stock.BatchDO;
 
 
 

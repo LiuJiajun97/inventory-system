@@ -1,6 +1,6 @@
 package com.company.inventory.service;
 
-import com.company.inventory.vo.dashboard.DashboardVO;
+import com.company.inventory.model.vo.dashboard.DashboardVO;
 
 
 

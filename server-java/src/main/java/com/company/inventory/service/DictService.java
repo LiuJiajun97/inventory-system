@@ -1,6 +1,6 @@
 package com.company.inventory.service;
 
-import com.company.inventory.vo.dict.DictOptionVO;
+import com.company.inventory.model.vo.dict.DictOptionVO;
 
 import java.util.List;
 

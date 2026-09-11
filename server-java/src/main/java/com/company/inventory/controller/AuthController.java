@@ -1,11 +1,11 @@
 package com.company.inventory.controller;
 
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.dto.auth.ChangePasswordDTO;
-import com.company.inventory.dto.auth.LoginDTO;
+import com.company.inventory.model.dto.auth.ChangePasswordDTO;
+import com.company.inventory.model.dto.auth.LoginDTO;
 import com.company.inventory.service.AuthService;
-import com.company.inventory.vo.auth.LoginVO;
-import com.company.inventory.vo.auth.MeVO;
+import com.company.inventory.model.vo.auth.LoginVO;
+import com.company.inventory.model.vo.auth.MeVO;
 
 
 

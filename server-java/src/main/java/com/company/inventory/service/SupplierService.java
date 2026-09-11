@@ -1,10 +1,10 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.supplier.SupplierCreateDTO;
-import com.company.inventory.dto.supplier.SupplierUpdateDTO;
-import com.company.inventory.query.SupplierQuery;
-import com.company.inventory.vo.supplier.SupplierVO;
+import com.company.inventory.model.dto.supplier.SupplierCreateDTO;
+import com.company.inventory.model.dto.supplier.SupplierUpdateDTO;
+import com.company.inventory.model.query.SupplierQuery;
+import com.company.inventory.model.vo.supplier.SupplierVO;
 
 /**
  * 供应商主数据服务接口(admin 可建可改,其余角色只读列表)。

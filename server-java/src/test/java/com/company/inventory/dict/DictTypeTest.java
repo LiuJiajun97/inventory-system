@@ -1,14 +1,14 @@
 package com.company.inventory.dict;
 
 import com.company.inventory.common.exception.BizException;
-import com.company.inventory.dto.dict.DictTypeCreateDTO;
-import com.company.inventory.dto.dict.DictTypeUpdateDTO;
-import com.company.inventory.entity.dict.DictDO;
-import com.company.inventory.entity.dict.DictTypeDO;
+import com.company.inventory.model.dto.dict.DictTypeCreateDTO;
+import com.company.inventory.model.dto.dict.DictTypeUpdateDTO;
+import com.company.inventory.model.entity.dict.DictDO;
+import com.company.inventory.model.entity.dict.DictTypeDO;
 import com.company.inventory.mapper.DictMapper;
 import com.company.inventory.mapper.DictTypeMapper;
 import com.company.inventory.service.DictTypeAdminService;
-import com.company.inventory.vo.dict.DictTypeVO;
+import com.company.inventory.model.vo.dict.DictTypeVO;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;

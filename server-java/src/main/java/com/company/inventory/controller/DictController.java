@@ -1,17 +1,17 @@
 package com.company.inventory.controller;
 
 import com.company.inventory.config.RequireRole;
-import com.company.inventory.dto.dict.DictCreateDTO;
-import com.company.inventory.dto.dict.DictStatusDTO;
-import com.company.inventory.dto.dict.DictTypeCreateDTO;
-import com.company.inventory.dto.dict.DictTypeUpdateDTO;
-import com.company.inventory.dto.dict.DictUpdateDTO;
+import com.company.inventory.model.dto.dict.DictCreateDTO;
+import com.company.inventory.model.dto.dict.DictStatusDTO;
+import com.company.inventory.model.dto.dict.DictTypeCreateDTO;
+import com.company.inventory.model.dto.dict.DictTypeUpdateDTO;
+import com.company.inventory.model.dto.dict.DictUpdateDTO;
 import com.company.inventory.service.DictAdminService;
 import com.company.inventory.service.DictService;
 import com.company.inventory.service.DictTypeAdminService;
-import com.company.inventory.vo.dict.DictOptionVO;
-import com.company.inventory.vo.dict.DictTypeVO;
-import com.company.inventory.vo.dict.DictVO;
+import com.company.inventory.model.vo.dict.DictOptionVO;
+import com.company.inventory.model.vo.dict.DictTypeVO;
+import com.company.inventory.model.vo.dict.DictVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

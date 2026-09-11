@@ -1,12 +1,12 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.sales.SalesActionDTO;
-import com.company.inventory.dto.sales.SalesOrderCreateDTO;
-import com.company.inventory.dto.sales.ShipLine;
-import com.company.inventory.query.SalesOrderQuery;
-import com.company.inventory.vo.sales.SalesOrderItemVO;
-import com.company.inventory.vo.sales.SalesOrderVO;
+import com.company.inventory.model.dto.sales.SalesActionDTO;
+import com.company.inventory.model.dto.sales.SalesOrderCreateDTO;
+import com.company.inventory.model.dto.sales.ShipLine;
+import com.company.inventory.model.query.SalesOrderQuery;
+import com.company.inventory.model.vo.sales.SalesOrderItemVO;
+import com.company.inventory.model.vo.sales.SalesOrderVO;
 
 import java.util.List;
 import java.util.Map;

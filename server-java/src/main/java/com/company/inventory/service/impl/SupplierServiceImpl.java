@@ -3,13 +3,13 @@ package com.company.inventory.service.impl;
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.supplier.SupplierCreateDTO;
-import com.company.inventory.dto.supplier.SupplierUpdateDTO;
-import com.company.inventory.entity.supplier.SupplierDO;
+import com.company.inventory.model.dto.supplier.SupplierCreateDTO;
+import com.company.inventory.model.dto.supplier.SupplierUpdateDTO;
+import com.company.inventory.model.entity.supplier.SupplierDO;
 import com.company.inventory.mapper.SupplierMapper;
-import com.company.inventory.query.SupplierQuery;
+import com.company.inventory.model.query.SupplierQuery;
 import com.company.inventory.service.SupplierService;
-import com.company.inventory.vo.supplier.SupplierVO;
+import com.company.inventory.model.vo.supplier.SupplierVO;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;

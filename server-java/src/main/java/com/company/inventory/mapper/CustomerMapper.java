@@ -1,6 +1,6 @@
 package com.company.inventory.mapper;
 
-import com.company.inventory.entity.customer.CustomerDO;
+import com.company.inventory.model.entity.customer.CustomerDO;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 

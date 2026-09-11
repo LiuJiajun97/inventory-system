@@ -3,13 +3,13 @@ package com.company.inventory.service.impl;
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.location.LocationCreateDTO;
-import com.company.inventory.dto.location.LocationUpdateDTO;
-import com.company.inventory.entity.location.LocationDO;
+import com.company.inventory.model.dto.location.LocationCreateDTO;
+import com.company.inventory.model.dto.location.LocationUpdateDTO;
+import com.company.inventory.model.entity.location.LocationDO;
 import com.company.inventory.mapper.LocationMapper;
-import com.company.inventory.query.LocationQuery;
+import com.company.inventory.model.query.LocationQuery;
 import com.company.inventory.service.LocationService;
-import com.company.inventory.vo.location.LocationVO;
+import com.company.inventory.model.vo.location.LocationVO;
 
 
 

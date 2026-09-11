@@ -1,10 +1,10 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.warehouse.WarehouseCreateDTO;
-import com.company.inventory.dto.warehouse.WarehouseUpdateDTO;
-import com.company.inventory.query.WarehouseQuery;
-import com.company.inventory.vo.warehouse.WarehouseVO;
+import com.company.inventory.model.dto.warehouse.WarehouseCreateDTO;
+import com.company.inventory.model.dto.warehouse.WarehouseUpdateDTO;
+import com.company.inventory.model.query.WarehouseQuery;
+import com.company.inventory.model.vo.warehouse.WarehouseVO;
 
 
 

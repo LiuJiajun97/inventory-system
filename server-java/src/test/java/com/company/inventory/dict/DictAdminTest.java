@@ -1,12 +1,12 @@
 package com.company.inventory.dict;
 
 import com.company.inventory.common.exception.BizException;
-import com.company.inventory.dto.dict.DictCreateDTO;
-import com.company.inventory.dto.dict.DictUpdateDTO;
-import com.company.inventory.entity.dict.DictDO;
+import com.company.inventory.model.dto.dict.DictCreateDTO;
+import com.company.inventory.model.dto.dict.DictUpdateDTO;
+import com.company.inventory.model.entity.dict.DictDO;
 import com.company.inventory.mapper.DictMapper;
 import com.company.inventory.service.DictAdminService;
-import com.company.inventory.vo.dict.DictVO;
+import com.company.inventory.model.vo.dict.DictVO;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

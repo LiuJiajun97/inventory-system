@@ -1,6 +1,6 @@
 package com.company.inventory.mapper;
 
-import com.company.inventory.entity.location.LocationDO;
+import com.company.inventory.model.entity.location.LocationDO;
 
 
 

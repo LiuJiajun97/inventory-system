@@ -1,10 +1,10 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.transfer.TransferActionDTO;
-import com.company.inventory.dto.transfer.TransferCreateDTO;
-import com.company.inventory.query.TransferDocQuery;
-import com.company.inventory.vo.transfer.TransferDocVO;
+import com.company.inventory.model.dto.transfer.TransferActionDTO;
+import com.company.inventory.model.dto.transfer.TransferCreateDTO;
+import com.company.inventory.model.query.TransferDocQuery;
+import com.company.inventory.model.vo.transfer.TransferDocVO;
 
 /**
  * 调拨单服务:状态机 + 审批执行(同事务源扣目的加,拍板点 1 原子一步)。

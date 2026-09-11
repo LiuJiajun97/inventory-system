@@ -1,11 +1,11 @@
 package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.query.ExpiryAlertQuery;
-import com.company.inventory.query.LowStockQuery;
+import com.company.inventory.model.query.ExpiryAlertQuery;
+import com.company.inventory.model.query.LowStockQuery;
 import com.company.inventory.service.AlertService;
-import com.company.inventory.vo.alert.ExpiryAlertVO;
-import com.company.inventory.vo.alert.LowStockVO;
+import com.company.inventory.model.vo.alert.ExpiryAlertVO;
+import com.company.inventory.model.vo.alert.LowStockVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -3,19 +3,19 @@ package com.company.inventory.service.impl;
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.warehouse.WarehouseCreateDTO;
-import com.company.inventory.dto.warehouse.WarehouseUpdateDTO;
-import com.company.inventory.entity.location.LocationDO;
-import com.company.inventory.entity.stock.SerialDO;
-import com.company.inventory.entity.stock.StockDO;
-import com.company.inventory.entity.warehouse.WarehouseDO;
+import com.company.inventory.model.dto.warehouse.WarehouseCreateDTO;
+import com.company.inventory.model.dto.warehouse.WarehouseUpdateDTO;
+import com.company.inventory.model.entity.location.LocationDO;
+import com.company.inventory.model.entity.stock.SerialDO;
+import com.company.inventory.model.entity.stock.StockDO;
+import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.LocationMapper;
 import com.company.inventory.mapper.SerialMapper;
 import com.company.inventory.mapper.StockMapper;
 import com.company.inventory.mapper.WarehouseMapper;
-import com.company.inventory.query.WarehouseQuery;
+import com.company.inventory.model.query.WarehouseQuery;
 import com.company.inventory.service.WarehouseService;
-import com.company.inventory.vo.warehouse.WarehouseVO;
+import com.company.inventory.model.vo.warehouse.WarehouseVO;
 
 
 

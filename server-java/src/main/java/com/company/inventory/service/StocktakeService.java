@@ -1,11 +1,11 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.stocktake.StocktakeActualDTO;
-import com.company.inventory.dto.stocktake.StocktakeCreateDTO;
-import com.company.inventory.query.StocktakeDocQuery;
-import com.company.inventory.vo.adjust.StockAdjustDocVO;
-import com.company.inventory.vo.stocktake.StocktakeDocVO;
+import com.company.inventory.model.dto.stocktake.StocktakeActualDTO;
+import com.company.inventory.model.dto.stocktake.StocktakeCreateDTO;
+import com.company.inventory.model.query.StocktakeDocQuery;
+import com.company.inventory.model.vo.adjust.StockAdjustDocVO;
+import com.company.inventory.model.vo.stocktake.StocktakeDocVO;
 
 import java.util.List;
 

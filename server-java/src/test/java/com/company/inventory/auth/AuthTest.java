@@ -1,8 +1,8 @@
 package com.company.inventory.auth;
 
 import com.company.inventory.config.RequireRole;
-import com.company.inventory.entity.user.UserDO;
-import com.company.inventory.entity.warehouse.WarehouseDO;
+import com.company.inventory.model.entity.user.UserDO;
+import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.UserMapper;
 import com.company.inventory.mapper.WarehouseMapper;
 

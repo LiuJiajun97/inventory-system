@@ -3,11 +3,11 @@ package com.company.inventory.controller;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.config.RequireRole;
-import com.company.inventory.dto.inbound.InboundCreateDTO;
-import com.company.inventory.query.InboundDocQuery;
+import com.company.inventory.model.dto.inbound.InboundCreateDTO;
+import com.company.inventory.model.query.InboundDocQuery;
 import com.company.inventory.service.InboundService;
-import com.company.inventory.vo.inbound.InboundDocCreatedVO;
-import com.company.inventory.vo.inbound.InboundDocVO;
+import com.company.inventory.model.vo.inbound.InboundDocCreatedVO;
+import com.company.inventory.model.vo.inbound.InboundDocVO;
 
 
 

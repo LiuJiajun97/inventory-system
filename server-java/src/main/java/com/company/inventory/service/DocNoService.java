@@ -1,12 +1,12 @@
 package com.company.inventory.service;
 
-import com.company.inventory.entity.adjust.StockAdjustDocDO;
-import com.company.inventory.entity.inbound.InboundDocDO;
-import com.company.inventory.entity.outbound.OutboundDocDO;
-import com.company.inventory.entity.purchase.PurchaseOrderDO;
-import com.company.inventory.entity.sales.SalesOrderDO;
-import com.company.inventory.entity.stocktake.StocktakeDocDO;
-import com.company.inventory.entity.transfer.TransferDocDO;
+import com.company.inventory.model.entity.adjust.StockAdjustDocDO;
+import com.company.inventory.model.entity.inbound.InboundDocDO;
+import com.company.inventory.model.entity.outbound.OutboundDocDO;
+import com.company.inventory.model.entity.purchase.PurchaseOrderDO;
+import com.company.inventory.model.entity.sales.SalesOrderDO;
+import com.company.inventory.model.entity.stocktake.StocktakeDocDO;
+import com.company.inventory.model.entity.transfer.TransferDocDO;
 import com.company.inventory.mapper.InboundDocMapper;
 import com.company.inventory.mapper.OutboundDocMapper;
 import com.company.inventory.mapper.StockAdjustDocMapper;

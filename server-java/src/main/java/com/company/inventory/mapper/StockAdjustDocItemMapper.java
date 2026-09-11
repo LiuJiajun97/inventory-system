@@ -1,6 +1,6 @@
 package com.company.inventory.mapper;
 
-import com.company.inventory.entity.adjust.StockAdjustDocItemDO;
+import com.company.inventory.model.entity.adjust.StockAdjustDocItemDO;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 

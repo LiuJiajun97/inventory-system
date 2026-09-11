@@ -1,22 +1,22 @@
 package com.company.inventory.transfer;
 
 import com.company.inventory.common.exception.BizException;
-import com.company.inventory.dto.transfer.TransferActionDTO;
-import com.company.inventory.dto.transfer.TransferCreateDTO;
-import com.company.inventory.dto.transfer.TransferLineDTO;
-import com.company.inventory.dto.stock.StockOpRequest;
-import com.company.inventory.entity.item.ItemDO;
-import com.company.inventory.entity.stock.StockDO;
-import com.company.inventory.entity.stock.StockTransactionDO;
-import com.company.inventory.entity.warehouse.WarehouseDO;
+import com.company.inventory.model.dto.transfer.TransferActionDTO;
+import com.company.inventory.model.dto.transfer.TransferCreateDTO;
+import com.company.inventory.model.dto.transfer.TransferLineDTO;
+import com.company.inventory.model.dto.stock.StockOpRequest;
+import com.company.inventory.model.entity.item.ItemDO;
+import com.company.inventory.model.entity.stock.StockDO;
+import com.company.inventory.model.entity.stock.StockTransactionDO;
+import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.ItemMapper;
 import com.company.inventory.mapper.StockMapper;
 import com.company.inventory.mapper.StockTransactionMapper;
 import com.company.inventory.mapper.WarehouseMapper;
 import com.company.inventory.service.StockCoreService;
 import com.company.inventory.service.TransferService;
-import com.company.inventory.vo.stock.StockLine;
-import com.company.inventory.vo.transfer.TransferDocVO;
+import com.company.inventory.model.vo.stock.StockLine;
+import com.company.inventory.model.vo.transfer.TransferDocVO;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.junit.jupiter.api.BeforeAll;

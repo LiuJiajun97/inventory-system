@@ -3,11 +3,11 @@ package com.company.inventory.service.impl;
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.entity.user.UserDO;
+import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.UserMapper;
 import com.company.inventory.service.AuthService;
-import com.company.inventory.vo.auth.LoginUserVO;
-import com.company.inventory.vo.auth.LoginVO;
+import com.company.inventory.model.vo.auth.LoginUserVO;
+import com.company.inventory.model.vo.auth.LoginVO;
 
 
 

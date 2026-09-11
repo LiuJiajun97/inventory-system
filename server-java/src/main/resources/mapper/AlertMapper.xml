@@ -5,7 +5,7 @@
 <mapper namespace="com.company.inventory.mapper.AlertMapper">
 
     <!-- 临期预警:Batch×Item×Stock×Warehouse 关联,按到期日升序 -->
-    <select id="selectExpiryAlerts" resultType="com.company.inventory.vo.alert.ExpiryAlertRow">
+    <select id="selectExpiryAlerts" resultType="com.company.inventory.model.vo.alert.ExpiryAlertRow">
         SELECT b."itemId"  AS "itemId",
                i."itemCode" AS "itemCode",
                i."itemName" AS "itemName",
@@ -35,7 +35,7 @@
     </select>
 
     <!-- 低库存预警:按物品聚合全仓可用量(available = quantity - preAllocatedQty) -->
-    <select id="selectLowStock" resultType="com.company.inventory.vo.alert.LowStockRow">
+    <select id="selectLowStock" resultType="com.company.inventory.model.vo.alert.LowStockRow">
         SELECT i."id"       AS "itemId",
                i."itemCode" AS "itemCode",
                i."itemName" AS "itemName",

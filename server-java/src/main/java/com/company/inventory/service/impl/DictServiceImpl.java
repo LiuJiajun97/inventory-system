@@ -1,9 +1,9 @@
 package com.company.inventory.service.impl;
 
-import com.company.inventory.entity.dict.DictDO;
+import com.company.inventory.model.entity.dict.DictDO;
 import com.company.inventory.mapper.DictMapper;
 import com.company.inventory.service.DictService;
-import com.company.inventory.vo.dict.DictOptionVO;
+import com.company.inventory.model.vo.dict.DictOptionVO;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Service;

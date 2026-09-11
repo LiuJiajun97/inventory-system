@@ -1,6 +1,6 @@
 package com.company.inventory.service;
 
-import com.company.inventory.vo.auth.LoginVO;
+import com.company.inventory.model.vo.auth.LoginVO;
 
 
 

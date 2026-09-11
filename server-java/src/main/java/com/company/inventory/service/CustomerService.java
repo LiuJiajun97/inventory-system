@@ -1,10 +1,10 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.customer.CustomerCreateDTO;
-import com.company.inventory.dto.customer.CustomerUpdateDTO;
-import com.company.inventory.query.CustomerQuery;
-import com.company.inventory.vo.customer.CustomerVO;
+import com.company.inventory.model.dto.customer.CustomerCreateDTO;
+import com.company.inventory.model.dto.customer.CustomerUpdateDTO;
+import com.company.inventory.model.query.CustomerQuery;
+import com.company.inventory.model.vo.customer.CustomerVO;
 
 /**
  * 客户主数据服务接口(admin 可建可改,其余角色只读列表)。

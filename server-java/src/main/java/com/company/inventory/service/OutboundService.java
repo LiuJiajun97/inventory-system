@@ -1,10 +1,10 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.outbound.OutboundCreateDTO;
-import com.company.inventory.query.OutboundDocQuery;
-import com.company.inventory.vo.outbound.OutboundDocCreatedVO;
-import com.company.inventory.vo.outbound.OutboundDocVO;
+import com.company.inventory.model.dto.outbound.OutboundCreateDTO;
+import com.company.inventory.model.query.OutboundDocQuery;
+import com.company.inventory.model.vo.outbound.OutboundDocCreatedVO;
+import com.company.inventory.model.vo.outbound.OutboundDocVO;
 
 
 

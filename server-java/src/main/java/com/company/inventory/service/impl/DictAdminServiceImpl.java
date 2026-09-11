@@ -2,13 +2,13 @@ package com.company.inventory.service.impl;
 
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
-import com.company.inventory.dto.dict.DictCreateDTO;
-import com.company.inventory.dto.dict.DictUpdateDTO;
-import com.company.inventory.entity.dict.DictDO;
+import com.company.inventory.model.dto.dict.DictCreateDTO;
+import com.company.inventory.model.dto.dict.DictUpdateDTO;
+import com.company.inventory.model.entity.dict.DictDO;
 import com.company.inventory.mapper.DictMapper;
 import com.company.inventory.service.DictAdminService;
 import com.company.inventory.support.DictReferenceRegistry;
-import com.company.inventory.vo.dict.DictVO;
+import com.company.inventory.model.vo.dict.DictVO;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 

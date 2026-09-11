@@ -3,21 +3,21 @@ package com.company.inventory.service;
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.util.QtyUtils;
-import com.company.inventory.dto.stock.StockOpRequest;
-import com.company.inventory.entity.stock.BatchDO;
-import com.company.inventory.entity.item.ItemDO;
-import com.company.inventory.entity.stock.SerialDO;
-import com.company.inventory.entity.stock.StockDO;
-import com.company.inventory.entity.stock.StockTransactionDO;
-import com.company.inventory.entity.warehouse.WarehouseDO;
+import com.company.inventory.model.dto.stock.StockOpRequest;
+import com.company.inventory.model.entity.stock.BatchDO;
+import com.company.inventory.model.entity.item.ItemDO;
+import com.company.inventory.model.entity.stock.SerialDO;
+import com.company.inventory.model.entity.stock.StockDO;
+import com.company.inventory.model.entity.stock.StockTransactionDO;
+import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.BatchMapper;
 import com.company.inventory.mapper.ItemMapper;
 import com.company.inventory.mapper.SerialMapper;
 import com.company.inventory.mapper.StockMapper;
 import com.company.inventory.mapper.StockTransactionMapper;
 import com.company.inventory.mapper.WarehouseMapper;
-import com.company.inventory.vo.stock.StockLine;
-import com.company.inventory.vo.stock.StockOpResult;
+import com.company.inventory.model.vo.stock.StockLine;
+import com.company.inventory.model.vo.stock.StockOpResult;
 
 
 

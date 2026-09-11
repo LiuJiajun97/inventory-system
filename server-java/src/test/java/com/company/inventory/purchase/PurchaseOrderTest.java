@@ -1,16 +1,16 @@
 package com.company.inventory.purchase;
 
 import com.company.inventory.common.exception.BizException;
-import com.company.inventory.dto.inbound.InboundCreateDTO;
-import com.company.inventory.dto.inbound.InboundLineDTO;
-import com.company.inventory.dto.purchase.ArrivalLine;
-import com.company.inventory.dto.purchase.PurchaseActionDTO;
-import com.company.inventory.dto.purchase.PurchaseOrderCreateDTO;
-import com.company.inventory.dto.purchase.PurchaseOrderLineDTO;
-import com.company.inventory.entity.item.ItemDO;
-import com.company.inventory.entity.supplier.SupplierDO;
-import com.company.inventory.entity.user.UserDO;
-import com.company.inventory.entity.warehouse.WarehouseDO;
+import com.company.inventory.model.dto.inbound.InboundCreateDTO;
+import com.company.inventory.model.dto.inbound.InboundLineDTO;
+import com.company.inventory.model.dto.purchase.ArrivalLine;
+import com.company.inventory.model.dto.purchase.PurchaseActionDTO;
+import com.company.inventory.model.dto.purchase.PurchaseOrderCreateDTO;
+import com.company.inventory.model.dto.purchase.PurchaseOrderLineDTO;
+import com.company.inventory.model.entity.item.ItemDO;
+import com.company.inventory.model.entity.supplier.SupplierDO;
+import com.company.inventory.model.entity.user.UserDO;
+import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.ItemMapper;
 import com.company.inventory.mapper.PurchaseOrderMapper;
 import com.company.inventory.mapper.StockMapper;
@@ -19,9 +19,9 @@ import com.company.inventory.mapper.UserMapper;
 import com.company.inventory.mapper.WarehouseMapper;
 import com.company.inventory.service.InboundService;
 import com.company.inventory.service.PurchaseOrderService;
-import com.company.inventory.vo.purchase.PurchaseOrderItemVO;
-import com.company.inventory.vo.purchase.PurchaseOrderVO;
-import com.company.inventory.vo.supplier.SupplierVO;
+import com.company.inventory.model.vo.purchase.PurchaseOrderItemVO;
+import com.company.inventory.model.vo.purchase.PurchaseOrderVO;
+import com.company.inventory.model.vo.supplier.SupplierVO;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.junit.jupiter.api.BeforeAll;
@@ -275,9 +275,9 @@ class PurchaseOrderTest {
         assertEquals(Boolean.TRUE, done.items().get(0).closed());
         assertEquals(0, new BigDecimal("10").compareTo(new BigDecimal(done.items().get(0).arrivedQty())));
         // 库存 +10
-        var stock = stockMapper.selectOne(new LambdaQueryWrapper<com.company.inventory.entity.stock.StockDO>()
-                .eq(com.company.inventory.entity.stock.StockDO::getWarehouseId, warehouseId)
-                .eq(com.company.inventory.entity.stock.StockDO::getItemId, itemId));
+        var stock = stockMapper.selectOne(new LambdaQueryWrapper<com.company.inventory.model.entity.stock.StockDO>()
+                .eq(com.company.inventory.model.entity.stock.StockDO::getWarehouseId, warehouseId)
+                .eq(com.company.inventory.model.entity.stock.StockDO::getItemId, itemId));
         assertNotNull(stock);
         assertEquals(0, new BigDecimal("10").compareTo(stock.getQuantity()));
     }
@@ -316,8 +316,8 @@ class PurchaseOrderTest {
                         "purchase", id, LocalDate.now()), "po_creator"));
         assertTrue(ex.getMessage().contains("超收"));
         // 拒绝后库存无变化、订单行未回写
-        var stock = stockMapper.selectList(new LambdaQueryWrapper<com.company.inventory.entity.stock.StockDO>()
-                .eq(com.company.inventory.entity.stock.StockDO::getWarehouseId, warehouseId));
+        var stock = stockMapper.selectList(new LambdaQueryWrapper<com.company.inventory.model.entity.stock.StockDO>()
+                .eq(com.company.inventory.model.entity.stock.StockDO::getWarehouseId, warehouseId));
         assertTrue(stock.isEmpty() || stock.stream().allMatch(s -> s.getQuantity().signum() == 0));
         assertEquals("approved", purchaseOrderService.get(id).status());
     }

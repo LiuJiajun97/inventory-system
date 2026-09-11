@@ -3,12 +3,12 @@ package com.company.inventory.controller;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.config.RequireRole;
-import com.company.inventory.dto.stocktake.StocktakeActualDTO;
-import com.company.inventory.dto.stocktake.StocktakeCreateDTO;
-import com.company.inventory.query.StocktakeDocQuery;
+import com.company.inventory.model.dto.stocktake.StocktakeActualDTO;
+import com.company.inventory.model.dto.stocktake.StocktakeCreateDTO;
+import com.company.inventory.model.query.StocktakeDocQuery;
 import com.company.inventory.service.StocktakeService;
-import com.company.inventory.vo.adjust.StockAdjustDocVO;
-import com.company.inventory.vo.stocktake.StocktakeDocVO;
+import com.company.inventory.model.vo.adjust.StockAdjustDocVO;
+import com.company.inventory.model.vo.stocktake.StocktakeDocVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

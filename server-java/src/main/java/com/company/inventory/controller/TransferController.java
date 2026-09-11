@@ -3,11 +3,11 @@ package com.company.inventory.controller;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.config.RequireRole;
-import com.company.inventory.dto.transfer.TransferActionDTO;
-import com.company.inventory.dto.transfer.TransferCreateDTO;
-import com.company.inventory.query.TransferDocQuery;
+import com.company.inventory.model.dto.transfer.TransferActionDTO;
+import com.company.inventory.model.dto.transfer.TransferCreateDTO;
+import com.company.inventory.model.query.TransferDocQuery;
 import com.company.inventory.service.TransferService;
-import com.company.inventory.vo.transfer.TransferDocVO;
+import com.company.inventory.model.vo.transfer.TransferDocVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

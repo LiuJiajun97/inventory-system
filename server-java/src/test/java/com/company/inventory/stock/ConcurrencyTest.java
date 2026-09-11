@@ -1,16 +1,16 @@
 package com.company.inventory.stock;
 
 import com.company.inventory.common.exception.BizException;
-import com.company.inventory.dto.purchase.ArrivalLine;
-import com.company.inventory.dto.purchase.PurchaseOrderCreateDTO;
-import com.company.inventory.dto.purchase.PurchaseOrderLineDTO;
-import com.company.inventory.dto.stock.StockOpRequest;
-import com.company.inventory.entity.item.ItemDO;
-import com.company.inventory.entity.stock.StockDO;
-import com.company.inventory.entity.stock.StockTransactionDO;
-import com.company.inventory.entity.supplier.SupplierDO;
-import com.company.inventory.entity.user.UserDO;
-import com.company.inventory.entity.warehouse.WarehouseDO;
+import com.company.inventory.model.dto.purchase.ArrivalLine;
+import com.company.inventory.model.dto.purchase.PurchaseOrderCreateDTO;
+import com.company.inventory.model.dto.purchase.PurchaseOrderLineDTO;
+import com.company.inventory.model.dto.stock.StockOpRequest;
+import com.company.inventory.model.entity.item.ItemDO;
+import com.company.inventory.model.entity.stock.StockDO;
+import com.company.inventory.model.entity.stock.StockTransactionDO;
+import com.company.inventory.model.entity.supplier.SupplierDO;
+import com.company.inventory.model.entity.user.UserDO;
+import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.ItemMapper;
 import com.company.inventory.mapper.StockMapper;
 import com.company.inventory.mapper.StockTransactionMapper;
@@ -19,8 +19,8 @@ import com.company.inventory.mapper.UserMapper;
 import com.company.inventory.mapper.WarehouseMapper;
 import com.company.inventory.service.PurchaseOrderService;
 import com.company.inventory.service.StockCoreService;
-import com.company.inventory.vo.purchase.PurchaseOrderVO;
-import com.company.inventory.vo.stock.StockLine;
+import com.company.inventory.model.vo.purchase.PurchaseOrderVO;
+import com.company.inventory.model.vo.stock.StockLine;
 
 
 

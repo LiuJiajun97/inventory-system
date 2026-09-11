@@ -1,8 +1,8 @@
 package com.company.inventory.service;
 
-import com.company.inventory.dto.dict.DictCreateDTO;
-import com.company.inventory.dto.dict.DictUpdateDTO;
-import com.company.inventory.vo.dict.DictVO;
+import com.company.inventory.model.dto.dict.DictCreateDTO;
+import com.company.inventory.model.dto.dict.DictUpdateDTO;
+import com.company.inventory.model.vo.dict.DictVO;
 
 import java.util.List;
 

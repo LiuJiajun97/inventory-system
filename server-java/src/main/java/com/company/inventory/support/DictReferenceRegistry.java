@@ -1,7 +1,7 @@
 package com.company.inventory.support;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.company.inventory.entity.dict.DictDO;
+import com.company.inventory.model.entity.dict.DictDO;
 import com.company.inventory.mapper.DictMapper;
 
 import org.springframework.jdbc.core.JdbcTemplate;

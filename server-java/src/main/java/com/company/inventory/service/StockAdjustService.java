@@ -1,9 +1,9 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.dto.adjust.StockAdjustCreateDTO;
-import com.company.inventory.query.StockAdjustQuery;
-import com.company.inventory.vo.adjust.StockAdjustDocVO;
+import com.company.inventory.model.dto.adjust.StockAdjustCreateDTO;
+import com.company.inventory.model.query.StockAdjustQuery;
+import com.company.inventory.model.vo.adjust.StockAdjustDocVO;
 
 /**
  * 库存调整单服务:gain 调整入库/loss 与 scrap 调整出库,审批通过时执行库存动作并 completed。

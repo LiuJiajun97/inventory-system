@@ -2,16 +2,16 @@ package com.company.inventory.purchase;
 
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.config.RequireRole;
-import com.company.inventory.dto.purchase.PurchaseOrderCreateDTO;
-import com.company.inventory.dto.purchase.PurchaseOrderLineDTO;
-import com.company.inventory.entity.item.ItemDO;
-import com.company.inventory.entity.supplier.SupplierDO;
-import com.company.inventory.entity.user.UserDO;
+import com.company.inventory.model.dto.purchase.PurchaseOrderCreateDTO;
+import com.company.inventory.model.dto.purchase.PurchaseOrderLineDTO;
+import com.company.inventory.model.entity.item.ItemDO;
+import com.company.inventory.model.entity.supplier.SupplierDO;
+import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.ItemMapper;
 import com.company.inventory.mapper.SupplierMapper;
 import com.company.inventory.mapper.UserMapper;
 import com.company.inventory.service.PurchaseOrderService;
-import com.company.inventory.vo.purchase.PurchaseOrderVO;
+import com.company.inventory.model.vo.purchase.PurchaseOrderVO;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

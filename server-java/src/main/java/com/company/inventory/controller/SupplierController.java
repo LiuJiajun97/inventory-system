@@ -3,11 +3,11 @@ package com.company.inventory.controller;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.config.RequireRole;
-import com.company.inventory.dto.supplier.SupplierCreateDTO;
-import com.company.inventory.dto.supplier.SupplierUpdateDTO;
-import com.company.inventory.query.SupplierQuery;
+import com.company.inventory.model.dto.supplier.SupplierCreateDTO;
+import com.company.inventory.model.dto.supplier.SupplierUpdateDTO;
+import com.company.inventory.model.query.SupplierQuery;
 import com.company.inventory.service.SupplierService;
-import com.company.inventory.vo.supplier.SupplierVO;
+import com.company.inventory.model.vo.supplier.SupplierVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,10 +1,10 @@
 package com.company.inventory.service;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.query.StockQuery;
-import com.company.inventory.query.TransactionQuery;
-import com.company.inventory.vo.stock.StockVO;
-import com.company.inventory.vo.stock.TransactionVO;
+import com.company.inventory.model.query.StockQuery;
+import com.company.inventory.model.query.TransactionQuery;
+import com.company.inventory.model.vo.stock.StockVO;
+import com.company.inventory.model.vo.stock.TransactionVO;
 
 
 

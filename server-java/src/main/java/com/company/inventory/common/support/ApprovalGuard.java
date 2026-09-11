@@ -2,7 +2,7 @@ package com.company.inventory.common.support;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.company.inventory.common.exception.BizException;
-import com.company.inventory.entity.user.UserDO;
+import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.UserMapper;
 import org.springframework.stereotype.Component;
 

@@ -51,7 +51,7 @@
     </insert>
 
     <!-- 选批候选集:仅批次行、可用量(quantity - preAllocatedQty)大于 0,按 id 升序保证确定性 -->
-    <select id="selectActiveStocks" resultType="com.company.inventory.entity.stock.StockDO">
+    <select id="selectActiveStocks" resultType="com.company.inventory.model.entity.stock.StockDO">
         SELECT "id", "warehouseId", "itemId", "batchId", "locationId", "quantity",
                "preAllocatedQty", "updatedAt"
         FROM "Stock"
@@ -65,7 +65,7 @@
     </select>
 
     <!-- 预占候选集:仓+物品下余额大于 0 的所有行(不限批次/库位,含无批次行),按 id 升序 -->
-    <select id="selectPreAllocCandidates" resultType="com.company.inventory.entity.stock.StockDO">
+    <select id="selectPreAllocCandidates" resultType="com.company.inventory.model.entity.stock.StockDO">
         SELECT "id", "warehouseId", "itemId", "batchId", "locationId", "quantity",
                "preAllocatedQty", "updatedAt"
         FROM "Stock"
