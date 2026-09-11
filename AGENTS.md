@@ -17,11 +17,11 @@
 IDEA 没开或通道不通时,退回下面命令。
 
 ```bash
-# 构建/测试(server-java 下,Maven 必须经包装脚本,bash 下直接 mvn 有 classworlds 路径 bug)
-bash scripts/mvn.sh test               # 后端测试(当前 87 条,必须全绿)
-bash scripts/mvn.sh checkstyle:check   # checkstyle(必须 0 违规)
-bash scripts/mvn.sh package            # 构建
-bash scripts/mvn.sh spring-boot:run    # 启动后端(8081)
+# 构建/测试(必须在 server-java/ 下跑,Maven 必须经包装脚本,根目录直接跑报 no POM)
+bash ../scripts/mvn.sh test               # 后端测试(当前 87 条,必须全绿)
+bash ../scripts/mvn.sh checkstyle:check   # checkstyle(必须 0 违规)
+bash ../scripts/mvn.sh package            # 构建
+bash ../scripts/mvn.sh spring-boot:run    # 启动后端(8081)
 
 # 前端(web 下)
 npm run dev                            # dev(5173,代理 /api → 8081)
