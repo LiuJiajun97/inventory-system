@@ -1,5 +1,6 @@
 package com.company.inventory.entity.dict;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -30,11 +31,17 @@ public class DictTypeDO {
     /** 状态:1 启用 / 0 停用。 */
     @TableField("\"status\"")
     private Integer status;
+    /** 创建人。 */
+    @TableField(value = "\"creator\"", fill = FieldFill.INSERT)
+    private String creator;
     /** 创建时间。 */
-    @TableField("\"createdAt\"")
+    @TableField(value = "\"createdAt\"", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
+    /** 修改人。 */
+    @TableField(value = "\"updater\"", fill = FieldFill.INSERT_UPDATE)
+    private String updater;
     /** 更新时间。 */
-    @TableField("\"updatedAt\"")
+    @TableField(value = "\"updatedAt\"", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
 
     public Long getId() {
@@ -85,11 +92,52 @@ public class DictTypeDO {
         this.createdAt = createdAt;
     }
 
+    /**
+     * 获取修改时间。
+     *
+     * @return 修改时间
+     */
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    /**
+     * 获取创建人。
+     *
+     * @return 创建人
+     */
+    public String getCreator() {
+        return creator;
+    }
+
+    /**
+     * 设置创建人。
+     *
+     * @param creator 创建人
+     */
+    public void setCreator(String creator) {
+        this.creator = creator;
+    }
+
+    /**
+     * 获取修改人。
+     *
+     * @return 修改人
+     */
+    public String getUpdater() {
+        return updater;
+    }
+
+    /**
+     * 设置修改人。
+     *
+     * @param updater 修改人
+     */
+    public void setUpdater(String updater) {
+        this.updater = updater;
     }
 }

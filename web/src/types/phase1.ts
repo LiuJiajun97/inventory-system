@@ -14,7 +14,7 @@ export interface Supplier {
   payTermDays?: number | null;
   status: number;
   remark?: string | null;
-  createdBy?: string | null;
+  creator?: string | null;
   createdAt?: string | null;
 }
 
@@ -31,7 +31,7 @@ export interface Customer {
   payTermDays?: number | null;
   status: number;
   remark?: string | null;
-  createdBy?: string | null;
+  creator?: string | null;
   createdAt?: string | null;
 }
 

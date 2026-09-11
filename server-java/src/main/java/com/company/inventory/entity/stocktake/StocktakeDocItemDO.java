@@ -1,5 +1,6 @@
 package com.company.inventory.entity.stocktake;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -47,6 +48,9 @@ public class StocktakeDocItemDO {
     /** 差异数量。 */
     @TableField("\"diffQty\"")
     private BigDecimal diffQty;
+    /** 创建人。 */
+    @TableField(value = "\"creator\"", fill = FieldFill.INSERT)
+    private String creator;
 
     /**
      * 获取主键。
@@ -244,5 +248,23 @@ public class StocktakeDocItemDO {
      */
     public void setDiffQty(BigDecimal diffQty) {
         this.diffQty = diffQty;
+    }
+
+    /**
+     * 获取创建人。
+     *
+     * @return 创建人
+     */
+    public String getCreator() {
+        return creator;
+    }
+
+    /**
+     * 设置创建人。
+     *
+     * @param creator 创建人
+     */
+    public void setCreator(String creator) {
+        this.creator = creator;
     }
 }

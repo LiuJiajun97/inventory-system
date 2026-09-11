@@ -13,7 +13,10 @@ CREATE TABLE IF NOT EXISTS "Warehouse" (
     enableSerial   BOOLEAN NOT NULL DEFAULT FALSE,
     enableLocation BOOLEAN NOT NULL DEFAULT FALSE,
     status         INTEGER NOT NULL DEFAULT 1,
+    creator        VARCHAR(64),
     createdAt      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updater        VARCHAR(64),
+    updatedAt      TIMESTAMP,
     CONSTRAINT "Warehouse_warehouseCode_key" UNIQUE (warehouseCode)
 );
 
@@ -25,7 +28,10 @@ CREATE TABLE IF NOT EXISTS "Item" (
     spec       TEXT,
     attributes TEXT,
     status     INTEGER NOT NULL DEFAULT 1,
+    creator    VARCHAR(64),
     createdAt  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updater    VARCHAR(64),
+    updatedAt  TIMESTAMP,
     CONSTRAINT "Item_itemCode_key" UNIQUE (itemCode)
 );
 
@@ -46,6 +52,10 @@ CREATE TABLE IF NOT EXISTS "Location" (
     warehouseId  INTEGER NOT NULL,
     locationCode TEXT NOT NULL,
     locationName TEXT,
+    creator      VARCHAR(64),
+    createdAt    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updater      VARCHAR(64),
+    updatedAt    TIMESTAMP,
     CONSTRAINT "Location_warehouseId_locationCode_key" UNIQUE (warehouseId, locationCode),
     CONSTRAINT "Location_warehouseId_fkey" FOREIGN KEY (warehouseId) REFERENCES "Warehouse" (id)
 );
@@ -97,6 +107,8 @@ CREATE TABLE IF NOT EXISTS "InboundDoc" (
     remark      TEXT,
     creator     TEXT,
     createdAt   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updater     TEXT,
+    updatedAt   TIMESTAMP,
     CONSTRAINT "InboundDoc_docNo_key" UNIQUE (docNo),
     CONSTRAINT "InboundDoc_warehouseId_fkey" FOREIGN KEY (warehouseId) REFERENCES "Warehouse" (id)
 );
@@ -109,6 +121,8 @@ CREATE TABLE IF NOT EXISTS "OutboundDoc" (
     remark      TEXT,
     creator     TEXT,
     createdAt   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updater     TEXT,
+    updatedAt   TIMESTAMP,
     CONSTRAINT "OutboundDoc_docNo_key" UNIQUE (docNo),
     CONSTRAINT "OutboundDoc_warehouseId_fkey" FOREIGN KEY (warehouseId) REFERENCES "Warehouse" (id)
 );
@@ -142,7 +156,10 @@ CREATE TABLE IF NOT EXISTS "User" (
     name         TEXT NOT NULL,
     role         TEXT NOT NULL,
     status       INTEGER NOT NULL DEFAULT 1,
+    creator      VARCHAR(64),
     createdAt    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updater      VARCHAR(64),
+    updatedAt    TIMESTAMP,
     CONSTRAINT "User_username_key" UNIQUE (username)
 );
 
@@ -173,9 +190,9 @@ CREATE TABLE IF NOT EXISTS "Supplier" (
     "payTermDays"    INTEGER,
     "status"         INTEGER NOT NULL DEFAULT 1,
     "remark"         TEXT,
-    "createdBy"      TEXT,
+    "creator"        TEXT,
     "createdAt"      TIMESTAMP,
-    "updatedBy"      TEXT,
+    "updater"        TEXT,
     "updatedAt"      TIMESTAMP,
     CONSTRAINT "Supplier_supplierCode_key" UNIQUE ("supplierCode")
 );
@@ -193,9 +210,9 @@ CREATE TABLE IF NOT EXISTS "Customer" (
     "payTermDays"    INTEGER,
     "status"         INTEGER NOT NULL DEFAULT 1,
     "remark"         TEXT,
-    "createdBy"      TEXT,
+    "creator"        TEXT,
     "createdAt"      TIMESTAMP,
-    "updatedBy"      TEXT,
+    "updater"        TEXT,
     "updatedAt"      TIMESTAMP,
     CONSTRAINT "Customer_customerCode_key" UNIQUE ("customerCode")
 );
@@ -239,7 +256,8 @@ CREATE TABLE IF NOT EXISTS "PurchaseOrderItem" (
     "taxAmount"          NUMERIC(18, 4) NOT NULL,
     "taxInclusiveTotal"  NUMERIC(18, 4) NOT NULL,
     "closed"             BOOLEAN NOT NULL DEFAULT FALSE,
-    "lineRemark"         TEXT
+    "lineRemark"         TEXT,
+    "creator"            VARCHAR(64)
 );
 
 -- ---------- 3.3 销售 ----------
@@ -281,7 +299,8 @@ CREATE TABLE IF NOT EXISTS "SalesOrderItem" (
     "taxAmount"           NUMERIC(18, 4) NOT NULL,
     "taxInclusiveTotal"   NUMERIC(18, 4) NOT NULL,
     "closed"              BOOLEAN NOT NULL DEFAULT FALSE,
-    "lineRemark"          TEXT
+    "lineRemark"          TEXT,
+    "creator"             VARCHAR(64)
 );
 
 -- ---------- 3.4 调拨 ----------
@@ -315,11 +334,11 @@ CREATE TABLE IF NOT EXISTS "TransferDocItem" (
     "unitPrice"      NUMERIC(18, 4) NOT NULL,
     "fromLocationId" INTEGER,
     "toLocationId"   INTEGER,
-    "lineRemark"     TEXT
+    "lineRemark"     TEXT,
+    "creator"        VARCHAR(64)
 );
 
 -- ---------- 3.5 盘点 / 调整 ----------
-CREATE TABLE IF NOT EXISTS "StocktakeDoc" (
     id           SERIAL PRIMARY KEY,
     "docNo"      TEXT NOT NULL,
     "docDate"    DATE NOT NULL,
@@ -348,10 +367,9 @@ CREATE TABLE IF NOT EXISTS "StocktakeDocItem" (
     "locationId"   INTEGER NOT NULL DEFAULT 0,
     "bookQty"      NUMERIC(18, 4) NOT NULL,
     "actualQty"    NUMERIC(18, 4),
-    "diffQty"      NUMERIC(18, 4)
+    "diffQty"      NUMERIC(18, 4),
+    "creator"      VARCHAR(64)
 );
-
-CREATE TABLE IF NOT EXISTS "StockAdjustDoc" (
     id           SERIAL PRIMARY KEY,
     "docNo"      TEXT NOT NULL,
     "docDate"    DATE NOT NULL,
@@ -381,7 +399,8 @@ CREATE TABLE IF NOT EXISTS "StockAdjustDocItem" (
     "locationId"   INTEGER NOT NULL DEFAULT 0,
     "qty"          NUMERIC(18, 4) NOT NULL,
     "unitPrice"    NUMERIC(18, 4),
-    "reason"       TEXT
+    "reason"       TEXT,
+    "creator"      VARCHAR(64)
 );
 
 -- ---------- 3.6 现有表增量 ----------

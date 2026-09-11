@@ -112,6 +112,12 @@ export function ItemListPage() {
         );
       },
     },
+    {
+      title: "创建人",
+      dataIndex: "creator",
+      width: 100,
+      render: (v?: string | null) => v ?? "-",
+    },
     ...(user?.role === "admin"
       ? [
           {

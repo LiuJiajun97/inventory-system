@@ -25,6 +25,8 @@ export interface Warehouse {
   enableSerial: boolean;
   enableLocation: boolean;
   status: number;
+  creator?: string | null;
+  createdAt?: string | null;
 }
 
 export interface Location {
@@ -44,6 +46,8 @@ export interface Item {
   category?: string | null;
   minStock?: string | number | null;
   defaultTaxRate?: string | number | null;
+  creator?: string | null;
+  createdAt?: string | null;
 }
 
 export interface StockRow {

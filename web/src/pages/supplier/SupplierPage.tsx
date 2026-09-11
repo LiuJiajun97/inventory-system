@@ -114,6 +114,12 @@ export function SupplierPage() {
         v ? settleOptions.find((o) => o.value === v)?.label ?? v : "-",
     },
     {
+      title: "创建人",
+      dataIndex: "creator",
+      width: 100,
+      render: (v?: string | null) => v ?? "-",
+    },
+    {
       title: "状态",
       dataIndex: "status",
       width: 80,

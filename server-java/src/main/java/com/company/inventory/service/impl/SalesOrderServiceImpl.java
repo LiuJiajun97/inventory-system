@@ -666,6 +666,6 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         return new CustomerVO(c.getId(), c.getCustomerCode(), c.getCustomerName(), c.getTaxNo(),
                 c.getDefaultTaxRate(), c.getContact(), c.getPhone(), c.getAddress(),
                 c.getSettleMethod(), c.getPayTermDays(), c.getStatus(), c.getRemark(),
-                c.getCreatedBy(), c.getCreatedAt(), c.getUpdatedBy(), c.getUpdatedAt());
+                c.getCreator(), c.getCreatedAt(), c.getUpdater(), c.getUpdatedAt());
     }
 }

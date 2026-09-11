@@ -1,5 +1,6 @@
 package com.company.inventory.entity.purchase;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -63,6 +64,9 @@ public class PurchaseOrderItemDO {
     /** 行备注。 */
     @TableField("\"lineRemark\"")
     private String lineRemark;
+    /** 创建人。 */
+    @TableField(value = "\"creator\"", fill = FieldFill.INSERT)
+    private String creator;
 
     /**
      * 获取主键。
@@ -350,5 +354,23 @@ public class PurchaseOrderItemDO {
      */
     public void setLineRemark(String lineRemark) {
         this.lineRemark = lineRemark;
+    }
+
+    /**
+     * 获取创建人。
+     *
+     * @return 创建人
+     */
+    public String getCreator() {
+        return creator;
+    }
+
+    /**
+     * 设置创建人。
+     *
+     * @param creator 创建人
+     */
+    public void setCreator(String creator) {
+        this.creator = creator;
     }
 }

@@ -115,7 +115,7 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setPayTermDays(dto.payTermDays());
         customer.setRemark(dto.remark());
         customer.setStatus(1);
-        customer.setCreatedBy(username);
+        customer.setCreator(username);
         customer.setCreatedAt(LocalDateTime.now());
         customerMapper.insert(customer);
         LOGGER.info("新建客户: code={}, name={}, operator={}",
@@ -168,7 +168,7 @@ public class CustomerServiceImpl implements CustomerService {
         if (dto.remark() != null) {
             customer.setRemark(dto.remark());
         }
-        customer.setUpdatedBy(username);
+        customer.setUpdater(username);
         customer.setUpdatedAt(LocalDateTime.now());
         customerMapper.updateById(customer);
         LOGGER.info("编辑客户: id={}, operator={}", id, username);
@@ -185,6 +185,6 @@ public class CustomerServiceImpl implements CustomerService {
         return new CustomerVO(s.getId(), s.getCustomerCode(), s.getCustomerName(), s.getTaxNo(),
                 s.getDefaultTaxRate(), s.getContact(), s.getPhone(), s.getAddress(),
                 s.getSettleMethod(), s.getPayTermDays(), s.getStatus(), s.getRemark(),
-                s.getCreatedBy(), s.getCreatedAt(), s.getUpdatedBy(), s.getUpdatedAt());
+                s.getCreator(), s.getCreatedAt(), s.getUpdater(), s.getUpdatedAt());
     }
 }

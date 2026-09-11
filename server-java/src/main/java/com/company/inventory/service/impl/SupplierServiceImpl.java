@@ -115,7 +115,7 @@ public class SupplierServiceImpl implements SupplierService {
         supplier.setPayTermDays(dto.payTermDays());
         supplier.setRemark(dto.remark());
         supplier.setStatus(1);
-        supplier.setCreatedBy(username);
+        supplier.setCreator(username);
         supplier.setCreatedAt(LocalDateTime.now());
         supplierMapper.insert(supplier);
         LOGGER.info("新建供应商: code={}, name={}, operator={}",
@@ -168,7 +168,7 @@ public class SupplierServiceImpl implements SupplierService {
         if (dto.remark() != null) {
             supplier.setRemark(dto.remark());
         }
-        supplier.setUpdatedBy(username);
+        supplier.setUpdater(username);
         supplier.setUpdatedAt(LocalDateTime.now());
         supplierMapper.updateById(supplier);
         LOGGER.info("编辑供应商: id={}, operator={}", id, username);
@@ -185,6 +185,6 @@ public class SupplierServiceImpl implements SupplierService {
         return new SupplierVO(s.getId(), s.getSupplierCode(), s.getSupplierName(), s.getTaxNo(),
                 s.getDefaultTaxRate(), s.getContact(), s.getPhone(), s.getAddress(),
                 s.getSettleMethod(), s.getPayTermDays(), s.getStatus(), s.getRemark(),
-                s.getCreatedBy(), s.getCreatedAt(), s.getUpdatedBy(), s.getUpdatedAt());
+                s.getCreator(), s.getCreatedAt(), s.getUpdater(), s.getUpdatedAt());
     }
 }

@@ -1,8 +1,11 @@
 package com.company.inventory.entity.location;
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+
+import java.time.LocalDateTime;
 
 /**
  * 库位表实体(表 Location)。
@@ -24,6 +27,18 @@ public class LocationDO {
     /** 库位名称。 */
     @TableField("\"locationName\"")
     private String locationName;
+    /** 创建人。 */
+    @TableField(value = "\"creator\"", fill = FieldFill.INSERT)
+    private String creator;
+    /** 创建时间。 */
+    @TableField(value = "\"createdAt\"", fill = FieldFill.INSERT)
+    private LocalDateTime createdAt;
+    /** 修改人。 */
+    @TableField(value = "\"updater\"", fill = FieldFill.INSERT_UPDATE)
+    private String updater;
+    /** 修改时间。 */
+    @TableField(value = "\"updatedAt\"", fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updatedAt;
     /**
      * 获取主键。
      *
@@ -94,5 +109,77 @@ public class LocationDO {
      */
     public void setLocationName(String locationName) {
         this.locationName = locationName;
+    }
+
+    /**
+     * 获取创建人。
+     *
+     * @return 创建人
+     */
+    public String getCreator() {
+        return creator;
+    }
+
+    /**
+     * 设置创建人。
+     *
+     * @param creator 创建人
+     */
+    public void setCreator(String creator) {
+        this.creator = creator;
+    }
+
+    /**
+     * 获取创建时间。
+     *
+     * @return 创建时间
+     */
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    /**
+     * 设置创建时间。
+     *
+     * @param createdAt 创建时间
+     */
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    /**
+     * 获取修改人。
+     *
+     * @return 修改人
+     */
+    public String getUpdater() {
+        return updater;
+    }
+
+    /**
+     * 设置修改人。
+     *
+     * @param updater 修改人
+     */
+    public void setUpdater(String updater) {
+        this.updater = updater;
+    }
+
+    /**
+     * 获取修改时间。
+     *
+     * @return 修改时间
+     */
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    /**
+     * 设置修改时间。
+     *
+     * @param updatedAt 修改时间
+     */
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

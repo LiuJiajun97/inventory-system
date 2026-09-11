@@ -555,6 +555,6 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         return new SupplierVO(s.getId(), s.getSupplierCode(), s.getSupplierName(), s.getTaxNo(),
                 s.getDefaultTaxRate(), s.getContact(), s.getPhone(), s.getAddress(),
                 s.getSettleMethod(), s.getPayTermDays(), s.getStatus(), s.getRemark(),
-                s.getCreatedBy(), s.getCreatedAt(), s.getUpdatedBy(), s.getUpdatedAt());
+                s.getCreator(), s.getCreatedAt(), s.getUpdater(), s.getUpdatedAt());
     }
 }

@@ -1,5 +1,6 @@
 package com.company.inventory.entity.sales;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -47,16 +48,16 @@ public class SalesOrderDO {
     @TableField("\"status\"")
     private String status;
     /** 制单人。 */
-    @TableField("\"creator\"")
+    @TableField(value = "\"creator\"", fill = FieldFill.INSERT)
     private String creator;
     /** 制单时间。 */
-    @TableField("\"createdAt\"")
+    @TableField(value = "\"createdAt\"", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     /** 修改人。 */
-    @TableField("\"updater\"")
+    @TableField(value = "\"updater\"", fill = FieldFill.INSERT_UPDATE)
     private String updater;
     /** 修改时间。 */
-    @TableField("\"updatedAt\"")
+    @TableField(value = "\"updatedAt\"", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
     /** 审批人。 */
     @TableField("\"approver\"")

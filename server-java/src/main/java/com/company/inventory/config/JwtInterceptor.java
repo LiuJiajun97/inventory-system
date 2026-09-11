@@ -6,6 +6,7 @@ package com.company.inventory.config;
 
 
 
+import com.company.inventory.common.support.UserContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -150,6 +151,9 @@ public class JwtInterceptor implements HandlerInterceptor {
         request.setAttribute(ATTR_ROLE, claims.get("role", String.class));
         request.setAttribute(ATTR_NAME, claims.get("name", String.class));
 
+        // 写入用户上下文,供 MyBatis-Plus 自动填充读取
+        UserContext.set(claims.get("username", String.class));
+
         // 角色校验:方法注解优先,其次类注解
         RequireRole requireRole = handlerMethod.getMethodAnnotation(RequireRole.class);
         if (requireRole == null) {
@@ -163,6 +167,20 @@ public class JwtInterceptor implements HandlerInterceptor {
             }
         }
         return true;
+    }
+
+    /**
+     * 后置处理:清除用户上下文,防线程池串号。
+     *
+     * @param request  请求
+     * @param response 响应
+     * @param handler  处理器
+     * @param ex       异常
+     */
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+            Object handler, Exception ex) {
+        UserContext.clear();
     }
 
     /**

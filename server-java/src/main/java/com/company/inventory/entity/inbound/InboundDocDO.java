@@ -1,4 +1,5 @@
 package com.company.inventory.entity.inbound;
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -30,11 +31,17 @@ public class InboundDocDO {
     @TableField("\"remark\"")
     private String remark;
     /** 创建人。 */
-    @TableField("\"creator\"")
+    @TableField(value = "\"creator\"", fill = FieldFill.INSERT)
     private String creator;
     /** 创建时间(UTC)。 */
-    @TableField("\"createdAt\"")
+    @TableField(value = "\"createdAt\"", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
+    /** 修改人。 */
+    @TableField(value = "\"updater\"", fill = FieldFill.INSERT_UPDATE)
+    private String updater;
+    /** 修改时间。 */
+    @TableField(value = "\"updatedAt\"", fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updatedAt;
     /**
      * 获取主键。
      *
@@ -159,6 +166,42 @@ public class InboundDocDO {
      */
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    /**
+     * 获取修改人。
+     *
+     * @return 修改人
+     */
+    public String getUpdater() {
+        return updater;
+    }
+
+    /**
+     * 设置修改人。
+     *
+     * @param updater 修改人
+     */
+    public void setUpdater(String updater) {
+        this.updater = updater;
+    }
+
+    /**
+     * 获取修改时间。
+     *
+     * @return 修改时间
+     */
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    /**
+     * 设置修改时间。
+     *
+     * @param updatedAt 修改时间
+     */
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
     /** 关联单据类型(purchase=采购到货,空=手工入库)。 */
     @TableField("\"refType\"")

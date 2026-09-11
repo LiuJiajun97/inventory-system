@@ -18,14 +18,14 @@ import java.time.LocalDateTime;
  * @param payTermDays    账期天数
  * @param status         状态
  * @param remark         备注
- * @param createdBy      创建人
+ * @param creator        创建人
  * @param createdAt      创建时间
- * @param updatedBy      修改人
+ * @param updater        修改人
  * @param updatedAt      修改时间
  * @author inventory
  */
 public record SupplierVO(Long id, String supplierCode, String supplierName, String taxNo,
         BigDecimal defaultTaxRate, String contact, String phone, String address,
         String settleMethod, Integer payTermDays, Integer status, String remark,
-        String createdBy, LocalDateTime createdAt, String updatedBy, LocalDateTime updatedAt) {
+        String creator, LocalDateTime createdAt, String updater, LocalDateTime updatedAt) {
 }

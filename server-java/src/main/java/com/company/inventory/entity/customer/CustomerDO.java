@@ -1,5 +1,6 @@
 package com.company.inventory.entity.customer;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -52,16 +53,16 @@ public class CustomerDO {
     @TableField("\"remark\"")
     private String remark;
     /** 创建人。 */
-    @TableField("\"createdBy\"")
-    private String createdBy;
+    @TableField(value = "\"creator\"", fill = FieldFill.INSERT)
+    private String creator;
     /** 创建时间。 */
-    @TableField("\"createdAt\"")
+    @TableField(value = "\"createdAt\"", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     /** 修改人。 */
-    @TableField("\"updatedBy\"")
-    private String updatedBy;
+    @TableField(value = "\"updater\"", fill = FieldFill.INSERT_UPDATE)
+    private String updater;
     /** 修改时间。 */
-    @TableField("\"updatedAt\"")
+    @TableField(value = "\"updatedAt\"", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
 
     /**
@@ -285,17 +286,17 @@ public class CustomerDO {
      *
      * @return 创建人
      */
-    public String getCreatedBy() {
-        return createdBy;
+    public String getCreator() {
+        return creator;
     }
 
     /**
      * 设置创建人。
      *
-     * @param createdBy 创建人
+     * @param creator 创建人
      */
-    public void setCreatedBy(String createdBy) {
-        this.createdBy = createdBy;
+    public void setCreator(String creator) {
+        this.creator = creator;
     }
 
     /**
@@ -321,17 +322,17 @@ public class CustomerDO {
      *
      * @return 修改人
      */
-    public String getUpdatedBy() {
-        return updatedBy;
+    public String getUpdater() {
+        return updater;
     }
 
     /**
      * 设置修改人。
      *
-     * @param updatedBy 修改人
+     * @param updater 修改人
      */
-    public void setUpdatedBy(String updatedBy) {
-        this.updatedBy = updatedBy;
+    public void setUpdater(String updater) {
+        this.updater = updater;
     }
 
     /**
