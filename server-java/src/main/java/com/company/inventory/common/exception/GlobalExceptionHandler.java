@@ -97,16 +97,34 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理路由不存在:404,消息格式与 Fastify 版一致(路由不存在: METHOD URL)。
+     * 处理路由不存在(Spring 6 静态资源变体):404,消息格式与 Fastify 版一致(路由不存在: METHOD URL)。
+     * 注意:一个 @ExceptionHandler 数组里不能把两种异常都声明为方法参数,Spring 只注入实际
+     * 抛出的那一个,另一个参数无解析器会抛 IllegalStateException,故拆成两个方法。
      *
-     * @param e     异常(NoResourceFoundException 变体)
-     * @param h     异常(NoHandlerFoundException 变体,与 e 二选一非空)
+     * @param e       异常
      * @param request 当前请求
      * @return 契约错误响应
      */
-    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
-    public ResponseEntity<Map<String, Object>> handleNotFound(
-            NoResourceFoundException e, NoHandlerFoundException h, HttpServletRequest request) {
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResource(
+            NoResourceFoundException e, HttpServletRequest request) {
+        return notFoundBody(request);
+    }
+
+    /**
+     * 处理路由不存在(NoHandlerFoundException 变体):404。
+     *
+     * @param e       异常
+     * @param request 当前请求
+     * @return 契约错误响应
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoHandler(
+            NoHandlerFoundException e, HttpServletRequest request) {
+        return notFoundBody(request);
+    }
+
+    private ResponseEntity<Map<String, Object>> notFoundBody(HttpServletRequest request) {
         String message = "路由不存在: " + request.getMethod() + " " + request.getRequestURI();
         return ResponseEntity.status(ErrorCode.HTTP_NOT_FOUND)
                 .body(errorBody(ErrorCode.HTTP_NOT_FOUND, ErrorCode.NOT_FOUND, message));
