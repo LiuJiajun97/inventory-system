@@ -61,7 +61,7 @@
           AND batch_id &lt;&gt; 0
           AND quantity &gt; 0
           AND quantity - pre_allocated_qty &gt; 0
-        ORDER BY id ASC
+        ORDER BY id
     </select>
 
     <!-- 预占候选集:仓+物品下余额大于 0 的所有行(不限批次/库位,含无批次行),按 id 升序 -->
@@ -72,7 +72,7 @@
         WHERE warehouse_id = #{warehouseId}
           AND item_id = #{itemId}
           AND quantity &gt; 0
-        ORDER BY id ASC
+        ORDER BY id
     </select>
 
     <!-- 预占:单行条件累加(可用量足够才预占),affected rows=0 表示该行可用不足 -->
@@ -105,7 +105,7 @@
 
     <!-- FIFO 用:每个批次最近一笔入库流水时间,批量一次查完 -->
     <select id="selectLatestInboundTimeByBatch" resultType="java.util.HashMap">
-        SELECT batch_id AS batch_id, MAX(created_at) AS "maxCreatedAt"
+        SELECT batch_id, MAX(created_at) AS "maxCreatedAt"
         FROM stock_transaction
         WHERE warehouse_id = #{warehouseId}
           AND item_id = #{itemId}
