@@ -189,21 +189,36 @@ SELECT r.id, m.id FROM sys_role r CROSS JOIN sys_menu m
 WHERE r.role_code = 'admin'
 ON CONFLICT (role_id, menu_id) DO NOTHING;
 
--- operator:除"系统"目录(及其子菜单)外全部(含按钮)
+-- operator:除"系统"整个子树(任意深度,含 V8 追加的系统组按钮)外全部;基础数据组
+-- (物品/仓库/库位/供应商/客户)按钮码不绑——后端写端点一期起即 @RequireRole("admin"),
+-- operator 只读(前端按钮随之隐藏)。用递归子树排除,保证在含 V8 菜单的库上重跑 V7 也不会把系统组按钮污染给 operator
 INSERT INTO sys_role_menu (role_id, menu_id)
+WITH RECURSIVE sys_tree AS (
+    SELECT id FROM sys_menu WHERE menu_code = 'system-dir'
+    UNION
+    SELECT m2.id FROM sys_menu m2 JOIN sys_tree st ON m2.parent_id = st.id
+)
 SELECT r.id, m.id FROM sys_role r CROSS JOIN sys_menu m
 WHERE r.role_code = 'operator'
-  AND m.menu_code <> 'system-dir'
-  AND m.parent_id <> (SELECT id FROM sys_menu WHERE menu_code = 'system-dir')
+  AND m.id NOT IN (SELECT id FROM sys_tree)
+  AND m.menu_code NOT LIKE 'item:%'
+  AND m.menu_code NOT LIKE 'warehouse:%'
+  AND m.menu_code NOT LIKE 'location:%'
+  AND m.menu_code NOT LIKE 'supplier:%'
+  AND m.menu_code NOT LIKE 'customer:%'
 ON CONFLICT (role_id, menu_id) DO NOTHING;
 
--- viewer:全部目录+菜单,不含任何按钮,不含"系统"组(及其子菜单)
+-- viewer:全部目录+菜单,不含任何按钮,不含"系统"整个子树(任意深度,递归排除,与 operator 段一致)
 INSERT INTO sys_role_menu (role_id, menu_id)
+WITH RECURSIVE sys_tree AS (
+    SELECT id FROM sys_menu WHERE menu_code = 'system-dir'
+    UNION
+    SELECT m2.id FROM sys_menu m2 JOIN sys_tree st ON m2.parent_id = st.id
+)
 SELECT r.id, m.id FROM sys_role r CROSS JOIN sys_menu m
 WHERE r.role_code = 'viewer'
   AND m.type <> 'button'
-  AND m.menu_code <> 'system-dir'
-  AND m.parent_id <> (SELECT id FROM sys_menu WHERE menu_code = 'system-dir')
+  AND m.id NOT IN (SELECT id FROM sys_tree)
 ON CONFLICT (role_id, menu_id) DO NOTHING;
 
 -- ---------- 外键引用(幂等:不存在才创建;测试 TRUNCATE ... CASCADE 可级联清绑定行) ----------
