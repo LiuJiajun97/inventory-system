@@ -1,9 +1,9 @@
 # 库存管理系统
 
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable、单据表单页 ProForm 表头)。
-> 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占 + 基础出入库,18 个 Controller,前端 25 个页面(21 个业务模块)。
+> 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占 + 基础出入库,18 个 Controller,前端 27 个页面(23 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **129 条测试全绿**(114 存量 + 15 RBAC 新增),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **131 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 新增),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -68,7 +68,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 129 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 131 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -106,12 +106,14 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | 字典:读 | ✅ | ✅ | ✅ |
 | 字典:增删改/停用 | ✅ | ❌ | ❌ |
 | 用户管理 | ✅ | ❌ | ❌ |
+| 数据权限(7 个库存列表行级过滤,批 2) | 豁免全量 | 仅授权仓 | 仅授权仓(未授权查空) |
 | 系统监控 | ✅ | ❌ | ❌ |
 | 角色管理(RBAC:角色 CRUD + 角色-菜单分配) | ✅ | ❌ | ❌ |
 | 菜单管理(RBAC:菜单树查看/增删改) | ✅ | ❌ | ❌ |
 
 后端用 `JwtInterceptor` + `@RequireRole` 注解:无 token 返回 `401 {statusCode,error,message}`,角色不够返回 `403`,message 为中文。
 RBAC(V7 起):JWT claim 由单 `role` 升级为 `roles` 数组(旧单值 token 兼容回退);`@RequireRole` 语义改为"用户角色集与注解有交集即通过";新增 `@RequirePermission("code")` 按钮级权限码注解(权限码 = 用户多角色 sys_role_menu 并集中 type='button' 的 menu_code);`GET /auth/menus` 返回当前用户并集菜单树(仅目录+菜单,附各菜单下按钮权限码)供前端动态导航(前端动态化在批 1b)。用户多角色(sys_user_role 并集),`sys_user.role` 列存量兼容保留(未绑定角色的存量用户登录回退读该列)。
+RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`PUT /users/:id` 传 `roleIds` 可选 + `warehouseIds` 可选,空列表 = 清空仓库授权);VO 新增 `roles`(编码+名称)与 `warehouseIds`,旧 `role` 字段保留取首角色。数据权限:`JwtInterceptor` 每请求写 `DataScope`(admin 豁免 null / 空 = 查空 / 非空 = 仅授权仓),库存/流水/入库/出库/盘点/调整/调拨 7 个列表接口按授权仓过滤(调拨为源仓或目的仓任一命中;仪表盘/预警/详情暂不纳入)。V8 seed 补系统组按钮码(user/role/menu/dict 共 13 个)+「菜单管理」菜单(/menus,sort 在角色权限之后),全部绑 admin。
 审批资格由 `common/support/ApprovalGuard` 统一裁决:**admin 可审批自己提交的单据,operator 禁自批**(防"提交-审批"死锁)。
 前端 axios 拦截器:401 自动清 token 跳 `/login`,403 弹错误提示。
 
@@ -142,7 +144,7 @@ RBAC(V7 起):JWT claim 由单 `role` 升级为 `roles` 数组(旧单值 token �
 | GET | `/dicts` `/dicts/all` | 字典查询(登录 / admin) | 登录 / admin |
 | GET/POST/PUT | `/dicts/types` `/dicts/types/:typeCode` | 字典类型列表/新建/编辑(admin 可写) | 登录 / admin |
 | POST/PUT/DELETE | `/dicts/admin...` | 字典项增删改/停用(引用校验) | admin |
-| GET/POST/PUT | `/users` | 用户管理 | admin |
+| GET/POST/PUT | `/users` | 用户管理(多角色 `roleIds` + 仓库授权 `warehouseIds`,空数组 = 清空授权) | admin |
 | GET/POST/PUT/DELETE | `/roles` `/roles/:id` | 角色列表 / 详情 / 新建 / 更新(内置禁改码) / 删除(内置/有用户绑定禁删) | admin |
 | PUT/GET | `/roles/:id/menus` | 角色-菜单全量分配 / 已绑菜单 ID 回显 | admin |
 | GET | `/menus/tree` | 全量菜单树(含 button 子节点,管理页用) | admin |
@@ -201,14 +203,15 @@ inventory-system/
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
 │   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,seed}.sql
-│   └── src/test/java/         18 个测试类,129 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC)
+│   └── src/test/java/         19 个测试类,131 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/
-        ├── pages/             25 个页面(21 个业务模块):login / dashboard / inbound(list+form) /
+        ├── pages/             27 个页面(23 个业务模块):login / dashboard / inbound(list+form) /
         │                      outbound(list+form) / stock / transaction / item(list+form) /
-        │                      warehouse / location / user / purchase(list+new) / sales(list+new) /
-        │                      transfer / stocktake / adjust / alert / supplier / customer / dict / monitor
+        │                      warehouse / location / user / role / menu / purchase(list+new) /
+        │                      sales(list+new) / transfer / stocktake / adjust / alert /
+        │                      supplier / customer / dict / monitor
         ├── main.tsx           入口:dayjs.locale("zh-cn")(日历中文)
         └── styles/  theme.ts  浅色底 + 深蓝主色
 ```
