@@ -11,6 +11,7 @@ import type {
   OutboundDoc,
   PagedResponse,
   DashboardSummary,
+  MonitorOverview,
   UserInfo,
   Role,
 } from "../types";
@@ -38,6 +39,11 @@ export const authApi = {
 
 export const dashboardApi = {
   summary: () => http.get<unknown, DashboardSummary>("/dashboard/summary"),
+};
+
+export const monitorApi = {
+  // 轮询高频调用,失败静默(由页面按 ref 只提示一次)
+  overview: () => http.get<unknown, MonitorOverview>("/monitor/overview", { silent: true }),
 };
 
 export const warehouseApi = {

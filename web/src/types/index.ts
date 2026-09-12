@@ -157,3 +157,46 @@ export interface DashboardSummary {
   todayOutboundCount: number;
   todayOutboundQty: number;
 }
+
+// ===== 系统监控(仅 admin)=====
+// 与后端 MonitorVO 契约一致:内存/磁盘为字节,CPU 为 0~1(获取失败为 null)
+
+export interface MonitorMem {
+  total: number;
+  free: number;
+  used: number;
+}
+
+export interface MonitorJvm {
+  heapMax: number;
+  heapUsed: number;
+  heapFree: number;
+  threadCount: number;
+  startTime: number;
+  uptimeSeconds: number;
+  javaVersion: string;
+}
+
+export interface MonitorOs {
+  name: string;
+  arch: string;
+  userName: string;
+}
+
+export interface MonitorDisk {
+  mount: string;
+  total: number;
+  free: number;
+  usable: number;
+}
+
+export interface MonitorOverview {
+  systemCpuUsage: number | null;
+  processCpuUsage: number | null;
+  loadAverage: number;
+  mem: MonitorMem;
+  jvm: MonitorJvm;
+  os: MonitorOs;
+  gcCollectionCount: number;
+  disks: MonitorDisk[];
+}

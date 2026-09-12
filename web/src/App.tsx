@@ -28,6 +28,7 @@ import { StocktakePage } from "./pages/stocktake/StocktakePage";
 import { AdjustPage } from "./pages/adjust/AdjustPage";
 import { AlertPage } from "./pages/alert/AlertPage";
 import { DictPage } from "./pages/dict/DictPage";
+import { MonitorPage } from "./pages/monitor/MonitorPage";
 import { RequireAuth } from "./auth/RequireAuth";
 
 export default function App() {
@@ -129,6 +130,14 @@ export default function App() {
                 element={
                   <RequireAuth roles={["admin"]}>
                     <DictPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="monitor"
+                element={
+                  <RequireAuth roles={["admin"]}>
+                    <MonitorPage />
                   </RequireAuth>
                 }
               />

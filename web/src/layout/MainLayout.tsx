@@ -22,6 +22,7 @@ import {
   AuditOutlined,
   ToolOutlined,
   AlertOutlined,
+  MonitorOutlined,
 } from "@ant-design/icons";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
@@ -231,6 +232,14 @@ const ALL_ITEMS: MenuItem[] = [
     label: "字典",
     path: "/dicts",
     breadcrumbLabel: "字典",
+    roles: ["admin"],
+  },
+  {
+    key: "monitor",
+    icon: <MonitorOutlined />,
+    label: "系统监控",
+    path: "/monitor",
+    breadcrumbLabel: "系统监控",
     roles: ["admin"],
   },
 ];

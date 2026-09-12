@@ -1,9 +1,9 @@
 # 库存管理系统
 
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable、单据表单页 ProForm 表头)。
-> 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占 + 基础出入库,17 个 Controller,前端 24 个页面(20 个业务模块)。
+> 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占 + 基础出入库,18 个 Controller,前端 25 个页面(21 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **109 条测试全绿**,阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **114 条测试全绿**,阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -103,6 +103,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | 字典:读 | ✅ | ✅ | ✅ |
 | 字典:增删改/停用 | ✅ | ❌ | ❌ |
 | 用户管理 | ✅ | ❌ | ❌ |
+| 系统监控 | ✅ | ❌ | ❌ |
 
 后端用 `JwtInterceptor` + `@RequireRole` 注解:无 token 返回 `401 {statusCode,error,message}`,角色不够返回 `403`,message 为中文。
 审批资格由 `common/support/ApprovalGuard` 统一裁决:**admin 可审批自己提交的单据,operator 禁自批**(防"提交-审批"死锁)。
@@ -134,6 +135,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | GET/POST/PUT | `/dicts/types` `/dicts/types/:typeCode` | 字典类型列表/新建/编辑(admin 可写) | 登录 / admin |
 | POST/PUT/DELETE | `/dicts/admin...` | 字典项增删改/停用(引用校验) | admin |
 | GET/POST/PUT | `/users` | 用户管理 | admin |
+| GET | `/monitor/overview` | 系统监控(本机 CPU/内存/JVM/磁盘快照,5 秒轮询) | admin |
 
 完整契约以 Swagger 为准:`http://127.0.0.1:8081/docs`。
 
@@ -179,7 +181,7 @@ inventory-system/
 │   │   ├── InventoryApplication.java  入口(@MapperScan mapper 包;JVM 时区锁 Asia/Shanghai)
 │   │   ├── common/            错误码 / BizException / 全局异常 / 分页 / ApprovalGuard
 │   │   ├── config/            MybatisPlus / Jwt / @RequireRole / Swagger / Jackson(东八区+格式)
-│   │   ├── controller/        17 个 Controller
+│   │   ├── controller/        18 个 Controller
 │   │   ├── model/             数据层:entity(DO)/dto/vo/query 四包,按功能再分包
 │   │   ├── mapper/            27 个 Mapper + resources/mapper/*.xml
 │   │   ├── service/ (+impl/)  业务层;StockCoreService = 库存核心
@@ -187,14 +189,14 @@ inventory-system/
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
 │   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,seed}.sql
-│   └── src/test/java/         16 个测试类,109 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析)
+│   └── src/test/java/         17 个测试类,114 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/
-        ├── pages/             24 个页面(20 个业务模块):login / dashboard / inbound(list+form) /
+        ├── pages/             25 个页面(21 个业务模块):login / dashboard / inbound(list+form) /
         │                      outbound(list+form) / stock / transaction / item(list+form) /
         │                      warehouse / location / user / purchase(list+new) / sales(list+new) /
-        │                      transfer / stocktake / adjust / alert / supplier / customer / dict
+        │                      transfer / stocktake / adjust / alert / supplier / customer / dict / monitor
         ├── main.tsx           入口:dayjs.locale("zh-cn")(日历中文)
         └── styles/  theme.ts  浅色底 + 深蓝主色
 ```
