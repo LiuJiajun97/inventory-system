@@ -3,7 +3,7 @@
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable、单据表单页 ProForm 表头)。
 > 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占 + 基础出入库,18 个 Controller,前端 25 个页面(21 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **114 条测试全绿**,阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **129 条测试全绿**(114 存量 + 15 RBAC 新增),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -51,6 +51,9 @@ docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/mai
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V2__phase1.sql
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V3__dict.sql
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V4__dict_type.sql
+docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V5__audit_fields.sql
+docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V6__snake_case.sql
+docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V7__rbac.sql
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/seed.sql
 
 # 3. 启动后端(IDEA 运行 InventoryApplication,或命令行)
@@ -65,7 +68,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 114 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 129 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -104,8 +107,11 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | 字典:增删改/停用 | ✅ | ❌ | ❌ |
 | 用户管理 | ✅ | ❌ | ❌ |
 | 系统监控 | ✅ | ❌ | ❌ |
+| 角色管理(RBAC:角色 CRUD + 角色-菜单分配) | ✅ | ❌ | ❌ |
+| 菜单管理(RBAC:菜单树查看/增删改) | ✅ | ❌ | ❌ |
 
 后端用 `JwtInterceptor` + `@RequireRole` 注解:无 token 返回 `401 {statusCode,error,message}`,角色不够返回 `403`,message 为中文。
+RBAC(V7 起):JWT claim 由单 `role` 升级为 `roles` 数组(旧单值 token 兼容回退);`@RequireRole` 语义改为"用户角色集与注解有交集即通过";新增 `@RequirePermission("code")` 按钮级权限码注解(权限码 = 用户多角色 sys_role_menu 并集中 type='button' 的 menu_code);`GET /auth/menus` 返回当前用户并集菜单树(仅目录+菜单,附各菜单下按钮权限码)供前端动态导航(前端动态化在批 1b)。用户多角色(sys_user_role 并集),`sys_user.role` 列存量兼容保留(未绑定角色的存量用户登录回退读该列)。
 审批资格由 `common/support/ApprovalGuard` 统一裁决:**admin 可审批自己提交的单据,operator 禁自批**(防"提交-审批"死锁)。
 前端 axios 拦截器:401 自动清 token 跳 `/login`,403 弹错误提示。
 
@@ -115,7 +121,9 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
-| POST | `/auth/login` `/auth/password` `/auth/me` | 登录 / 改密 / 当前用户 | 公开 / 登录 |
+| POST | `/auth/login` `/auth/password` `/auth/me` | 登录 / 改密 / 当前用户(登录响应 user 新增 roles 数组) | 公开 / 登录 |
+| GET | `/auth/menus` | 当前用户菜单树(多角色并集,仅目录+菜单,附按钮权限码列表) | 登录 |
+| GET | `/auth/perm-check` | 权限码探针(校验 @RequirePermission,码 purchase-order:approve) | 登录+权限码 |
 | GET | `/dashboard/summary` | 首页统计 | 登录 |
 | GET/POST/PUT | `/warehouses` `/warehouses/:id` | 仓库列表 / 新建 / 编辑(编码不可改,含防不一致校验) | 登录 / admin |
 | GET/POST/PUT | `/locations` `/locations/:id` | 库位列表 / 新建 / 编辑(编码与所属仓库不可改) | 登录 / admin |
@@ -135,6 +143,10 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | GET/POST/PUT | `/dicts/types` `/dicts/types/:typeCode` | 字典类型列表/新建/编辑(admin 可写) | 登录 / admin |
 | POST/PUT/DELETE | `/dicts/admin...` | 字典项增删改/停用(引用校验) | admin |
 | GET/POST/PUT | `/users` | 用户管理 | admin |
+| GET/POST/PUT/DELETE | `/roles` `/roles/:id` | 角色列表 / 详情 / 新建 / 更新(内置禁改码) / 删除(内置/有用户绑定禁删) | admin |
+| PUT/GET | `/roles/:id/menus` | 角色-菜单全量分配 / 已绑菜单 ID 回显 | admin |
+| GET | `/menus/tree` | 全量菜单树(含 button 子节点,管理页用) | admin |
+| POST/PUT/DELETE | `/menus` `/menus/:id` | 菜单新建(code 唯一) / 更新(code 不可改) / 删除(有子节点禁删,连带清 role_menu) | admin |
 | GET | `/monitor/overview` | 系统监控(本机 CPU/内存/JVM/磁盘快照,5 秒轮询) | admin |
 
 完整契约以 Swagger 为准:`http://127.0.0.1:8081/docs`。
@@ -188,8 +200,8 @@ inventory-system/
 │   │   └── support/           DictReferenceRegistry(字典引用校验注册表)
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
-│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,seed}.sql
-│   └── src/test/java/         17 个测试类,114 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控)
+│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,seed}.sql
+│   └── src/test/java/         18 个测试类,129 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/

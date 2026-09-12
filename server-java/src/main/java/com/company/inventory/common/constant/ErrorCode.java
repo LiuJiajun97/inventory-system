@@ -56,6 +56,21 @@ public final class ErrorCode {
     /** 客户编码已存在。 */
     public static final String CUSTOMER_CODE_DUP = "CUSTOMER_CODE_DUP";
 
+    /** 角色编码已存在。 */
+    public static final String ROLE_CODE_DUP = "ROLE_CODE_DUP";
+
+    /** 菜单编码已存在。 */
+    public static final String MENU_CODE_DUP = "MENU_CODE_DUP";
+
+    /** 内置角色受保护(禁删/禁改编码)。 */
+    public static final String ROLE_BUILTIN_PROTECTED = "ROLE_BUILTIN_PROTECTED";
+
+    /** 角色存在绑定用户,禁删。 */
+    public static final String ROLE_HAS_USERS = "ROLE_HAS_USERS";
+
+    /** 菜单存在子节点,禁删。 */
+    public static final String MENU_HAS_CHILDREN = "MENU_HAS_CHILDREN";
+
     // ===== 业务类型(bizCode) =====
 
     /** 入库流水。 */

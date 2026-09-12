@@ -1,4 +1,5 @@
-package com.company.inventory.model.entity.user;
+package com.company.inventory.model.entity.rbac;
+
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -11,35 +12,32 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 用户表实体(表 User)。
+ * 角色表实体(表 sys_role)。
  *
  * @author inventory
  */
-@TableName("sys_user")
+@TableName("sys_role")
 @Getter
 @Setter
-public class UserDO {
+public class RoleDO {
 
     /** 主键。 */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
-    /** 用户名(唯一)。 */
-    private String username;
-    /** 密码哈希(BCrypt)。 */
-    private String passwordHash;
-    /** 姓名。 */
-    private String name;
-    /** 角色:admin / operator / viewer(存量兼容保留,已弃用)。
-     *
-     * @deprecated RBAC 改造后角色以 sys_user_role 多角色绑定为准,此列仅存量兼容保留(二期删除)。 */
-    @Deprecated
-    private String role;
+    /** 角色编码(唯一,如 admin)。 */
+    private String roleCode;
+    /** 角色名称。 */
+    private String roleName;
+    /** 备注。 */
+    private String remark;
+    /** 内置角色(禁删,禁改 role_code)。 */
+    private Boolean isBuiltin;
     /** 状态:1 启用。 */
     private Integer status;
     /** 创建人。 */
     @TableField(fill = FieldFill.INSERT)
     private String creator;
-    /** 创建时间(UTC)。 */
+    /** 创建时间。 */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     /** 修改人。 */
@@ -48,5 +46,4 @@ public class UserDO {
     /** 修改时间。 */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
-
 }

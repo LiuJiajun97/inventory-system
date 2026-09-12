@@ -5,6 +5,7 @@ import com.company.inventory.common.exception.BizException;
 import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.UserMapper;
+import com.company.inventory.mapper.rbac.UserRoleMapper;
 import com.company.inventory.service.AuthService;
 import com.company.inventory.model.vo.auth.LoginUserVO;
 import com.company.inventory.model.vo.auth.LoginVO;
@@ -38,6 +39,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
 
 /**
  * 认证服务实现。
@@ -59,6 +63,9 @@ public class AuthServiceImpl implements AuthService {
     /** 用户 Mapper。 */
     private final UserMapper userMapper;
 
+    /** 用户-角色绑定 Mapper(RBAC 多角色)。 */
+    private final UserRoleMapper userRoleMapper;
+
     /** JWT 拦截器(复用其签发能力)。 */
     private final JwtInterceptor jwtInterceptor;
 
@@ -66,10 +73,13 @@ public class AuthServiceImpl implements AuthService {
      * 构造服务。
      *
      * @param userMapper     用户 Mapper
+     * @param userRoleMapper 用户-角色绑定 Mapper
      * @param jwtInterceptor JWT 拦截器
      */
-    public AuthServiceImpl(UserMapper userMapper, JwtInterceptor jwtInterceptor) {
+    public AuthServiceImpl(UserMapper userMapper, UserRoleMapper userRoleMapper,
+            JwtInterceptor jwtInterceptor) {
         this.userMapper = userMapper;
+        this.userRoleMapper = userRoleMapper;
         this.jwtInterceptor = jwtInterceptor;
     }
 
@@ -90,11 +100,22 @@ public class AuthServiceImpl implements AuthService {
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw BizException.unauthorized("用户名或密码错误");
         }
+        // RBAC:角色取 sys_user_role 多角色并集;未绑定角色的存量用户回退读 role 列(兼容)
+        List<String> roles = userRoleMapper.selectRoleCodesByUserId(user.getId());
+        if (roles == null || roles.isEmpty()) {
+            if (StringUtils.hasText(user.getRole())) {
+                roles = List.of(user.getRole());
+            } else {
+                roles = List.of();
+            }
+        }
+        String primaryRole = roles.isEmpty() ? null : roles.get(0);
         String token = jwtInterceptor.issueToken(
-                user.getId(), user.getUsername(), user.getRole(), user.getName());
+                user.getId(), user.getUsername(), roles, user.getName());
         LOGGER.info("用户登录成功: {}", username);
         return new LoginVO(token, new LoginUserVO(
-                user.getId(), user.getUsername(), user.getName(), user.getRole(), user.getStatus()));
+                user.getId(), user.getUsername(), user.getName(), primaryRole, roles,
+                user.getStatus()));
     }
 
     /**

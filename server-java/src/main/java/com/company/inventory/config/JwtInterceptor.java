@@ -7,6 +7,7 @@ package com.company.inventory.config;
 
 
 import com.company.inventory.common.support.UserContext;
+import com.company.inventory.service.rbac.RbacGuardService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -26,7 +27,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * JWT 拦截器:校验 Authorization: Bearer &lt;token&gt;,注入用户信息,并按 {@link RequireRole} 做角色鉴权。
@@ -51,6 +55,9 @@ public class JwtInterceptor implements HandlerInterceptor {
     /** 请求属性:角色。 */
     public static final String ATTR_ROLE = "auth.role";
 
+    /** 请求属性:角色编码集合(多角色并集)。 */
+    public static final String ATTR_ROLES = "auth.roles";
+
     /** 请求属性:姓名。 */
     public static final String ATTR_NAME = "auth.name";
 
@@ -72,39 +79,51 @@ public class JwtInterceptor implements HandlerInterceptor {
     /** 无权限消息。 */
     private static final String MSG_FORBIDDEN = "无权限";
 
+    /** JWT claim 名:多角色列表(新版 token)。 */
+    private static final String CLAIM_ROLES = "roles";
+
+    /** JWT claim 名:单角色(旧版 token,兼容回退读)。 */
+    private static final String CLAIM_ROLE = "role";
+
     private final JwtParser parser;
     private final SecretKey key;
     private final ObjectMapper objectMapper;
     private final long expiresSeconds;
+    private final RbacGuardService rbacGuardService;
 
     /**
      * 构造拦截器。
      *
-     * @param jwtProperties  JWT 配置
-     * @param objectMapper   JSON 序列化器
+     * @param jwtProperties    JWT 配置
+     * @param objectMapper     JSON 序列化器
+     * @param rbacGuardService RBAC 鉴权支撑服务(@RequirePermission 用)
      */
-    public JwtInterceptor(JwtProperties jwtProperties, ObjectMapper objectMapper) {
+    public JwtInterceptor(JwtProperties jwtProperties, ObjectMapper objectMapper,
+            RbacGuardService rbacGuardService) {
         this.key = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
         this.parser = Jwts.parser().verifyWith(key).build();
         this.objectMapper = objectMapper;
         this.expiresSeconds = jwtProperties.getExpiresSeconds();
+        this.rbacGuardService = rbacGuardService;
     }
 
     /**
-     * 签发 JWT(payload:sub/username/role/name,过期时间取配置,默认 8 小时)。
+     * 签发 JWT(payload:sub/username/roles/name,过期时间取配置,默认 8 小时)。
+     *
+     * <p>roles 为多角色 claim(新版);旧版单 role claim 在解析端兼容回退。</p>
      *
      * @param userId   用户 ID
      * @param username 用户名
-     * @param role     角色
+     * @param roles    角色编码列表
      * @param name     姓名
      * @return JWT 字符串
      */
-    public String issueToken(long userId, String username, String role, String name) {
+    public String issueToken(long userId, String username, List<String> roles, String name) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("username", username)
-                .claim("role", role)
+                .claim(CLAIM_ROLES, roles)
                 .claim("name", name)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expiresSeconds * 1000L))
@@ -148,25 +167,68 @@ public class JwtInterceptor implements HandlerInterceptor {
 
         request.setAttribute(ATTR_USER_ID, Long.parseLong(claims.getSubject()));
         request.setAttribute(ATTR_USERNAME, claims.get("username", String.class));
-        request.setAttribute(ATTR_ROLE, claims.get("role", String.class));
+
+        // 角色解析:新版 roles 列表优先;旧版单 role claim 回退包成单元素集合(不断旧 token)
+        Set<String> roleCodes = resolveRoleCodes(claims);
+        request.setAttribute(ATTR_ROLES, roleCodes);
+        // /me 兼容:主角色取集合首个(插入序保持登录时的角色顺序)
+        request.setAttribute(ATTR_ROLE, roleCodes.isEmpty() ? null : roleCodes.iterator().next());
         request.setAttribute(ATTR_NAME, claims.get("name", String.class));
 
         // 写入用户上下文,供 MyBatis-Plus 自动填充读取
         UserContext.set(claims.get("username", String.class));
 
-        // 角色校验:方法注解优先,其次类注解
+        // 角色校验:方法注解优先,其次类注解;多角色语义 = 与注解角色编码集合有交集即通过
         RequireRole requireRole = handlerMethod.getMethodAnnotation(RequireRole.class);
         if (requireRole == null) {
             requireRole = handlerMethod.getBeanType().getAnnotation(RequireRole.class);
         }
         if (requireRole != null) {
-            String role = (String) request.getAttribute(ATTR_ROLE);
-            if (!Arrays.asList(requireRole.value()).contains(role)) {
+            boolean allowed = Arrays.stream(requireRole.value()).anyMatch(roleCodes::contains);
+            if (!allowed) {
+                writeError(response, HTTP_FORBIDDEN, "FORBIDDEN", "Forbidden", MSG_FORBIDDEN);
+                return false;
+            }
+        }
+
+        // 按钮级权限码校验:方法注解优先,其次类注解;命中用户权限码并集才放行
+        RequirePermission requirePermission = handlerMethod.getMethodAnnotation(RequirePermission.class);
+        if (requirePermission == null) {
+            requirePermission = handlerMethod.getBeanType().getAnnotation(RequirePermission.class);
+        }
+        if (requirePermission != null) {
+            Set<String> permissionCodes =
+                    rbacGuardService.permissionCodesOf((Long) request.getAttribute(ATTR_USER_ID));
+            if (!permissionCodes.contains(requirePermission.value())) {
                 writeError(response, HTTP_FORBIDDEN, "FORBIDDEN", "Forbidden", MSG_FORBIDDEN);
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * 解析 token 中的角色编码集合(新版 roles 列表优先,旧版单 role claim 回退)。
+     *
+     * @param claims JWT 载荷
+     * @return 角色编码集合(保持插入序,可能为空)
+     */
+    private Set<String> resolveRoleCodes(Claims claims) {
+        Set<String> roleCodes = new LinkedHashSet<>();
+        List<?> rolesClaim = claims.get(CLAIM_ROLES, List.class);
+        if (rolesClaim != null) {
+            for (Object role : rolesClaim) {
+                if (role != null) {
+                    roleCodes.add(String.valueOf(role));
+                }
+            }
+            return roleCodes;
+        }
+        String legacyRole = claims.get(CLAIM_ROLE, String.class);
+        if (legacyRole != null) {
+            roleCodes.add(legacyRole);
+        }
+        return roleCodes;
     }
 
     /**
