@@ -408,15 +408,20 @@ export function InboundFormPage() {
             size="small"
             scroll={{ x: 1300 }}
           />
-        </div>
-        {/* 底部固定操作条:左摘要,右 取消/添加行/提交 */}
-        <div className="doc-form-footer">
-          <div className="doc-form-footer-summary">共 {lines.length} 行明细</div>
-          <div className="doc-form-footer-actions">
-            <Button onClick={() => navigate("/inbound")}>取消</Button>
+          {/* 添加行按钮:明细表正下方,左对齐 */}
+          <div className="doc-form-line-adder">
             <Button icon={<PlusOutlined />} onClick={addLine}>
               添加行
             </Button>
+          </div>
+        </div>
+        {/* 底部固定操作条:左 摘要+取消,中间提交按钮居中 */}
+        <div className="doc-form-footer">
+          <div className="doc-form-footer-left">
+            <div className="doc-form-footer-summary">共 {lines.length} 行明细</div>
+            <Button onClick={() => navigate("/inbound")}>取消</Button>
+          </div>
+          <div className="doc-form-footer-main">
             <Button type="primary" loading={submitting} onClick={onSubmit}>
               提交入库
             </Button>

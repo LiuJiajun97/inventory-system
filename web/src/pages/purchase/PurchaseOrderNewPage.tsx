@@ -333,15 +333,20 @@ export function PurchaseOrderNewPage() {
             actionRender: (_row, _config, dom) => [dom.delete],
           }}
         />
+        {/* 添加行按钮:明细表正下方,左对齐 */}
+        <div className="doc-form-line-adder">
+          <Button onClick={addLine}>添加行</Button>
         </div>
-        {/* 底部固定操作条:左摘要,右 添加行 + 保存 */}
+        </div>
+        {/* 底部固定操作条:左摘要,中间主按钮居中 */}
         <div className="doc-form-footer">
-          <div className="doc-form-footer-summary">
-            共 {data.length} 行明细
-            <span className="doc-form-footer-muted">金额以服务端价税重算为准</span>
+          <div className="doc-form-footer-left">
+            <div className="doc-form-footer-summary">
+              共 {data.length} 行明细
+              <span className="doc-form-footer-muted">金额以服务端价税重算为准</span>
+            </div>
           </div>
-          <div className="doc-form-footer-actions">
-            <Button onClick={addLine}>添加行</Button>
+          <div className="doc-form-footer-main">
             <Button type="primary" loading={saving} onClick={onSubmit}>
               {editId != null ? "保存" : "保存为草稿"}
             </Button>

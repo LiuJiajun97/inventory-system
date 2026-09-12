@@ -327,15 +327,20 @@ export function SalesOrderNewPage() {
             columns={lineColumns}
             scroll={{ x: 900, y: "calc(100vh - 520px)" }}
           />
-        </div>
-        {/* 底部固定操作条:左摘要,右 添加行 + 保存 */}
-        <div className="doc-form-footer">
-          <div className="doc-form-footer-summary">
-            共 {lines.length} 行明细
-            <span className="doc-form-footer-muted">金额以服务端价税重算为准</span>
-          </div>
-          <div className="doc-form-footer-actions">
+          {/* 添加行按钮:明细表正下方,左对齐 */}
+          <div className="doc-form-line-adder">
             <Button onClick={() => setLines((ls) => [...ls, { key: lineSeq++ }])}>添加行</Button>
+          </div>
+        </div>
+        {/* 底部固定操作条:左摘要,中间主按钮居中 */}
+        <div className="doc-form-footer">
+          <div className="doc-form-footer-left">
+            <div className="doc-form-footer-summary">
+              共 {lines.length} 行明细
+              <span className="doc-form-footer-muted">金额以服务端价税重算为准</span>
+            </div>
+          </div>
+          <div className="doc-form-footer-main">
             <Button type="primary" loading={saving} onClick={onSubmit}>
               {editId != null ? "保存" : "保存为草稿"}
             </Button>

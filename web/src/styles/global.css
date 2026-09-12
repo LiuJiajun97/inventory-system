@@ -711,10 +711,34 @@ a.action-edit .anticon {
   margin-left: 8px;
 }
 
-.doc-form-footer-actions {
+/* 底部操作条左侧组:摘要 + (入库/出库)取消按钮,同一 flex 组靠左 */
+.doc-form-footer-left {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+/* 底部操作条中间主按钮区:绝对居中(sticky 已使 footer 成为定位祖先) */
+.doc-form-footer-main {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+}
+
+/* 明细表下方的添加行按钮区:左对齐 */
+.doc-form-line-adder {
+  margin: 8px 0 12px;
+}
+
+/* ====== 抽屉底部统一操作条(新建/编辑抽屉共用) ====== */
+/* 布局:右对齐按钮组;上边线颜色由组件内 antd token(colorBorderSecondary)提供 */
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 0;
 }
 
 /* ====== 欢迎语样式 ====== */
