@@ -47,6 +47,12 @@ public class PurchaseOrderDO {
     private BigDecimal freight;
     /** 交货地址(可空)。 */
     private String shippingAddress;
+    /** 折扣额(可空,不参与合计计算)。 */
+    private BigDecimal discountAmount;
+    /** 币种(可空,如 CNY)。 */
+    private String currencyCode;
+    /** 汇率(可空)。 */
+    private BigDecimal exchangeRate;
     /** 单据状态。 */
     private String status;
     /** 制单人。 */

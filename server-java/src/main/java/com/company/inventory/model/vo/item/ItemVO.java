@@ -19,10 +19,15 @@ import java.time.LocalDateTime;
  * @param secondUnit     辅助单位(V9 增量)
  * @param convertFactor  换算率(V9 增量)
  * @param brand          品牌(V9 增量)
+ * @param referencePurchasePrice 参考采购价(V10 增量)
+ * @param referenceSalePrice 参考销售价(V10 增量)
+ * @param origin         产地(V10 增量)
  * @author inventory
  */
 public record ItemVO(Long id, String itemCode, String itemName, String unit,
         String spec, String attributes, Integer status, LocalDateTime createdAt,
         String category, java.math.BigDecimal minStock, java.math.BigDecimal defaultTaxRate,
-        String barcode, String secondUnit, java.math.BigDecimal convertFactor, String brand) {
+        String barcode, String secondUnit, java.math.BigDecimal convertFactor, String brand,
+        java.math.BigDecimal referencePurchasePrice, java.math.BigDecimal referenceSalePrice,
+        String origin) {
 }

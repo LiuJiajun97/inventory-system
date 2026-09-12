@@ -22,6 +22,9 @@ import java.util.List;
  * @param contractNo      合同号(V9 增量)
  * @param freight         运费(V9 增量,字符串)
  * @param shippingAddress 交货地址(V9 增量)
+ * @param discountAmount  折扣额(V10 增量,字符串)
+ * @param currencyCode    币种(V10 增量)
+ * @param exchangeRate    汇率(V10 增量,字符串)
  * @param status          单据状态
  * @param creator         制单人
  * @param createdAt       制单时间
@@ -38,6 +41,7 @@ public record SalesOrderVO(Long id, String docNo, LocalDate docDate, Long custom
         CustomerVO customer, Long salespersonId, Long warehouseId,
         String totalAmount, String totalTaxAmount, String totalTaxInclusive,
         String contractNo, String freight, String shippingAddress,
+        String discountAmount, String currencyCode, String exchangeRate,
         String status, String creator, LocalDateTime createdAt,
         String updater, LocalDateTime updatedAt, String approver, LocalDateTime approvedAt,
         String rejectReason, String remark, List<SalesOrderItemVO> items) {

@@ -57,5 +57,7 @@ public class TransferDocDO {
     private String rejectReason;
     /** 备注。 */
     private String remark;
+    /** 承运商(可空)。 */
+    private String carrier;
 
 }

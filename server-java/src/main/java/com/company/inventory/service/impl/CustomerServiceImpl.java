@@ -117,6 +117,7 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setBankAccount(dto.bankAccount());
         customer.setCreditLimit(dto.creditLimit());
         customer.setDeliveryAddress(dto.deliveryAddress());
+        customer.setEmail(dto.email());
         customer.setRemark(dto.remark());
         customer.setStatus(1);
         customer.setCreator(username);
@@ -178,6 +179,9 @@ public class CustomerServiceImpl implements CustomerService {
         if (dto.deliveryAddress() != null) {
             customer.setDeliveryAddress(dto.deliveryAddress());
         }
+        if (dto.email() != null) {
+            customer.setEmail(dto.email());
+        }
         if (dto.status() != null) {
             customer.setStatus(dto.status());
         }
@@ -201,7 +205,7 @@ public class CustomerServiceImpl implements CustomerService {
         return new CustomerVO(s.getId(), s.getCustomerCode(), s.getCustomerName(), s.getTaxNo(),
                 s.getDefaultTaxRate(), s.getContact(), s.getPhone(), s.getAddress(),
                 s.getSettleMethod(), s.getPayTermDays(), s.getBankName(), s.getBankAccount(),
-                s.getCreditLimit(), s.getDeliveryAddress(), s.getStatus(), s.getRemark(),
+                s.getCreditLimit(), s.getDeliveryAddress(), s.getEmail(), s.getStatus(), s.getRemark(),
                 s.getCreator(), s.getCreatedAt(), s.getUpdater(), s.getUpdatedAt());
     }
 }

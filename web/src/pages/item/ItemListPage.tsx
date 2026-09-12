@@ -180,6 +180,11 @@ export function ItemListPage() {
       secondUnit: r.secondUnit ?? undefined,
       convertFactor: r.convertFactor == null ? undefined : Number(r.convertFactor),
       brand: r.brand ?? undefined,
+      referencePurchasePrice:
+        r.referencePurchasePrice == null ? undefined : Number(r.referencePurchasePrice),
+      referenceSalePrice:
+        r.referenceSalePrice == null ? undefined : Number(r.referenceSalePrice),
+      origin: r.origin ?? undefined,
     });
     setAttrs(attrsFromItem(r.attributes));
     setDrawerOpen(true);
@@ -208,6 +213,10 @@ export function ItemListPage() {
           secondUnit: v.secondUnit,
           convertFactor: v.convertFactor,
           brand: v.brand,
+          // V10 通用字段(可空)
+          referencePurchasePrice: v.referencePurchasePrice,
+          referenceSalePrice: v.referenceSalePrice,
+          origin: v.origin,
         });
         message.success("物品已更新");
       } else {
@@ -225,6 +234,10 @@ export function ItemListPage() {
           secondUnit: v.secondUnit,
           convertFactor: v.convertFactor,
           brand: v.brand,
+          // V10 通用字段(可空)
+          referencePurchasePrice: v.referencePurchasePrice,
+          referenceSalePrice: v.referenceSalePrice,
+          origin: v.origin,
         });
         message.success("物品创建成功");
       }
@@ -399,6 +412,24 @@ export function ItemListPage() {
             <Col span={12}>
               <Form.Item label="品牌" name="brand">
                 <Input />
+              </Form.Item>
+            </Col>
+            {/* V10 通用字段(可空):参考采购价/参考销售价/产地 */}
+            <Col span={12}>
+              <Form.Item label="产地" name="origin">
+                <Input placeholder="如 浙江温州" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="参考采购价" name="referencePurchasePrice">
+                <InputNumber min={0} precision={4} style={{ width: "100%" }} placeholder="建采购单预填用" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="参考销售价" name="referenceSalePrice">
+                <InputNumber min={0} precision={4} style={{ width: "100%" }} placeholder="建销售单预填用" />
               </Form.Item>
             </Col>
           </Row>

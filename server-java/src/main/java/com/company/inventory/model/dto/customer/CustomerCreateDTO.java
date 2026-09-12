@@ -20,6 +20,7 @@ import java.math.BigDecimal;
  * @param bankAccount    银行账号(可空)
  * @param creditLimit    信用额度(可空)
  * @param deliveryAddress 交货地址(可空)
+ * @param email        邮箱(可空)
  * @param remark         备注
  * @author inventory
  */
@@ -37,13 +38,24 @@ public record CustomerCreateDTO(
         String bankAccount,
         BigDecimal creditLimit,
         String deliveryAddress,
+        String email,
         String remark) {
 
-    /** 兼容旧签名构造器(V9 新增字段默认 null,既有调用/测试不受影响)。 */
+    /** 兼容旧签名构造器(V9/V10 新增字段默认 null,既有调用/测试不受影响)。 */
     public CustomerCreateDTO(String customerCode, String customerName, String taxNo,
             BigDecimal defaultTaxRate, String contact, String phone, String address,
             String settleMethod, Integer payTermDays, String remark) {
         this(customerCode, customerName, taxNo, defaultTaxRate, contact, phone, address,
-                settleMethod, payTermDays, null, null, null, null, remark);
+                settleMethod, payTermDays, null, null, null, null, null, remark);
+    }
+
+    /** 兼容 V9 签名构造器(V10 新增 email 默认 null)。 */
+    public CustomerCreateDTO(String customerCode, String customerName, String taxNo,
+            BigDecimal defaultTaxRate, String contact, String phone, String address,
+            String settleMethod, Integer payTermDays, String bankName, String bankAccount,
+            BigDecimal creditLimit, String deliveryAddress, String remark) {
+        this(customerCode, customerName, taxNo, defaultTaxRate, contact, phone, address,
+                settleMethod, payTermDays, bankName, bankAccount, creditLimit, deliveryAddress,
+                null, remark);
     }
 }

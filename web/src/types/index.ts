@@ -49,6 +49,8 @@ export interface Warehouse {
   enableSerial: boolean;
   enableLocation: boolean;
   status: number;
+  // V10 默认仓(全表至多一个 true,可空)
+  defaultWarehouse?: boolean | null;
   creator?: string | null;
   createdAt?: string | null;
 }
@@ -75,6 +77,10 @@ export interface Item {
   secondUnit?: string | null;
   convertFactor?: string | number | null;
   brand?: string | null;
+  // V10 通用字段(可空):参考采购价/参考销售价/产地
+  referencePurchasePrice?: string | number | null;
+  referenceSalePrice?: string | number | null;
+  origin?: string | null;
   creator?: string | null;
   createdAt?: string | null;
 }
@@ -123,6 +129,11 @@ export interface InboundDocItem {
   batchNo?: string | null;
   productionDate?: string | null;
   expiryDate?: string | null;
+  // V10 行号/金额快照(服务端落,可空)
+  lineNo?: number | null;
+  amount?: string | number | null;
+  taxAmount?: string | number | null;
+  taxInclusiveTotal?: string | number | null;
 }
 
 export interface InboundDoc {
@@ -144,6 +155,10 @@ export interface InboundDoc {
   carrier?: string | null;
   vehicleNo?: string | null;
   freight?: string | null;
+  // V10 单据总金额(服务端落)/单据类型/经办人(可空)
+  totalAmount?: string | null;
+  docType?: string | null;
+  handler?: string | null;
 }
 
 export interface OutboundDocItem {
@@ -154,6 +169,12 @@ export interface OutboundDocItem {
   locationId: number;
   serialNos?: string | null;
   unitPrice?: string | number | null;
+  // V10 税率/行号/金额快照(可空)
+  taxRate?: string | number | null;
+  lineNo?: number | null;
+  amount?: string | number | null;
+  taxAmount?: string | number | null;
+  taxInclusiveTotal?: string | number | null;
 }
 
 export interface OutboundDoc {
@@ -175,6 +196,10 @@ export interface OutboundDoc {
   carrier?: string | null;
   vehicleNo?: string | null;
   freight?: string | null;
+  // V10 单据总金额(服务端落)/单据类型/经办人(可空)
+  totalAmount?: string | null;
+  docType?: string | null;
+  handler?: string | null;
 }
 
 export interface PagedResponse<T> {

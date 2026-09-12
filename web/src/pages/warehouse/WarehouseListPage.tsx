@@ -14,6 +14,7 @@ import {
   Switch,
   Space,
   Tag,
+  Checkbox,
   App,
   theme,
 } from "antd";
@@ -147,6 +148,8 @@ export function WarehouseListPage() {
       enableSerial: r.enableSerial,
       enableLocation: r.enableLocation,
       status: r.status === 1,
+      // V10 默认仓(可空)
+      defaultWarehouse: r.defaultWarehouse === true,
     });
     setEnableBatch(!!r.enableBatch);
     setEnableExpiry(!!r.enableExpiry);
@@ -165,6 +168,8 @@ export function WarehouseListPage() {
           enableSerial: v.enableSerial,
           enableLocation: v.enableLocation,
           status: v.status ? 1 : 0,
+          // V10 默认仓(排他由后端同事务处理)
+          defaultWarehouse: v.defaultWarehouse === true,
         });
         message.success("仓库已更新");
       } else {
@@ -176,6 +181,8 @@ export function WarehouseListPage() {
           enableExpiry,
           enableSerial: v.enableSerial,
           enableLocation: v.enableLocation,
+          // V10 默认仓(排他由后端同事务处理)
+          defaultWarehouse: v.defaultWarehouse === true,
         });
         message.success("仓库创建成功");
       }
@@ -354,6 +361,13 @@ export function WarehouseListPage() {
                   </Form.Item>
                 </Space>
               )}
+              {/* V10 默认仓(全表至多一个,排他由后端处理) */}
+              <Space>
+                <span style={{ width: 80 }}>默认仓</span>
+                <Form.Item name="defaultWarehouse" valuePropName="checked" noStyle>
+                  <Checkbox />
+                </Form.Item>
+              </Space>
             </div>
               </Form.Item>
             </Col>

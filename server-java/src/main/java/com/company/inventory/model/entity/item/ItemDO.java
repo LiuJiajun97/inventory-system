@@ -48,6 +48,12 @@ public class ItemDO {
     private BigDecimal convertFactor;
     /** 品牌(可空)。 */
     private String brand;
+    /** 参考采购价(建单预填,可空)。 */
+    private BigDecimal referencePurchasePrice;
+    /** 参考销售价(建单预填,可空)。 */
+    private BigDecimal referenceSalePrice;
+    /** 产地(可空)。 */
+    private String origin;
     /** 状态:1 启用。 */
     private Integer status;
     /** 创建人。 */

@@ -16,6 +16,9 @@ import jakarta.validation.constraints.NotBlank;
  * @param secondUnit     辅助单位(可空)
  * @param convertFactor  换算率(可空,1 辅助单位对应的基本单位数)
  * @param brand          品牌(可空)
+ * @param referencePurchasePrice 参考采购价(可空,建单预填)
+ * @param referenceSalePrice 参考销售价(可空,建单预填)
+ * @param origin         产地(可空)
  * @author inventory
  */
 public record ItemCreateDTO(
@@ -30,13 +33,25 @@ public record ItemCreateDTO(
         String barcode,
         String secondUnit,
         java.math.BigDecimal convertFactor,
-        String brand) {
+        String brand,
+        java.math.BigDecimal referencePurchasePrice,
+        java.math.BigDecimal referenceSalePrice,
+        String origin) {
 
-    /** 兼容旧签名构造器(V9 新增字段默认 null,既有调用/测试不受影响)。 */
+    /** 兼容旧签名构造器(V9/V10 新增字段默认 null,既有调用/测试不受影响)。 */
     public ItemCreateDTO(String itemCode, String itemName, String unit, String spec,
             String attributes, String category, java.math.BigDecimal minStock,
             java.math.BigDecimal defaultTaxRate) {
         this(itemCode, itemName, unit, spec, attributes, category, minStock, defaultTaxRate,
-                null, null, null, null);
+                null, null, null, null, null, null, null);
+    }
+
+    /** 兼容 V9 签名构造器(V10 新增参考采购价/参考销售价/产地默认 null)。 */
+    public ItemCreateDTO(String itemCode, String itemName, String unit, String spec,
+            String attributes, String category, java.math.BigDecimal minStock,
+            java.math.BigDecimal defaultTaxRate, String barcode, String secondUnit,
+            java.math.BigDecimal convertFactor, String brand) {
+        this(itemCode, itemName, unit, spec, attributes, category, minStock, defaultTaxRate,
+                barcode, secondUnit, convertFactor, brand, null, null, null);
     }
 }

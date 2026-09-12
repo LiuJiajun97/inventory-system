@@ -37,6 +37,8 @@ interface Line {
   locationId?: number;
   serialNos?: string[];
   refLineId?: number;
+  // V10:不含税单价(可空;采购到货由服务端按订单行覆盖)
+  unitPrice?: number;
 }
 
 export function InboundFormPage() {
@@ -157,6 +159,9 @@ export function InboundFormPage() {
         carrier: form.getFieldValue("carrier"),
         vehicleNo: form.getFieldValue("vehicleNo"),
         freight: form.getFieldValue("freight"),
+        // V10 单据类型/经办人(可空);总金额由服务端落
+        docType: form.getFieldValue("docType"),
+        handler: form.getFieldValue("handler"),
         items: lines.map((l) => ({
           itemId: l.itemId!,
           qty: l.qty!,
@@ -167,6 +172,8 @@ export function InboundFormPage() {
           locationId: l.locationId,
           serialNos: l.serialNos,
           refLineId: l.refLineId,
+          // V10 不含税单价(采购到货由服务端覆盖,手工入库可选填)
+          unitPrice: l.unitPrice,
         })),
         refType: refOrderId ? "purchase" : undefined,
         refDocId: refOrderId,
@@ -182,7 +189,7 @@ export function InboundFormPage() {
 
   const columns: ColumnsType<{ idx: number; line: Line }> = [
     {
-      title: "#",
+      title: "行号",
       width: 50,
       render: (_v, _r, idx) => idx + 1,
     },
@@ -219,6 +226,31 @@ export function InboundFormPage() {
           }
         />
       ),
+    },
+    {
+      // V10 不含税单价(可空,手工入库选填)
+      title: "不含税单价",
+      width: 120,
+      render: (_v, r) => (
+        <InputNumber
+          min={0}
+          step={0.01}
+          style={{ width: "100%" }}
+          value={r.line.unitPrice}
+          onChange={(v) => updateLine(r.idx, "unitPrice", v == null ? undefined : Number(v))}
+        />
+      ),
+    },
+    {
+      // V10 金额列(只读实时:数量×不含税单价)
+      title: "金额",
+      width: 110,
+      align: "right",
+      render: (_v, r) => {
+        const qty = r.line.qty ?? 0;
+        const price = r.line.unitPrice ?? 0;
+        return qty > 0 && price > 0 ? (qty * price).toFixed(2) : "-";
+      },
     },
     {
       title: "关联订单行",
@@ -399,6 +431,17 @@ export function InboundFormPage() {
               <Col span={6}>
                 <Form.Item label="运费" name="freight">
                   <InputNumber min={0} step={0.01} style={{ width: "100%" }} placeholder="可选" />
+                </Form.Item>
+              </Col>
+              {/* V10 单据类型/经办人(可空) */}
+              <Col span={6}>
+                <Form.Item label="单据类型" name="docType">
+                  <Input placeholder="如 采购入库/退货入库,可选" />
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item label="经办人" name="handler">
+                  <Input placeholder="可选" />
                 </Form.Item>
               </Col>
             </Row>

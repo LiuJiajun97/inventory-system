@@ -5,6 +5,7 @@ import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.support.DataScope;
 import com.company.inventory.common.support.DateRangeSupport;
 import com.company.inventory.common.page.PageResult;
+import com.company.inventory.common.util.MoneyUtils;
 import com.company.inventory.common.util.QtyUtils;
 import com.company.inventory.model.dto.inbound.InboundCreateDTO;
 import com.company.inventory.model.dto.inbound.InboundLineDTO;
@@ -46,6 +47,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -170,6 +172,8 @@ public class InboundServiceImpl implements InboundService {
         doc.setCarrier(dto.carrier());
         doc.setVehicleNo(dto.vehicleNo());
         doc.setFreight(dto.freight());
+        doc.setDocType(dto.docType());
+        doc.setHandler(dto.handler());
         inboundDocMapper.insert(doc);
 
         StockOpRequest request = new StockOpRequest();
@@ -181,6 +185,7 @@ public class InboundServiceImpl implements InboundService {
 
         List<StockOpResult.StockOpRow> resultRows = stockResult.getRows();
         List<ArrivalLine> arrivalLines = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
         for (int i = 0; i < dto.items().size(); i++) {
             InboundLineDTO line = dto.items().get(i);
             StockOpResult.StockOpRow resultRow = resultRows.get(i);
@@ -205,8 +210,21 @@ public class InboundServiceImpl implements InboundService {
                 docItem.setUnitPrice(line.unitPrice());
                 docItem.setTaxRate(line.taxRate());
             }
+            // V10 金额快照:行号从 1 连号,金额=数量×(不含税单价??0),税额=金额×(税率??0)/100
+            BigDecimal amount = MoneyUtils.amountOf(line.qty(),
+                    docItem.getUnitPrice() == null ? BigDecimal.ZERO : docItem.getUnitPrice());
+            BigDecimal tax = MoneyUtils.taxOf(amount,
+                    docItem.getTaxRate() == null ? BigDecimal.ZERO : docItem.getTaxRate());
+            docItem.setLineNo(i + 1);
+            docItem.setAmount(amount);
+            docItem.setTaxAmount(tax);
+            docItem.setTaxInclusiveTotal(MoneyUtils.inclusiveOf(amount, tax));
+            totalAmount = totalAmount.add(amount);
             inboundDocItemMapper.insert(docItem);
         }
+        // V10 头总金额=行金额合计(服务端重算)
+        doc.setTotalAmount(totalAmount);
+        inboundDocMapper.updateById(doc);
         // 采购与库存同事务:入库成功后回写订单到货量(超收拒绝整单回滚)
         if (purchaseArrival) {
             purchaseOrderService.applyArrival(dto.refDocId(), arrivalLines);
@@ -328,7 +346,10 @@ public class InboundServiceImpl implements InboundService {
                     refOrder == null ? null : refOrder.getDocNo(), supplierName,
                     doc.getDocDate(), doc.getCarrier(), doc.getVehicleNo(),
                     doc.getFreight() == null ? null
-                            : QtyUtils.toContractString(doc.getFreight())));
+                            : QtyUtils.toContractString(doc.getFreight()),
+                    doc.getTotalAmount() == null ? null
+                            : QtyUtils.toContractString(doc.getTotalAmount()),
+                    doc.getDocType(), doc.getHandler()));
         }
         return vos;
     }
@@ -365,7 +386,8 @@ public class InboundServiceImpl implements InboundService {
                 QtyUtils.toContractString(item.getQuantity()), item.getBatchId(),
                 item.getLocationId(), item.getSerialNos(),
                 item.getUnitPrice(), item.getTaxRate(), item.getBatchNo(),
-                item.getProductionDate(), item.getExpiryDate(), item.getRefLineId());
+                item.getProductionDate(), item.getExpiryDate(), item.getRefLineId(),
+                item.getLineNo(), item.getAmount(), item.getTaxAmount(), item.getTaxInclusiveTotal());
     }
 
     /**

@@ -378,7 +378,8 @@ public class StockQueryServiceImpl implements StockQueryService {
                 item.getUnit(), item.getSpec(), item.getAttributes(),
                 item.getStatus(), item.getCreatedAt(),
                 item.getCategory(), item.getMinStock(), item.getDefaultTaxRate(),
-                item.getBarcode(), item.getSecondUnit(), item.getConvertFactor(), item.getBrand());
+                item.getBarcode(), item.getSecondUnit(), item.getConvertFactor(), item.getBrand(),
+                item.getReferencePurchasePrice(), item.getReferenceSalePrice(), item.getOrigin());
     }
 
     /**

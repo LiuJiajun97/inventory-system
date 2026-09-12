@@ -5,6 +5,7 @@ import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.support.DataScope;
 import com.company.inventory.common.support.DateRangeSupport;
 import com.company.inventory.common.page.PageResult;
+import com.company.inventory.common.util.MoneyUtils;
 import com.company.inventory.common.util.QtyUtils;
 import com.company.inventory.model.dto.outbound.OutboundCreateDTO;
 import com.company.inventory.model.dto.outbound.OutboundLineDTO;
@@ -45,6 +46,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import java.math.BigDecimal;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -174,6 +177,8 @@ public class OutboundServiceImpl implements OutboundService {
         doc.setCarrier(dto.carrier());
         doc.setVehicleNo(dto.vehicleNo());
         doc.setFreight(dto.freight());
+        doc.setDocType(dto.docType());
+        doc.setHandler(dto.handler());
         outboundDocMapper.insert(doc);
 
         StockOpRequest request = new StockOpRequest();
@@ -186,6 +191,7 @@ public class OutboundServiceImpl implements OutboundService {
 
         List<StockOpResult.StockOpRow> resultRows = stockResult.getRows();
         List<ShipLine> shipLines = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
         for (int i = 0; i < dto.items().size(); i++) {
             OutboundLineDTO line = dto.items().get(i);
             StockOpResult.StockOpRow resultRow = resultRows.get(i);
@@ -198,14 +204,30 @@ public class OutboundServiceImpl implements OutboundService {
             docItem.setSerialNos(toJsonArray(line.serialNos()));
             docItem.setRefLineId(line.refLineId());
             if (salesShip) {
-                // 出库参考价携带订单行单价(服务端取值,不信前端传值)
-                docItem.setUnitPrice(refItems.get(line.refLineId()).unitPrice());
+                // 出库参考价携带订单行单价(服务端取值,不信前端传值),税率同源于订单行
+                SalesOrderItemVO ref = refItems.get(line.refLineId());
+                docItem.setUnitPrice(ref.unitPrice());
+                docItem.setTaxRate(ref.taxRate());
                 shipLines.add(new ShipLine(line.refLineId(), line.qty()));
             } else {
                 docItem.setUnitPrice(line.unitPrice());
+                docItem.setTaxRate(line.taxRate());
             }
+            // V10 金额快照:行号从 1 连号,金额=数量×(不含税单价??0),税额=金额×(税率??0)/100
+            BigDecimal amount = MoneyUtils.amountOf(line.qty(),
+                    docItem.getUnitPrice() == null ? BigDecimal.ZERO : docItem.getUnitPrice());
+            BigDecimal tax = MoneyUtils.taxOf(amount,
+                    docItem.getTaxRate() == null ? BigDecimal.ZERO : docItem.getTaxRate());
+            docItem.setLineNo(i + 1);
+            docItem.setAmount(amount);
+            docItem.setTaxAmount(tax);
+            docItem.setTaxInclusiveTotal(MoneyUtils.inclusiveOf(amount, tax));
+            totalAmount = totalAmount.add(amount);
             outboundDocItemMapper.insert(docItem);
         }
+        // V10 头总金额=行金额合计(服务端重算)
+        doc.setTotalAmount(totalAmount);
+        outboundDocMapper.updateById(doc);
         if (salesShip) {
             salesOrderService.applyShipment(dto.refDocId(), shipLines);
         }
@@ -326,7 +348,10 @@ public class OutboundServiceImpl implements OutboundService {
                     refOrder == null ? null : refOrder.getDocNo(), customerName,
                     doc.getDocDate(), doc.getCarrier(), doc.getVehicleNo(),
                     doc.getFreight() == null ? null
-                            : QtyUtils.toContractString(doc.getFreight())));
+                            : QtyUtils.toContractString(doc.getFreight()),
+                    doc.getTotalAmount() == null ? null
+                            : QtyUtils.toContractString(doc.getTotalAmount()),
+                    doc.getDocType(), doc.getHandler()));
         }
         return vos;
     }
@@ -359,7 +384,8 @@ public class OutboundServiceImpl implements OutboundService {
         return new OutboundDocItemVO(item.getId(), item.getDocId(), item.getItemId(),
                 QtyUtils.toContractString(item.getQuantity()), item.getBatchId(),
                 item.getLocationId(), item.getSerialNos(), item.getUnitPrice(),
-                item.getRefLineId());
+                item.getRefLineId(), item.getTaxRate(), item.getLineNo(), item.getAmount(),
+                item.getTaxAmount(), item.getTaxInclusiveTotal());
     }
 
     /**

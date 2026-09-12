@@ -13,10 +13,21 @@ import java.time.LocalDateTime;
  * @param enableSerial   启用序列号
  * @param enableLocation 启用库位
  * @param status         状态
+ * @param defaultWarehouse      默认仓(V10 增量)
  * @param createdAt      创建时间
  * @author inventory
  */
 public record WarehouseVO(Long id, String warehouseCode, String warehouseName,
         String warehouseType, Boolean enableBatch, Boolean enableExpiry,
-        Boolean enableSerial, Boolean enableLocation, Integer status, LocalDateTime createdAt) {
+        Boolean enableSerial, Boolean enableLocation, Integer status, Boolean defaultWarehouse,
+        LocalDateTime createdAt) {
+
+    /** 兼容旧签名构造器(V10 新增 defaultWarehouse 默认 null,嵌套引用处不受影响)。 */
+    public WarehouseVO(Long id, String warehouseCode, String warehouseName,
+            String warehouseType, Boolean enableBatch, Boolean enableExpiry,
+            Boolean enableSerial, Boolean enableLocation, Integer status,
+            LocalDateTime createdAt) {
+        this(id, warehouseCode, warehouseName, warehouseType, enableBatch, enableExpiry,
+                enableSerial, enableLocation, status, null, createdAt);
+    }
 }

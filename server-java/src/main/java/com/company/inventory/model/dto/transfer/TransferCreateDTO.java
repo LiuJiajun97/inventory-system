@@ -15,6 +15,7 @@ import java.util.List;
  * @param fromWarehouseId 源仓库 ID
  * @param toWarehouseId   目的仓库 ID
  * @param remark          备注
+ * @param carrier         承运商(可空)
  * @param items           调拨行(至少 1 行)
  * @author inventory
  */
@@ -25,6 +26,14 @@ public record TransferCreateDTO(
         @NotNull(message = "目的仓库 ID 必填")
         @Positive(message = "目的仓库 ID 必须为正数") Long toWarehouseId,
         String remark,
+        String carrier,
         @Valid
         @NotEmpty(message = "至少 1 行") List<TransferLineDTO> items) {
+
+    /** 兼容旧签名构造器(V10 新增 carrier 默认 null,既有调用/测试不受影响)。 */
+    public TransferCreateDTO(LocalDate docDate, Long fromWarehouseId, Long toWarehouseId,
+            String remark,
+            @Valid @NotEmpty(message = "至少 1 行") List<TransferLineDTO> items) {
+        this(docDate, fromWarehouseId, toWarehouseId, remark, null, items);
+    }
 }

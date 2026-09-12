@@ -124,6 +124,7 @@ public class TransferServiceImpl implements TransferService {
         doc.setToWarehouseId(dto.toWarehouseId());
         doc.setStatus(DocStatus.DRAFT);
         doc.setRemark(dto.remark());
+        doc.setCarrier(dto.carrier());
         doc.setCreator(username);
         doc.setCreatedAt(LocalDateTime.now());
         docMapper.insert(doc);
@@ -208,6 +209,7 @@ public class TransferServiceImpl implements TransferService {
         doc.setFromWarehouseId(dto.fromWarehouseId());
         doc.setToWarehouseId(dto.toWarehouseId());
         doc.setRemark(dto.remark());
+        doc.setCarrier(dto.carrier());
         doc.setUpdater(username);
         doc.setUpdatedAt(LocalDateTime.now());
         if (DocStatus.REJECTED.equals(doc.getStatus())) {
@@ -462,7 +464,7 @@ public class TransferServiceImpl implements TransferService {
                     QtyUtils.toContractString(doc.getTotalAmount()), doc.getStatus(),
                     doc.getCreator(), doc.getCreatedAt(), doc.getUpdater(), doc.getUpdatedAt(),
                     doc.getApprover(), doc.getApprovedAt(), doc.getRejectReason(),
-                    doc.getRemark(), lineVos));
+                    doc.getRemark(), doc.getCarrier(), lineVos));
         }
         return vos;
     }

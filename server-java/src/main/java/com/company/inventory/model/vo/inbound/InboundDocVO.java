@@ -25,11 +25,15 @@ import java.util.List;
  * @param carrier     承运商(V9 增量)
  * @param vehicleNo   车牌(V9 增量)
  * @param freight     运费(V9 增量,字符串)
+ * @param totalAmount 单据总金额(V10 增量,字符串)
+ * @param docType     单据类型(V10 增量)
+ * @param handler     经办人(V10 增量)
  * @author inventory
  */
 public record InboundDocVO(Long id, String docNo, Long warehouseId, String status,
         String remark, String creator, LocalDateTime createdAt,
         WarehouseVO warehouse, List<InboundDocItemVO> items,
         String refType, Long refDocId, String refDocNo, String supplierName, LocalDate docDate,
-        String carrier, String vehicleNo, String freight) {
+        String carrier, String vehicleNo, String freight,
+        String totalAmount, String docType, String handler) {
 }

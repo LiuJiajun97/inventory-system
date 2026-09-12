@@ -135,6 +135,9 @@ public class ItemServiceImpl implements ItemService {
         item.setSecondUnit(dto.secondUnit());
         item.setConvertFactor(dto.convertFactor());
         item.setBrand(dto.brand());
+        item.setReferencePurchasePrice(dto.referencePurchasePrice());
+        item.setReferenceSalePrice(dto.referenceSalePrice());
+        item.setOrigin(dto.origin());
         itemMapper.insert(item);
         LOGGER.info("新建物品: code={}, name={}", dto.itemCode(), dto.itemName());
         return toVO(item);
@@ -188,6 +191,15 @@ public class ItemServiceImpl implements ItemService {
         if (dto.brand() != null) {
             item.setBrand(dto.brand());
         }
+        if (dto.referencePurchasePrice() != null) {
+            item.setReferencePurchasePrice(dto.referencePurchasePrice());
+        }
+        if (dto.referenceSalePrice() != null) {
+            item.setReferenceSalePrice(dto.referenceSalePrice());
+        }
+        if (dto.origin() != null) {
+            item.setOrigin(dto.origin());
+        }
         if (dto.status() != null) {
             item.setStatus(dto.status());
         }
@@ -228,6 +240,7 @@ public class ItemServiceImpl implements ItemService {
                 item.getUnit(), item.getSpec(), item.getAttributes(),
                 item.getStatus(), item.getCreatedAt(),
                 item.getCategory(), item.getMinStock(), item.getDefaultTaxRate(),
-                item.getBarcode(), item.getSecondUnit(), item.getConvertFactor(), item.getBrand());
+                item.getBarcode(), item.getSecondUnit(), item.getConvertFactor(), item.getBrand(),
+                item.getReferencePurchasePrice(), item.getReferenceSalePrice(), item.getOrigin());
     }
 }

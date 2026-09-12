@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
  * @param enableExpiry   启用保质期
  * @param enableSerial   启用序列号
  * @param enableLocation 启用库位
+ * @param defaultWarehouse      默认仓(可空,同事务内排他:置 true 时其他仓置 false)
  * @author inventory
  */
 public record WarehouseCreateDTO(
@@ -20,5 +21,6 @@ public record WarehouseCreateDTO(
         Boolean enableBatch,
         Boolean enableExpiry,
         Boolean enableSerial,
-        Boolean enableLocation) {
+        Boolean enableLocation,
+        Boolean defaultWarehouse) {
 }

@@ -19,6 +19,9 @@ import java.util.List;
  * @param contractNo           合同号(可空)
  * @param freight              运费(可空)
  * @param shippingAddress      交货地址(可空)
+ * @param discountAmount       折扣额(可空,不参与合计计算)
+ * @param currencyCode         币种(可空,如 CNY)
+ * @param exchangeRate         汇率(可空)
  * @param remark               备注
  * @param items                订单行(至少 1 行)
  * @author inventory
@@ -33,14 +36,27 @@ public record PurchaseOrderCreateDTO(
         String contractNo,
         BigDecimal freight,
         String shippingAddress,
+        BigDecimal discountAmount,
+        String currencyCode,
+        BigDecimal exchangeRate,
         String remark,
         @Valid
         @NotEmpty(message = "至少 1 行") List<PurchaseOrderLineDTO> items) {
 
-    /** 兼容旧签名构造器(V9 新增字段默认 null,既有调用/测试不受影响)。 */
+    /** 兼容旧签名构造器(V9/V10 新增字段默认 null,既有调用/测试不受影响)。 */
     public PurchaseOrderCreateDTO(LocalDate docDate, Long supplierId, Long buyerId,
             BigDecimal allowOverReceiptRate, String remark,
             @Valid @NotEmpty(message = "至少 1 行") List<PurchaseOrderLineDTO> items) {
-        this(docDate, supplierId, buyerId, allowOverReceiptRate, null, null, null, remark, items);
+        this(docDate, supplierId, buyerId, allowOverReceiptRate, null, null, null,
+                null, null, null, remark, items);
+    }
+
+    /** 兼容 V9 签名构造器(V10 新增折扣额/币种/汇率默认 null)。 */
+    public PurchaseOrderCreateDTO(LocalDate docDate, Long supplierId, Long buyerId,
+            BigDecimal allowOverReceiptRate, String contractNo, BigDecimal freight,
+            String shippingAddress, String remark,
+            @Valid @NotEmpty(message = "至少 1 行") List<PurchaseOrderLineDTO> items) {
+        this(docDate, supplierId, buyerId, allowOverReceiptRate, contractNo, freight,
+                shippingAddress, null, null, null, remark, items);
     }
 }

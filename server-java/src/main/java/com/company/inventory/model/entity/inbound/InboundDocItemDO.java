@@ -47,5 +47,13 @@ public class InboundDocItemDO {
     private LocalDate expiryDate;
     /** 关联采购订单行 ID(可空)。 */
     private Long refLineId;
+    /** 行号(从 1 连号,服务端落,可空)。 */
+    private Integer lineNo;
+    /** 行金额快照(数量×不含税单价,服务端落,可空)。 */
+    private BigDecimal amount;
+    /** 行税额快照(金额×税率/100,服务端落,可空)。 */
+    private BigDecimal taxAmount;
+    /** 含税行金额快照(金额+税额,服务端落,可空)。 */
+    private BigDecimal taxInclusiveTotal;
 
 }

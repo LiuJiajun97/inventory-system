@@ -145,7 +145,7 @@ export function TransferPage() {
       .get(row.id)
       .then((doc) => {
         createForm.resetFields();
-        createForm.setFieldsValue({ remark: doc.remark ?? "" });
+        createForm.setFieldsValue({ remark: doc.remark ?? "", carrier: doc.carrier ?? undefined });
         setLines((doc.items ?? []).map((l, i) => ({
           key: i + 1,
           itemId: l.itemId,
@@ -174,6 +174,8 @@ export function TransferPage() {
       return;
     }
     const remark = createForm.getFieldValue("remark");
+    // V10 承运商(可空)
+    const carrier = createForm.getFieldValue("carrier");
     const valid = lines.filter((l) => l.itemId && l.qty);
     if (valid.length === 0) {
       Modal.error({ content: "请至少填写一行调拨明细" });
@@ -195,6 +197,7 @@ export function TransferPage() {
         fromWarehouseId: fromWh,
         toWarehouseId: toWh,
         remark,
+        carrier,
         items: valid.map((l) => ({
           itemId: l.itemId!,
           qty: l.qty!,
@@ -437,6 +440,12 @@ export function TransferPage() {
                   value={toWh}
                   onChange={setToWh}
                 />
+              </Form.Item>
+            </Col>
+            {/* V10 承运商(可空) */}
+            <Col span={12}>
+              <Form.Item label="承运商" name="carrier">
+                <Input placeholder="可选" />
               </Form.Item>
             </Col>
           </Row>

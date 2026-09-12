@@ -20,6 +20,8 @@ import java.util.List;
  * @param carrier     承运商(可空)
  * @param vehicleNo   车牌(可空)
  * @param freight     运费(可空)
+ * @param docType     单据类型(可空,如 采购入库/退货入库)
+ * @param handler     经办人(可空)
  * @author inventory
  */
 public record InboundCreateDTO(
@@ -33,12 +35,23 @@ public record InboundCreateDTO(
         LocalDate docDate,
         String carrier,
         String vehicleNo,
-        java.math.BigDecimal freight) {
+        java.math.BigDecimal freight,
+        String docType,
+        String handler) {
 
-    /** 兼容旧签名构造器(V9 新增字段默认 null,既有调用/测试不受影响)。 */
+    /** 兼容旧签名构造器(V9/V10 新增字段默认 null,既有调用/测试不受影响)。 */
     public InboundCreateDTO(Long warehouseId, String remark,
             @Valid @NotEmpty(message = "至少 1 行") List<InboundLineDTO> items, String refType,
             @Positive(message = "关联订单 ID 必须为正数") Long refDocId, LocalDate docDate) {
-        this(warehouseId, remark, items, refType, refDocId, docDate, null, null, null);
+        this(warehouseId, remark, items, refType, refDocId, docDate, null, null, null, null, null);
+    }
+
+    /** 兼容 V9 签名构造器(V10 新增单据类型/经办人默认 null)。 */
+    public InboundCreateDTO(Long warehouseId, String remark,
+            @Valid @NotEmpty(message = "至少 1 行") List<InboundLineDTO> items, String refType,
+            @Positive(message = "关联订单 ID 必须为正数") Long refDocId, LocalDate docDate,
+            String carrier, String vehicleNo, java.math.BigDecimal freight) {
+        this(warehouseId, remark, items, refType, refDocId, docDate, carrier, vehicleNo,
+                freight, null, null);
     }
 }

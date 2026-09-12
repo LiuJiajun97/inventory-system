@@ -32,6 +32,7 @@ import com.company.inventory.model.vo.warehouse.WarehouseVO;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 
@@ -148,6 +149,11 @@ public class WarehouseServiceImpl implements WarehouseService {
         warehouse.setEnableExpiry(Boolean.TRUE.equals(dto.enableExpiry()));
         warehouse.setEnableSerial(Boolean.TRUE.equals(dto.enableSerial()));
         warehouse.setEnableLocation(Boolean.TRUE.equals(dto.enableLocation()));
+        warehouse.setDefaultWarehouse(dto.defaultWarehouse());
+        if (Boolean.TRUE.equals(dto.defaultWarehouse())) {
+            // V10 默认仓排他:同一事务内先把其他仓的 default_warehouse 置 false(新仓尚未入库,无需排除自身)
+            clearOtherDefault(null);
+        }
         warehouseMapper.insert(warehouse);
         LOGGER.info("新建仓库: code={}, name={}, 编码重复检查通过", dto.warehouseCode(), dto.warehouseName());
         return toVO(warehouse);
@@ -164,7 +170,22 @@ public class WarehouseServiceImpl implements WarehouseService {
                 warehouse.getWarehouseName(), warehouse.getWarehouseType(),
                 warehouse.getEnableBatch(), warehouse.getEnableExpiry(),
                 warehouse.getEnableSerial(), warehouse.getEnableLocation(),
-                warehouse.getStatus(), warehouse.getCreatedAt());
+                warehouse.getStatus(), warehouse.getDefaultWarehouse(), warehouse.getCreatedAt());
+    }
+
+    /**
+     * V10 默认仓排他:把其他仓的 default_warehouse 置 false(排除 excludeId,可空表示不排除)。
+     *
+     * @param excludeId 需排除的仓库 ID(可空)
+     */
+    private void clearOtherDefault(Long excludeId) {
+        LambdaUpdateWrapper<WarehouseDO> wrapper = new LambdaUpdateWrapper<WarehouseDO>()
+                .eq(WarehouseDO::getDefaultWarehouse, true)
+                .set(WarehouseDO::getDefaultWarehouse, false);
+        if (excludeId != null) {
+            wrapper.ne(WarehouseDO::getId, excludeId);
+        }
+        warehouseMapper.update(null, wrapper);
     }
 
     /**
@@ -227,6 +248,14 @@ public class WarehouseServiceImpl implements WarehouseService {
         if (dto.status() != null) {
             warehouse.setStatus(dto.status());
             changed = true;
+        }
+        if (dto.defaultWarehouse() != null) {
+            warehouse.setDefaultWarehouse(dto.defaultWarehouse());
+            changed = true;
+            if (Boolean.TRUE.equals(dto.defaultWarehouse())) {
+                // V10 默认仓排他:置默认时同一事务内把其他仓(排除自身)置 false
+                clearOtherDefault(id);
+            }
         }
         if (!changed) {
             throw new BizException("至少提供一个可更新字段",

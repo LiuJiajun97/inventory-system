@@ -173,6 +173,10 @@ export interface PurchaseCreatePayload {
   contractNo?: string;
   freight?: number;
   shippingAddress?: string;
+  // V10 通用字段(可空)
+  discountAmount?: number;
+  currencyCode?: string;
+  exchangeRate?: number;
   remark?: string;
   items: Array<{
     itemId: number;
@@ -193,6 +197,10 @@ export interface SalesCreatePayload {
   contractNo?: string;
   freight?: number;
   shippingAddress?: string;
+  // V10 通用字段(可空)
+  discountAmount?: number;
+  currencyCode?: string;
+  exchangeRate?: number;
   remark?: string;
   items: Array<{
     itemId: number;
@@ -209,6 +217,8 @@ export interface TransferCreatePayload {
   fromWarehouseId: number;
   toWarehouseId: number;
   remark?: string;
+  // V10 承运商(可空)
+  carrier?: string;
   items: Array<{
     itemId: number;
     qty: number;
@@ -425,6 +435,9 @@ export const inboundApi = {
     carrier?: string;
     vehicleNo?: string;
     freight?: number;
+    // V10 单据类型/经办人(可空;总金额由服务端落)
+    docType?: string;
+    handler?: string;
     items: Array<{
       itemId: number;
       qty: number;
@@ -435,6 +448,8 @@ export const inboundApi = {
       locationId?: number;
       serialNos?: string[];
       refLineId?: number;
+      // V10 不含税单价(可空)
+      unitPrice?: number;
     }>;
   }) => http.post("/inbound", data),
   list: (params: {
@@ -460,6 +475,9 @@ export const outboundApi = {
     carrier?: string;
     vehicleNo?: string;
     freight?: number;
+    // V10 单据类型/经办人(可空;总金额由服务端落)
+    docType?: string;
+    handler?: string;
     items: Array<{
       itemId: number;
       qty: number;
@@ -467,6 +485,9 @@ export const outboundApi = {
       locationId?: number;
       serialNos?: string[];
       refLineId?: number;
+      // V10 不含税单价/税率(可空)
+      unitPrice?: number;
+      taxRate?: number;
     }>;
   }) => http.post("/outbound", data),
   list: (params: {

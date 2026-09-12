@@ -39,6 +39,8 @@ public class WarehouseDO {
     private Boolean enableLocation;
     /** 状态:1 启用。 */
     private Integer status;
+    /** 默认仓(全表至多一个 true,可空)。 */
+    private Boolean defaultWarehouse;
     /** 创建人。 */
     @TableField(fill = FieldFill.INSERT)
     private String creator;

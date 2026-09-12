@@ -17,6 +17,8 @@ export interface Supplier {
   bankAccount?: string | null;
   creditLimit?: string | number | null;
   deliveryAddress?: string | null;
+  // V10 邮箱(可空)
+  email?: string | null;
   status: number;
   remark?: string | null;
   creator?: string | null;
@@ -39,6 +41,8 @@ export interface Customer {
   bankAccount?: string | null;
   creditLimit?: string | number | null;
   deliveryAddress?: string | null;
+  // V10 邮箱(可空)
+  email?: string | null;
   status: number;
   remark?: string | null;
   creator?: string | null;
@@ -89,6 +93,10 @@ export interface PurchaseOrder {
   contractNo?: string | null;
   freight?: string | null;
   shippingAddress?: string | null;
+  // V10 折扣额/币种/汇率(可空)
+  discountAmount?: string | null;
+  currencyCode?: string | null;
+  exchangeRate?: string | null;
   status: DocStatus;
   creator?: string | null;
   createdAt: string;
@@ -133,6 +141,10 @@ export interface SalesOrder {
   contractNo?: string | null;
   freight?: string | null;
   shippingAddress?: string | null;
+  // V10 折扣额/币种/汇率(可空)
+  discountAmount?: string | null;
+  currencyCode?: string | null;
+  exchangeRate?: string | null;
   status: DocStatus;
   creator?: string | null;
   createdAt: string;
@@ -174,6 +186,8 @@ export interface TransferDoc {
   approvedAt?: string | null;
   rejectReason?: string | null;
   remark?: string | null;
+  // V10 承运商(可空)
+  carrier?: string | null;
   items?: TransferLine[];
 }
 

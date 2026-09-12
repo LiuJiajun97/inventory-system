@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
  * @param bankAccount    银行账号
  * @param creditLimit    信用额度
  * @param deliveryAddress 交货地址
+ * @param email        邮箱(V10 增量)
  * @param status         状态
  * @param remark         备注
  * @param creator        创建人
@@ -31,6 +32,6 @@ import java.time.LocalDateTime;
 public record CustomerVO(Long id, String customerCode, String customerName, String taxNo,
         BigDecimal defaultTaxRate, String contact, String phone, String address,
         String settleMethod, Integer payTermDays, String bankName, String bankAccount,
-        BigDecimal creditLimit, String deliveryAddress, Integer status, String remark,
+        BigDecimal creditLimit, String deliveryAddress, String email, Integer status, String remark,
         String creator, LocalDateTime createdAt, String updater, LocalDateTime updatedAt) {
 }

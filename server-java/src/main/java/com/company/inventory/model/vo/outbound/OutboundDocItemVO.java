@@ -14,8 +14,15 @@ import java.math.BigDecimal;
  * @param serialNos  序列号 JSON 字符串
  * @param unitPrice  出库参考单价(增量)
  * @param refLineId  关联销售订单行 ID(增量)
+ * @param taxRate    税率(V10 增量)
+ * @param lineNo     行号(V10 增量)
+ * @param amount     行金额快照(V10 增量)
+ * @param taxAmount  行税额快照(V10 增量)
+ * @param taxInclusiveTotal 含税行金额快照(V10 增量)
  * @author inventory
  */
 public record OutboundDocItemVO(Long id, Long docId, Long itemId, String quantity,
-        Long batchId, Long locationId, String serialNos, BigDecimal unitPrice, Long refLineId) {
+        Long batchId, Long locationId, String serialNos, BigDecimal unitPrice, Long refLineId,
+        BigDecimal taxRate, Integer lineNo, BigDecimal amount, BigDecimal taxAmount,
+        BigDecimal taxInclusiveTotal) {
 }

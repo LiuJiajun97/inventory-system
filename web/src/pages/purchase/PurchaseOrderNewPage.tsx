@@ -68,6 +68,10 @@ export function PurchaseOrderNewPage() {
           contractNo: doc.contractNo ?? undefined,
           freight: doc.freight == null ? undefined : Number(doc.freight),
           shippingAddress: doc.shippingAddress ?? undefined,
+          // V10 通用字段(可空):币种/汇率/折扣额
+          currencyCode: doc.currencyCode ?? undefined,
+          exchangeRate: doc.exchangeRate == null ? undefined : Number(doc.exchangeRate),
+          discountAmount: doc.discountAmount == null ? undefined : Number(doc.discountAmount),
           remark: doc.remark ?? undefined,
         });
         const rows: LineRow[] = (doc.items ?? []).map((l, i) => ({
@@ -113,13 +117,19 @@ export function PurchaseOrderNewPage() {
   // 不依赖 form.setFields(外部 setFields 不会触发已挂载控件重渲染)
   const handleLinesChange = (values: readonly LineRow[]) => {
     const merged: LineRow[] = values.map((row) => {
-      if (row.itemId != null && row.taxRate == null) {
+      let next = { ...row };
+      if (row.itemId != null) {
         const item = items.find((i) => i.id === row.itemId);
-        if (item) {
-          return { ...row, taxRate: Number(item.defaultTaxRate ?? 13) };
+        // 联动 1:选物品且税率未填 → 带出默认税率
+        if (next.taxRate == null && item) {
+          next.taxRate = Number(item.defaultTaxRate ?? 13);
+        }
+        // 联动 2(V10):选物品且单价未填且物品有参考采购价 → 预填(仅预填,用户可改)
+        if (next.unitPrice == null && item?.referencePurchasePrice != null) {
+          next.unitPrice = Number(item.referencePurchasePrice);
         }
       }
-      return { ...row };
+      return next;
     });
     setData(merged);
   };
@@ -223,6 +233,10 @@ export function PurchaseOrderNewPage() {
         contractNo: values.contractNo as string | undefined,
         freight: values.freight as number | undefined,
         shippingAddress: values.shippingAddress as string | undefined,
+        // V10 通用字段(可空)
+        currencyCode: values.currencyCode as string | undefined,
+        exchangeRate: values.exchangeRate as number | undefined,
+        discountAmount: values.discountAmount as number | undefined,
         remark: values.remark as string | undefined,
         items: validLines.map((l) => ({
           itemId: l.itemId!,
@@ -326,6 +340,30 @@ export function PurchaseOrderNewPage() {
             name="shippingAddress"
             label="交货地址"
             colProps={{ span: 12 }}
+          />
+          {/* V10 通用字段(可空):币种(默认 CNY)/汇率(默认 1)/折扣额 */}
+          <ProFormText
+            name="currencyCode"
+            label="币种"
+            colProps={{ span: 6 }}
+            initialValue="CNY"
+            fieldProps={{ placeholder: "默认 CNY" }}
+          />
+          <ProFormDigit
+            name="exchangeRate"
+            label="汇率"
+            colProps={{ span: 6 }}
+            initialValue={1}
+            min={0}
+            fieldProps={{ step: 0.000001 }}
+          />
+          <ProFormDigit
+            name="discountAmount"
+            label="折扣额"
+            colProps={{ span: 6 }}
+            min={0}
+            fieldProps={{ step: 0.01 }}
+            tooltip="仅存字段,不参与合计计算"
           />
           <ProFormTextArea
             name="remark"

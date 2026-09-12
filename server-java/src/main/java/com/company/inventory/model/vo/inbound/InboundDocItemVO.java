@@ -19,10 +19,15 @@ import java.time.LocalDate;
  * @param productionDate 生产日期(增量)
  * @param expiryDate 到期日期(增量)
  * @param refLineId  关联采购订单行 ID(增量)
+ * @param lineNo     行号(V10 增量)
+ * @param amount     行金额快照(V10 增量)
+ * @param taxAmount  行税额快照(V10 增量)
+ * @param taxInclusiveTotal 含税行金额快照(V10 增量)
  * @author inventory
  */
 public record InboundDocItemVO(Long id, Long docId, Long itemId, String quantity,
         Long batchId, Long locationId, String serialNos,
         BigDecimal unitPrice, BigDecimal taxRate, String batchNo,
-        LocalDate productionDate, LocalDate expiryDate, Long refLineId) {
+        LocalDate productionDate, LocalDate expiryDate, Long refLineId,
+        Integer lineNo, BigDecimal amount, BigDecimal taxAmount, BigDecimal taxInclusiveTotal) {
 }

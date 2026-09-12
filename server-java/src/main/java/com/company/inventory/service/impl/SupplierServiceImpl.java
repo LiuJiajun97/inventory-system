@@ -117,6 +117,7 @@ public class SupplierServiceImpl implements SupplierService {
         supplier.setBankAccount(dto.bankAccount());
         supplier.setCreditLimit(dto.creditLimit());
         supplier.setDeliveryAddress(dto.deliveryAddress());
+        supplier.setEmail(dto.email());
         supplier.setRemark(dto.remark());
         supplier.setStatus(1);
         supplier.setCreator(username);
@@ -178,6 +179,9 @@ public class SupplierServiceImpl implements SupplierService {
         if (dto.deliveryAddress() != null) {
             supplier.setDeliveryAddress(dto.deliveryAddress());
         }
+        if (dto.email() != null) {
+            supplier.setEmail(dto.email());
+        }
         if (dto.status() != null) {
             supplier.setStatus(dto.status());
         }
@@ -201,7 +205,7 @@ public class SupplierServiceImpl implements SupplierService {
         return new SupplierVO(s.getId(), s.getSupplierCode(), s.getSupplierName(), s.getTaxNo(),
                 s.getDefaultTaxRate(), s.getContact(), s.getPhone(), s.getAddress(),
                 s.getSettleMethod(), s.getPayTermDays(), s.getBankName(), s.getBankAccount(),
-                s.getCreditLimit(), s.getDeliveryAddress(), s.getStatus(), s.getRemark(),
+                s.getCreditLimit(), s.getDeliveryAddress(), s.getEmail(), s.getStatus(), s.getRemark(),
                 s.getCreator(), s.getCreatedAt(), s.getUpdater(), s.getUpdatedAt());
     }
 }

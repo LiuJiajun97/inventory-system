@@ -17,6 +17,7 @@ import java.math.BigDecimal;
  * @param bankAccount    银行账号
  * @param creditLimit    信用额度
  * @param deliveryAddress 交货地址
+ * @param email        邮箱
  * @param status         状态,1 启用 0 停用
  * @param remark         备注
  * @author inventory
@@ -34,14 +35,24 @@ public record SupplierUpdateDTO(
         String bankAccount,
         BigDecimal creditLimit,
         String deliveryAddress,
+        String email,
         Integer status,
         String remark) {
 
-    /** 兼容旧签名构造器(V9 新增字段默认 null,既有调用/测试不受影响)。 */
+    /** 兼容旧签名构造器(V9/V10 新增字段默认 null,既有调用/测试不受影响)。 */
     public SupplierUpdateDTO(String supplierName, String taxNo, BigDecimal defaultTaxRate,
             String contact, String phone, String address, String settleMethod,
             Integer payTermDays, Integer status, String remark) {
         this(supplierName, taxNo, defaultTaxRate, contact, phone, address, settleMethod,
-                payTermDays, null, null, null, null, status, remark);
+                payTermDays, null, null, null, null, null, status, remark);
+    }
+
+    /** 兼容 V9 签名构造器(V10 新增 email 默认 null)。 */
+    public SupplierUpdateDTO(String supplierName, String taxNo, BigDecimal defaultTaxRate,
+            String contact, String phone, String address, String settleMethod,
+            Integer payTermDays, String bankName, String bankAccount,
+            BigDecimal creditLimit, String deliveryAddress, Integer status, String remark) {
+        this(supplierName, taxNo, defaultTaxRate, contact, phone, address, settleMethod,
+                payTermDays, bankName, bankAccount, creditLimit, deliveryAddress, null, status, remark);
     }
 }

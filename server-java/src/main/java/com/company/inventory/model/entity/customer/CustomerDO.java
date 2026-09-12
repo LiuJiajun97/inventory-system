@@ -50,6 +50,8 @@ public class CustomerDO {
     private BigDecimal creditLimit;
     /** 交货地址(可空)。 */
     private String deliveryAddress;
+    /** 邮箱(可空)。 */
+    private String email;
     /** 状态,1 启用 0 停用。 */
     private Integer status;
     /** 备注。 */

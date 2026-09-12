@@ -57,5 +57,11 @@ public class InboundDocDO {
     private String vehicleNo;
     /** 运费(可空)。 */
     private java.math.BigDecimal freight;
+    /** 单据总金额(行金额合计,服务端落,可空)。 */
+    private java.math.BigDecimal totalAmount;
+    /** 单据类型(自由文本,如 采购入库/退货入库,可空)。 */
+    private String docType;
+    /** 经办人(可空)。 */
+    private String handler;
 
 }

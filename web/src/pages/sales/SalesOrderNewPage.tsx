@@ -90,6 +90,10 @@ export function SalesOrderNewPage() {
           contractNo: doc.contractNo ?? undefined,
           freight: doc.freight == null ? undefined : Number(doc.freight),
           shippingAddress: doc.shippingAddress ?? undefined,
+          // V10 通用字段(可空):币种/汇率/折扣额
+          currencyCode: doc.currencyCode ?? undefined,
+          exchangeRate: doc.exchangeRate == null ? undefined : Number(doc.exchangeRate),
+          discountAmount: doc.discountAmount == null ? undefined : Number(doc.discountAmount),
           remark: doc.remark ?? undefined,
         });
         const rows: LineRow[] = (doc.items ?? []).map((l, i) => ({
@@ -114,11 +118,15 @@ export function SalesOrderNewPage() {
   const onItemChange = (key: number, itemId: number) => {
     const it = items.find((x) => x.id === itemId);
     setLines((ls) =>
-      ls.map((l) =>
-        l.key === key
-          ? { ...l, itemId, taxRate: it ? Number(it.defaultTaxRate ?? 13) : l.taxRate }
-          : l,
-      ),
+      ls.map((l) => {
+        if (l.key !== key) return l;
+        // V10:选物品且单价未填且物品有参考销售价 → 预填(仅预填,用户可改)
+        const unitPrice =
+          l.unitPrice == null && it?.referenceSalePrice != null
+            ? Number(it.referenceSalePrice)
+            : l.unitPrice;
+        return { ...l, itemId, taxRate: it ? Number(it.defaultTaxRate ?? 13) : l.taxRate, unitPrice };
+      }),
     );
   };
 
@@ -139,6 +147,10 @@ export function SalesOrderNewPage() {
         contractNo: v.contractNo,
         freight: v.freight,
         shippingAddress: v.shippingAddress,
+        // V10 通用字段(可空)
+        currencyCode: v.currencyCode,
+        exchangeRate: v.exchangeRate,
+        discountAmount: v.discountAmount,
         remark: v.remark,
         items: validLines.map((l) => ({
           itemId: l.itemId!,
@@ -334,6 +346,30 @@ export function SalesOrderNewPage() {
               name="shippingAddress"
               label="交货地址"
               colProps={{ span: 12 }}
+            />
+            {/* V10 通用字段(可空):币种(默认 CNY)/汇率(默认 1)/折扣额 */}
+            <ProFormText
+              name="currencyCode"
+              label="币种"
+              colProps={{ span: 6 }}
+              initialValue="CNY"
+              fieldProps={{ placeholder: "默认 CNY" }}
+            />
+            <ProFormDigit
+              name="exchangeRate"
+              label="汇率"
+              colProps={{ span: 6 }}
+              initialValue={1}
+              min={0}
+              fieldProps={{ step: 0.000001 }}
+            />
+            <ProFormDigit
+              name="discountAmount"
+              label="折扣额"
+              colProps={{ span: 6 }}
+              min={0}
+              fieldProps={{ step: 0.01 }}
+              tooltip="仅存字段,不参与合计计算"
             />
             <ProFormTextArea
               name="remark"

@@ -14,6 +14,7 @@ package com.company.inventory.model.dto.warehouse;
  * @param enableSerial   启用序列号
  * @param enableLocation 启用库位
  * @param status         状态,1 启用 0 停用
+ * @param defaultWarehouse      默认仓(可空,置 true 时同事务内其他仓置 false;false/null 不清理)
  * @author inventory
  */
 public record WarehouseUpdateDTO(
@@ -23,5 +24,14 @@ public record WarehouseUpdateDTO(
         Boolean enableExpiry,
         Boolean enableSerial,
         Boolean enableLocation,
-        Integer status) {
+        Integer status,
+        Boolean defaultWarehouse) {
+
+    /** 兼容旧签名构造器(V10 新增 defaultWarehouse 默认 null,既有调用/测试不受影响)。 */
+    public WarehouseUpdateDTO(String warehouseName, String warehouseType,
+            Boolean enableBatch, Boolean enableExpiry, Boolean enableSerial,
+            Boolean enableLocation, Integer status) {
+        this(warehouseName, warehouseType, enableBatch, enableExpiry, enableSerial,
+                enableLocation, status, null);
+    }
 }

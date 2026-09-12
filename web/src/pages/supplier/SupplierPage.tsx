@@ -26,6 +26,8 @@ interface FormValues {
   bankAccount?: string;
   creditLimit?: number;
   deliveryAddress?: string;
+  // V10 邮箱(可空)
+  email?: string;
   remark?: string;
 }
 
@@ -87,6 +89,7 @@ export function SupplierPage() {
       bankAccount: row.bankAccount ?? undefined,
       creditLimit: row.creditLimit == null ? undefined : Number(row.creditLimit),
       deliveryAddress: row.deliveryAddress ?? undefined,
+      email: row.email ?? undefined,
       remark: row.remark ?? undefined,
     });
     setDrawerOpen(true);
@@ -305,6 +308,14 @@ export function SupplierPage() {
             <Col span={12}>
               <Form.Item label="交货地址" name="deliveryAddress">
                 <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          {/* V10 邮箱(可空) */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="邮箱" name="email">
+                <Input placeholder="如 supplier@example.com" />
               </Form.Item>
             </Col>
           </Row>

@@ -26,6 +26,7 @@ import java.util.List;
  * @param approvedAt      审批时间
  * @param rejectReason    驳回原因
  * @param remark          备注
+ * @param carrier         承运商(V10 增量)
  * @param items           调拨行
  * @author inventory
  */
@@ -34,5 +35,5 @@ public record TransferDocVO(Long id, String docNo, LocalDate docDate,
         Long toWarehouseId, WarehouseVO toWarehouse, String totalAmount,
         String status, String creator, LocalDateTime createdAt,
         String updater, LocalDateTime updatedAt, String approver, LocalDateTime approvedAt,
-        String rejectReason, String remark, List<TransferDocItemVO> items) {
+        String rejectReason, String remark, String carrier, List<TransferDocItemVO> items) {
 }
