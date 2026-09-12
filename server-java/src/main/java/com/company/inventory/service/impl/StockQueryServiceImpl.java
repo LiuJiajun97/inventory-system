@@ -1,5 +1,6 @@
 package com.company.inventory.service.impl;
 
+import com.company.inventory.common.support.DataScope;
 import com.company.inventory.common.support.DateRangeSupport;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.common.util.QtyUtils;
@@ -174,6 +175,12 @@ public class StockQueryServiceImpl implements StockQueryService {
         long page = query.getPage();
         long pageSize = query.getPageSize();
 
+        // 数据权限:未授权用户查空;授权用户只查授权仓(admin 豁免不过滤)
+        List<Long> allowed = DataScope.allowedWarehouseIds();
+        if (allowed != null && allowed.isEmpty()) {
+            return PageResult.of(List.of(), 0L, page, pageSize);
+        }
+
         List<Long> itemIds = null;
         if (StringUtils.hasText(query.getItemKeyword())) {
             String like = query.getItemKeyword().trim();
@@ -197,6 +204,9 @@ public class StockQueryServiceImpl implements StockQueryService {
         }
 
         LambdaQueryWrapper<StockDO> wrapper = new LambdaQueryWrapper<>();
+        if (allowed != null) {
+            wrapper.in(StockDO::getWarehouseId, allowed);
+        }
         if (query.getWarehouseId() != null) {
             wrapper.eq(StockDO::getWarehouseId, query.getWarehouseId());
         }
@@ -260,7 +270,16 @@ public class StockQueryServiceImpl implements StockQueryService {
         LocalDateTime from = DateRangeSupport.parseDateTimeStart(query.getFrom(), "开始时间");
         LocalDateTime to = DateRangeSupport.parseDateTimeEnd(query.getTo(), "结束时间");
 
+        // 数据权限:未授权用户查空;授权用户只查授权仓(admin 豁免不过滤)
+        List<Long> allowed = DataScope.allowedWarehouseIds();
+        if (allowed != null && allowed.isEmpty()) {
+            return PageResult.of(List.of(), 0L, page, pageSize);
+        }
+
         LambdaQueryWrapper<StockTransactionDO> wrapper = new LambdaQueryWrapper<>();
+        if (allowed != null) {
+            wrapper.in(StockTransactionDO::getWarehouseId, allowed);
+        }
         if (query.getWarehouseId() != null) {
             wrapper.eq(StockTransactionDO::getWarehouseId, query.getWarehouseId());
         }

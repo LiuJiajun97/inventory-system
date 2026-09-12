@@ -2,6 +2,7 @@ package com.company.inventory.service.impl;
 
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.DataScope;
 import com.company.inventory.common.support.DateRangeSupport;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.common.util.QtyUtils;
@@ -206,7 +207,15 @@ public class OutboundServiceImpl implements OutboundService {
      */
     @Override
     public PageResult<OutboundDocVO> list(OutboundDocQuery query) {
+        // 数据权限:未授权用户查空;授权用户只查授权仓(admin 豁免不过滤)
+        List<Long> allowed = DataScope.allowedWarehouseIds();
+        if (allowed != null && allowed.isEmpty()) {
+            return PageResult.of(List.of(), 0L, query.getPage(), query.getPageSize());
+        }
         LambdaQueryWrapper<OutboundDocDO> wrapper = new LambdaQueryWrapper<>();
+        if (allowed != null) {
+            wrapper.in(OutboundDocDO::getWarehouseId, allowed);
+        }
         if (query.getWarehouseId() != null) {
             wrapper.eq(OutboundDocDO::getWarehouseId, query.getWarehouseId());
         }

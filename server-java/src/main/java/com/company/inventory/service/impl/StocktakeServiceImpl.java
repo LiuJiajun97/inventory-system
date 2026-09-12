@@ -5,6 +5,7 @@ import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.common.support.ApprovalGuard;
+import com.company.inventory.common.support.DataScope;
 import com.company.inventory.common.support.DocStateSupport;
 import com.company.inventory.common.util.QtyUtils;
 import com.company.inventory.model.dto.adjust.StockAdjustCreateDTO;
@@ -163,7 +164,15 @@ public class StocktakeServiceImpl implements StocktakeService {
      */
     @Override
     public PageResult<StocktakeDocVO> list(StocktakeDocQuery query) {
+        // 数据权限:未授权用户查空;授权用户只查授权仓(admin 豁免不过滤)
+        List<Long> allowed = DataScope.allowedWarehouseIds();
+        if (allowed != null && allowed.isEmpty()) {
+            return PageResult.of(List.of(), 0L, query.getPage(), query.getPageSize());
+        }
         LambdaQueryWrapper<StocktakeDocDO> wrapper = new LambdaQueryWrapper<>();
+        if (allowed != null) {
+            wrapper.in(StocktakeDocDO::getWarehouseId, allowed);
+        }
         if (query.getWarehouseId() != null) {
             wrapper.eq(StocktakeDocDO::getWarehouseId, query.getWarehouseId());
         }

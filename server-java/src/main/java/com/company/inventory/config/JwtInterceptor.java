@@ -6,7 +6,9 @@ package com.company.inventory.config;
 
 
 
+import com.company.inventory.common.support.DataScope;
 import com.company.inventory.common.support.UserContext;
+import com.company.inventory.mapper.rbac.UserWarehouseMapper;
 import com.company.inventory.service.rbac.RbacGuardService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
@@ -85,26 +87,32 @@ public class JwtInterceptor implements HandlerInterceptor {
     /** JWT claim 名:单角色(旧版 token,兼容回退读)。 */
     private static final String CLAIM_ROLE = "role";
 
+    /** 管理员角色编码(数据权限豁免)。 */
+    private static final String ROLE_ADMIN = "admin";
+
     private final JwtParser parser;
     private final SecretKey key;
     private final ObjectMapper objectMapper;
     private final long expiresSeconds;
     private final RbacGuardService rbacGuardService;
+    private final UserWarehouseMapper userWarehouseMapper;
 
     /**
      * 构造拦截器。
      *
-     * @param jwtProperties    JWT 配置
-     * @param objectMapper     JSON 序列化器
-     * @param rbacGuardService RBAC 鉴权支撑服务(@RequirePermission 用)
+     * @param jwtProperties        JWT 配置
+     * @param objectMapper         JSON 序列化器
+     * @param rbacGuardService     RBAC 鉴权支撑服务(@RequirePermission 用)
+     * @param userWarehouseMapper  用户-仓库授权 Mapper(数据权限用)
      */
     public JwtInterceptor(JwtProperties jwtProperties, ObjectMapper objectMapper,
-            RbacGuardService rbacGuardService) {
+            RbacGuardService rbacGuardService, UserWarehouseMapper userWarehouseMapper) {
         this.key = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
         this.parser = Jwts.parser().verifyWith(key).build();
         this.objectMapper = objectMapper;
         this.expiresSeconds = jwtProperties.getExpiresSeconds();
         this.rbacGuardService = rbacGuardService;
+        this.userWarehouseMapper = userWarehouseMapper;
     }
 
     /**
@@ -150,6 +158,9 @@ public class JwtInterceptor implements HandlerInterceptor {
 
         String token = resolveToken(request);
         if (token == null) {
+            // preHandle 失败时 Spring 不会回调 afterCompletion,需手动清理上下文防线程池串号
+            UserContext.clear();
+            DataScope.clear();
             writeError(response, HTTP_UNAUTHORIZED, "UNAUTHORIZED", "Unauthorized", MSG_UNAUTHORIZED);
             return false;
         }
@@ -161,6 +172,8 @@ public class JwtInterceptor implements HandlerInterceptor {
         } catch (Exception e) {
             // token 无效或过期:按未登录处理,与 Fastify 版一致
             LOGGER.debug("token 校验失败: {}", e.getMessage());
+            UserContext.clear();
+            DataScope.clear();
             writeError(response, HTTP_UNAUTHORIZED, "UNAUTHORIZED", "Unauthorized", MSG_UNAUTHORIZED);
             return false;
         }
@@ -178,6 +191,15 @@ public class JwtInterceptor implements HandlerInterceptor {
         // 写入用户上下文,供 MyBatis-Plus 自动填充读取
         UserContext.set(claims.get("username", String.class));
 
+        // 数据权限:admin 豁免(null 不过滤);其余按 sys_user_warehouse 授权仓过滤(每请求 1 条 SQL,单机不加缓存)
+        if (roleCodes.contains(ROLE_ADMIN)) {
+            DataScope.set(null);
+        } else {
+            List<Long> allowed = userWarehouseMapper.selectWarehouseIdsByUserId(
+                    Long.parseLong(claims.getSubject()));
+            DataScope.set(allowed);
+        }
+
         // 角色校验:方法注解优先,其次类注解;多角色语义 = 与注解角色编码集合有交集即通过
         RequireRole requireRole = handlerMethod.getMethodAnnotation(RequireRole.class);
         if (requireRole == null) {
@@ -186,6 +208,8 @@ public class JwtInterceptor implements HandlerInterceptor {
         if (requireRole != null) {
             boolean allowed = Arrays.stream(requireRole.value()).anyMatch(roleCodes::contains);
             if (!allowed) {
+                UserContext.clear();
+                DataScope.clear();
                 writeError(response, HTTP_FORBIDDEN, "FORBIDDEN", "Forbidden", MSG_FORBIDDEN);
                 return false;
             }
@@ -200,6 +224,8 @@ public class JwtInterceptor implements HandlerInterceptor {
             Set<String> permissionCodes =
                     rbacGuardService.permissionCodesOf((Long) request.getAttribute(ATTR_USER_ID));
             if (!permissionCodes.contains(requirePermission.value())) {
+                UserContext.clear();
+                DataScope.clear();
                 writeError(response, HTTP_FORBIDDEN, "FORBIDDEN", "Forbidden", MSG_FORBIDDEN);
                 return false;
             }
@@ -243,6 +269,7 @@ public class JwtInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
             Object handler, Exception ex) {
         UserContext.clear();
+        DataScope.clear();
     }
 
     /**

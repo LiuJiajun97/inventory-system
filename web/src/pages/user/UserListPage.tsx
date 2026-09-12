@@ -1,8 +1,8 @@
 // 用户管理(SPEC-WEB V2 2.10)
 // ProTable 版:筛选字段由 columns 配置驱动(关键字),新建按钮经 optionRender 放筛选行右侧
-// 编辑 Drawer(角色 Select、状态 Switch、重置密码按钮+二次确认 Modal,显示新密码一次性)
+// 编辑 Drawer(多角色 Select(multiple)、仓库授权多选、状态 Switch、重置密码按钮+二次确认 Modal,显示新密码一次性)
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   Input,
@@ -17,6 +17,8 @@ import {
   App,
   Alert,
   theme,
+  Tag,
+  Tooltip,
 } from "antd";
 import {
   PlusOutlined,
@@ -25,10 +27,33 @@ import {
 } from "@ant-design/icons";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { userApi } from "../../api";
-import type { UserInfo } from "../../types";
+import { userApi, roleApi, warehouseApi } from "../../api";
+import type { RoleRow } from "../../api";
+import type { UserInfo, UserRoleItem } from "../../types";
 import { fmtDateTime } from "../../utils/format";
-import { RoleTag, StatusTag } from "../../components/StatusTag";
+import { StatusTag } from "../../components/StatusTag";
+
+// 内置角色 Tag 样式(自定义角色用默认灰 Tag)
+const BUILTIN_ROLE_CLASS: Record<string, string> = {
+  admin: "tag-role-admin",
+  operator: "tag-role-operator",
+  viewer: "tag-role-viewer",
+};
+
+// 单个角色 Tag(多角色列表渲染用,优先后端下发的名称)
+function RoleTagItem({ code, name }: { code: string; name: string }) {
+  return (
+    <Tag bordered className={BUILTIN_ROLE_CLASS[code] ?? undefined}>
+      {name}
+    </Tag>
+  );
+}
+
+// VO 的角色列表(无角色时回退已废弃的单 role 字段,防旧数据)
+function userRoleItems(r: UserInfo): UserRoleItem[] {
+  if (r.roles && r.roles.length > 0) return r.roles;
+  return [{ code: r.role, name: r.role }];
+}
 
 function genPassword(): string {
   // 8 位大小写+数字,易读(避免 0OIl)
@@ -54,8 +79,36 @@ export function UserListPage() {
   const [editForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
   const { message } = App.useApp();
+  // 多角色选项(内置 + 自定义)与仓库授权选项(全量)
+  const [roleOptions, setRoleOptions] = useState<RoleRow[]>([]);
+  const [whOptions, setWhOptions] = useState<
+    { label: string; value: number }[]
+  >([]);
   // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
   const { token } = theme.useToken();
+
+  // 拉角色列表与仓库列表(下拉选项)
+  useEffect(() => {
+    roleApi.list()
+      .then(setRoleOptions)
+      .catch(() => {
+        // 拦截器已处理
+      });
+    warehouseApi
+      .list({ pageSize: 200 })
+      .then((res) =>
+        setWhOptions(
+          res.rows.map((w) => ({ label: w.warehouseName, value: w.id })),
+        ),
+      )
+      .catch(() => {
+        // 拦截器已处理
+      });
+  }, []);
+
+  // 仓库 ID -> 名称(列表列渲染用)
+  const whName = (id: number) =>
+    whOptions.find((w) => w.value === id)?.label ?? `#${id}`;
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
   const request = async (params: {
@@ -78,10 +131,43 @@ export function UserListPage() {
     { title: "姓名", dataIndex: "name", width: 140, search: false },
     {
       title: "角色",
-      dataIndex: "role",
-      width: 100,
+      dataIndex: "roles",
+      width: 160,
       search: false,
-      render: (_v, r) => <RoleTag role={r.role} />,
+      render: (_v, r) => (
+        <Space size={[0, 4]} wrap>
+          {userRoleItems(r).map((ri) => (
+            <RoleTagItem key={ri.code} code={ri.code} name={ri.name} />
+          ))}
+        </Space>
+      ),
+    },
+    {
+      title: "仓库授权",
+      dataIndex: "warehouseIds",
+      width: 160,
+      search: false,
+      render: (_v, r) => {
+        const ids = r.warehouseIds ?? [];
+        if (ids.length === 0) return "-";
+        const text = ids.map(whName).join(", ");
+        return (
+          <Tooltip title={text}>
+            <span
+              style={{
+                display: "inline-block",
+                maxWidth: 140,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                verticalAlign: "bottom",
+              }}
+            >
+              {text}
+            </span>
+          </Tooltip>
+        );
+      },
     },
     {
       title: "状态",
@@ -111,9 +197,14 @@ export function UserListPage() {
         <a
           onClick={() => {
             setEditTarget(r);
+            // 回显:角色 ID 由 code 映射(VO roles 仅 code/name,选项来自 /roles)
+            const roleIds = userRoleItems(r)
+              .map((ri) => roleOptions.find((ro) => ro.roleCode === ri.code)?.id)
+              .filter((id): id is number => id != null);
             editForm.setFieldsValue({
               name: r.name,
-              role: r.role,
+              roleIds,
+              warehouseIds: r.warehouseIds ?? [],
               status: r.status === 1,
             });
           }}
@@ -143,7 +234,8 @@ export function UserListPage() {
     try {
       await userApi.update(editTarget.id, {
         name: v.name,
-        role: v.role,
+        roleIds: v.roleIds,
+        warehouseIds: v.warehouseIds ?? [],
         status: v.status ? 1 : 0,
       });
       message.success("更新成功");
@@ -259,17 +351,14 @@ export function UserListPage() {
             </Col>
             <Col span={12}>
               <Form.Item
-                label="角色"
-                name="role"
-                rules={[{ required: true, message: "角色必填" }]}
+                label="角色(可多选)"
+                name="roleIds"
+                rules={[{ required: true, message: "请至少选择一个角色" }]}
               >
-                <Select
-                  options={[
-                    { label: "管理员 admin", value: "admin" },
-                    { label: "库员 operator", value: "operator" },
-                    { label: "查看 viewer", value: "viewer" },
-                  ]}
-                />
+                <Select mode="multiple" options={roleOptions.map((r) => ({
+                  label: `${r.roleName} ${r.roleCode}`,
+                  value: r.id,
+                }))} />
               </Form.Item>
             </Col>
           </Row>
@@ -307,13 +396,26 @@ export function UserListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="角色" name="role">
+              <Form.Item label="角色(可多选)" name="roleIds">
+                <Select mode="multiple" options={roleOptions.map((r) => ({
+                  label: `${r.roleName} ${r.roleCode}`,
+                  value: r.id,
+                }))} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item
+                label="仓库授权"
+                name="warehouseIds"
+                tooltip="不勾选任何仓库时保存将清空授权(该用户列表查空;admin 角色豁免)"
+              >
                 <Select
-                  options={[
-                    { label: "管理员 admin", value: "admin" },
-                    { label: "库员 operator", value: "operator" },
-                    { label: "查看 viewer", value: "viewer" },
-                  ]}
+                  mode="multiple"
+                  allowClear
+                  placeholder="不授权任何仓库 = 列表查空"
+                  options={whOptions}
                 />
               </Form.Item>
             </Col>

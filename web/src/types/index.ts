@@ -2,13 +2,24 @@
 
 export type Role = "admin" | "operator" | "viewer";
 
+// 用户角色条目(多角色,与后端 UserVO.roles 一致)
+export interface UserRoleItem {
+  code: string;
+  name: string;
+}
+
 export interface UserInfo {
   id: number;
   username: string;
   name: string;
+  // 已废弃:首角色(兼容保留),多角色请看 roles
   role: Role;
   status?: number;
   createdAt?: string;
+  // 多角色列表(编码 + 名称)
+  roles?: UserRoleItem[];
+  // 仓库授权 ID 列表(数据权限,admin 豁免)
+  warehouseIds?: number[];
 }
 
 export interface LoginResponse {

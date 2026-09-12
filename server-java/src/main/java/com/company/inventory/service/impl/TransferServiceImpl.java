@@ -4,6 +4,7 @@ import com.company.inventory.common.constant.DocStatus;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.common.support.ApprovalGuard;
+import com.company.inventory.common.support.DataScope;
 import com.company.inventory.common.support.DateRangeSupport;
 import com.company.inventory.common.support.DocStateSupport;
 import com.company.inventory.common.util.QtyUtils;
@@ -138,7 +139,16 @@ public class TransferServiceImpl implements TransferService {
      */
     @Override
     public PageResult<TransferDocVO> list(TransferDocQuery query) {
+        // 数据权限:未授权用户查空;授权用户只看源仓或目的仓命中授权仓的调拨单(admin 豁免不过滤)
+        List<Long> allowed = DataScope.allowedWarehouseIds();
+        if (allowed != null && allowed.isEmpty()) {
+            return PageResult.of(List.of(), 0L, query.getPage(), query.getPageSize());
+        }
         LambdaQueryWrapper<TransferDocDO> wrapper = new LambdaQueryWrapper<>();
+        if (allowed != null) {
+            wrapper.and(w -> w.in(TransferDocDO::getFromWarehouseId, allowed)
+                    .or().in(TransferDocDO::getToWarehouseId, allowed));
+        }
         if (query.getFromWarehouseId() != null) {
             wrapper.eq(TransferDocDO::getFromWarehouseId, query.getFromWarehouseId());
         }

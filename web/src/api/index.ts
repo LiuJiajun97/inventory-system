@@ -13,7 +13,6 @@ import type {
   DashboardSummary,
   MonitorOverview,
   UserInfo,
-  Role,
   MenuNode,
 } from "../types";
 import type {
@@ -62,7 +61,7 @@ export const roleApi = {
     http.post<unknown, RoleRow>("/roles", data),
   update: (
     id: number,
-    data: { roleCode?: string; roleName?: string; remark?: string; status?: number },
+    data: { roleCode?: string; roleName?: string; remark?: string | null; status?: number },
   ) => http.put<unknown, RoleRow>(`/roles/${id}`, data),
   delete: (id: number) => http.delete(`/roles/${id}`),
   // 角色-菜单全量分配(空数组 = 清空)
@@ -94,12 +93,12 @@ export const menuApi = {
     menuCode: string;
     menuName: string;
     type: "directory" | "menu" | "button";
-    path?: string;
+    path?: string | null;
     sort?: number;
   }) => http.post<unknown, ManageMenuNode>("/menus", data),
   update: (
     id: number,
-    data: { parentId?: number; menuName?: string; path?: string; sort?: number; status?: number },
+    data: { parentId?: number; menuName?: string; path?: string | null; sort?: number; status?: number },
   ) => http.put<unknown, ManageMenuNode>(`/menus/${id}`, data),
   delete: (id: number) => http.delete(`/menus/${id}`),
 };
@@ -465,11 +464,20 @@ export const userApi = {
     username: string;
     password: string;
     name: string;
-    role: Role;
+    // 多角色:角色 ID 列表(首角色同步写已废弃的 role 列)
+    roleIds: number[];
     status?: number;
   }) => http.post("/users", data),
   update: (
     id: number,
-    data: { name?: string; role?: Role; status?: number; password?: string },
+    data: {
+      name?: string;
+      // null/缺省=不动;空数组=400(角色不能为空)
+      roleIds?: number[];
+      // null/缺省=不动;空数组=清空授权
+      warehouseIds?: number[];
+      status?: number;
+      password?: string;
+    },
   ) => http.put(`/users/${id}`, data),
 };

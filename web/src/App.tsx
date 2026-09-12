@@ -17,6 +17,8 @@ import { ItemFormPage } from "./pages/item/ItemFormPage";
 import { WarehouseListPage } from "./pages/warehouse/WarehouseListPage";
 import { LocationListPage } from "./pages/location/LocationListPage";
 import { UserListPage } from "./pages/user/UserListPage";
+import { RoleManagePage } from "./pages/role/RoleManagePage";
+import { MenuManagePage } from "./pages/menu/MenuManagePage";
 import { SupplierPage } from "./pages/supplier/SupplierPage";
 import { CustomerPage } from "./pages/customer/CustomerPage";
 import { PurchaseOrderListPage } from "./pages/purchase/PurchaseOrderListPage";
@@ -125,6 +127,22 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <UserListPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="roles"
+                element={
+                  <RequireAuth>
+                    <RoleManagePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="menus"
+                element={
+                  <RequireAuth>
+                    <MenuManagePage />
                   </RequireAuth>
                 }
               />
