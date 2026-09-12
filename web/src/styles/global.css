@@ -758,3 +758,19 @@ a.action-edit .anticon {
   color: var(--color-text-tertiary);
   margin: 0;
 }
+
+/* ====== 单据详情弹窗紧凑布局(.doc-detail-modal:采购/销售/入库/出库/调拨/调整/盘点 7 个只读详情弹窗) ======
+   仅收紧弹窗内 Descriptions 与 Table 单元格的上下 padding 到 8px;
+   作用域限定在 .doc-detail-modal(Modal 独立挂到 body 下),不影响列表主表格 45px 行高规格。 */
+.doc-detail-modal .ant-descriptions-item-label,
+.doc-detail-modal .ant-descriptions-item-content {
+  padding-block: 8px !important;
+}
+
+.doc-detail-modal .ant-table .ant-table-tbody > tr > td {
+  padding-block: 8px !important;
+}
+
+.doc-detail-modal .ant-table .ant-table-thead > tr > th {
+  padding-block: 8px !important;
+}

@@ -213,7 +213,8 @@ export function InboundListPage() {
         open={!!detail}
         onCancel={() => setDetail(null)}
         footer={null}
-        width={720}
+        width={960}
+        className="doc-detail-modal"
       >
         {detail && (
           <>

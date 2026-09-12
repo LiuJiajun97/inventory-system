@@ -221,7 +221,8 @@ export function PurchaseOrderListPage() {
         open={!!detail}
         onCancel={() => setDetail(null)}
         footer={null}
-        width={860}
+        width={960}
+        className="doc-detail-modal"
       >
         {detail && (
           <>
