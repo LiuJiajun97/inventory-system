@@ -1,6 +1,8 @@
 // 一期新增类型:主数据/采购/销售/调拨/盘点/调整/预警
 // 与后端 VO(record) 字段一一对应
 
+import type { Warehouse } from "./index";
+
 export interface Supplier {
   id: number;
   supplierCode: string;
@@ -69,6 +71,7 @@ export interface PurchaseOrderLine {
   unit: string;
   orderedQty: string;
   arrivedQty: string;
+  returnedQty: string;
   expectedDeliveryDate?: string | null;
   unitPrice: string;
   taxRate: string;
@@ -117,6 +120,7 @@ export interface SalesOrderLine {
   unit: string;
   orderedQty: string;
   shippedQty: string;
+  returnedQty: string;
   customerDeliveryDate?: string | null;
   unitPrice: string;
   taxRate: string;
@@ -300,4 +304,70 @@ export interface DictTypeItem {
   remark: string;
   status: number;
   enabledCount: number;
+}
+
+// ===== V11 退货模块 =====
+
+export interface PurchaseReturnLine {
+  id: number;
+  docId: number;
+  lineNo: number;
+  purchaseOrderItemId: number;
+  itemId: number;
+  specSnapshot?: string | null;
+  unit: string;
+  quantity: string;
+  unitPrice: string;
+  taxRate: string;
+  amount: string;
+  taxAmount: string;
+  taxInclusiveTotal: string;
+}
+
+export interface PurchaseReturn {
+  id: number;
+  docNo: string;
+  docDate: string;
+  purchaseOrderId: number;
+  purchaseOrderNo?: string | null;
+  warehouseId: number;
+  warehouse?: Warehouse | null;
+  totalAmount?: string | null;
+  remark?: string | null;
+  status: string;
+  creator?: string | null;
+  createdAt: string;
+  items?: PurchaseReturnLine[];
+}
+
+export interface SalesReturnLine {
+  id: number;
+  docId: number;
+  lineNo: number;
+  salesOrderItemId: number;
+  itemId: number;
+  specSnapshot?: string | null;
+  unit: string;
+  quantity: string;
+  unitPrice: string;
+  taxRate: string;
+  amount: string;
+  taxAmount: string;
+  taxInclusiveTotal: string;
+}
+
+export interface SalesReturn {
+  id: number;
+  docNo: string;
+  docDate: string;
+  salesOrderId: number;
+  salesOrderNo?: string | null;
+  warehouseId: number;
+  warehouse?: Warehouse | null;
+  totalAmount?: string | null;
+  remark?: string | null;
+  status: string;
+  creator?: string | null;
+  createdAt: string;
+  items?: SalesReturnLine[];
 }

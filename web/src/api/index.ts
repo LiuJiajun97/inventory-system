@@ -20,6 +20,8 @@ import type {
   Customer,
   PurchaseOrder,
   SalesOrder,
+  PurchaseReturn,
+  SalesReturn,
   TransferDoc,
   StocktakeDoc,
   StockAdjustDoc,
@@ -525,4 +527,65 @@ export const userApi = {
       password?: string;
     },
   ) => http.put(`/users/${id}`, data),
+};
+
+// ===== V11 退货模块 =====
+
+export interface PurchaseReturnCreatePayload {
+  purchaseOrderId: number;
+  warehouseId: number;
+  docDate: string;
+  remark?: string;
+  items: Array<{
+    purchaseOrderItemId: number;
+    quantity: number;
+    locationId?: number;
+    serialNos?: string[];
+  }>;
+}
+
+export interface SalesReturnCreatePayload {
+  salesOrderId: number;
+  warehouseId: number;
+  docDate: string;
+  remark?: string;
+  items: Array<{
+    salesOrderItemId: number;
+    quantity: number;
+    batchNo?: string;
+    productionDate?: string;
+    expiryDate?: string;
+    locationId?: number;
+    serialNos?: string[];
+  }>;
+}
+
+export const purchaseReturnApi = {
+  list: (params?: {
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<PurchaseReturn>>("/purchase-returns", { params }),
+  get: (id: number) => http.get<unknown, PurchaseReturn>(`/purchase-returns/${id}`),
+  create: (data: PurchaseReturnCreatePayload) =>
+    http.post<unknown, { id: number; docNo: string; outDocNo: string }>("/purchase-returns", data),
+};
+
+export const salesReturnApi = {
+  list: (params?: {
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<SalesReturn>>("/sales-returns", { params }),
+  get: (id: number) => http.get<unknown, SalesReturn>(`/sales-returns/${id}`),
+  create: (data: SalesReturnCreatePayload) =>
+    http.post<unknown, { id: number; docNo: string; inDocNo: string }>("/sales-returns", data),
 };

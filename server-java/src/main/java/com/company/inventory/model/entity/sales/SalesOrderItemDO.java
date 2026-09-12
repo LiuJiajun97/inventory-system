@@ -38,6 +38,8 @@ public class SalesOrderItemDO {
     private BigDecimal orderedQty;
     /** 累计发货数量。 */
     private BigDecimal shippedQty;
+    /** 累计退货数量(退货单过账回写,可退上限=shipped-returned)。 */
+    private BigDecimal returnedQty;
     /** 客户要货日。 */
     private LocalDate customerDeliveryDate;
     /** 不含税单价。 */

@@ -23,8 +23,12 @@ import { SupplierPage } from "./pages/supplier/SupplierPage";
 import { CustomerPage } from "./pages/customer/CustomerPage";
 import { PurchaseOrderListPage } from "./pages/purchase/PurchaseOrderListPage";
 import { PurchaseOrderNewPage } from "./pages/purchase/PurchaseOrderNewPage";
+import { PurchaseReturnListPage } from "./pages/purchaseReturn/PurchaseReturnListPage";
+import { PurchaseReturnNewPage } from "./pages/purchaseReturn/PurchaseReturnNewPage";
 import { SalesOrderListPage } from "./pages/sales/SalesOrderListPage";
 import { SalesOrderNewPage } from "./pages/sales/SalesOrderNewPage";
+import { SalesReturnListPage } from "./pages/salesReturn/SalesReturnListPage";
+import { SalesReturnNewPage } from "./pages/salesReturn/SalesReturnNewPage";
 import { TransferPage } from "./pages/transfer/TransferPage";
 import { StocktakePage } from "./pages/stocktake/StocktakePage";
 import { AdjustPage } from "./pages/adjust/AdjustPage";
@@ -84,12 +88,30 @@ export default function App() {
                   </RequireAuth>
                 }
               />
+              <Route path="purchase-returns" element={<PurchaseReturnListPage />} />
+              <Route
+                path="purchase-returns/new"
+                element={
+                  <RequireAuth>
+                    <PurchaseReturnNewPage />
+                  </RequireAuth>
+                }
+              />
               <Route path="sales-orders" element={<SalesOrderListPage />} />
               <Route
                 path="sales-orders/new/:id?"
                 element={
                   <RequireAuth>
                     <SalesOrderNewPage />
+                  </RequireAuth>
+                }
+              />
+              <Route path="sales-returns" element={<SalesReturnListPage />} />
+              <Route
+                path="sales-returns/new"
+                element={
+                  <RequireAuth>
+                    <SalesReturnNewPage />
                   </RequireAuth>
                 }
               />

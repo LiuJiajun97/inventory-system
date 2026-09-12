@@ -15,6 +15,7 @@ import java.time.LocalDate;
  * @param unit                   单位快照
  * @param orderedQty             订购数量(字符串)
  * @param shippedQty             累计发货数量(字符串)
+ * @param returnedQty            累计退货数量(字符串,可退上限=shipped-returned)
  * @param customerDeliveryDate   客户要货日
  * @param unitPrice              不含税单价
  * @param taxRate                税率
@@ -27,7 +28,8 @@ import java.time.LocalDate;
  */
 public record SalesOrderItemVO(Long id, Integer lineNo, Long itemId, String itemCode,
         String itemName, String specSnapshot, String unit,
-        String orderedQty, String shippedQty, LocalDate customerDeliveryDate,
+        String orderedQty, String shippedQty, String returnedQty,
+        LocalDate customerDeliveryDate,
         BigDecimal unitPrice, BigDecimal taxRate, String amount, String taxAmount,
         String taxInclusiveTotal, Boolean closed, String lineRemark) {
 }

@@ -134,6 +134,12 @@ public final class ErrorCode {
     /** 关联类型:销售发货(出库单 → 销售订单)。 */
     public static final String REF_TYPE_SALES = "sales";
 
+    /** 关联类型:采购退货(出库单 → 采购退货单)。 */
+    public static final String REF_TYPE_PURCHASE_RETURN = "purchase_return";
+
+    /** 关联类型:销售退货(入库单 → 销售退货单)。 */
+    public static final String REF_TYPE_SALES_RETURN = "sales_return";
+
     // ===== 调整类型(adjustType) =====
 
     /** 调整:盘盈。 */

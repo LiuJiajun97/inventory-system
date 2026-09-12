@@ -15,3 +15,14 @@ export const fmtDateTime = (v?: string | null): string =>
  */
 export const fmtDate = (v?: string | null): string =>
   v ? dayjs(v).format("YYYY-MM-DD") : "-";
+
+/**
+ * 单据关联类型(refType)展示映射,与后端 ErrorCode.REF_TYPE_* 对齐
+ * (出入库列表/流水中出现新值时能显示中文)
+ */
+export const REF_TYPE_LABEL: Record<string, string> = {
+  purchase: "采购到货",
+  sales: "销售发货",
+  purchase_return: "采购退货",
+  sales_return: "销售退货",
+};

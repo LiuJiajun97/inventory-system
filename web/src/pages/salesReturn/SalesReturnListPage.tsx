@@ -1,16 +1,18 @@
-// 出库单列表(SPEC-WEB V2 2.5)
-// ProTable 版:筛选字段由 columns 配置驱动(单号/仓库/状态/日期区间)
+// 销售退货单列表(V11)
+// ProTable 规范:无标题行、筛选 span6 四列/行、新建按钮 search.optionRender 右侧
+// 列 = 单号/日期/原销售单号/仓库/总金额/状态/备注;行内"查看"详情弹窗(960 宽)
 
 import { useEffect, useRef, useState } from "react";
-import { Button, Descriptions, Modal, Space, Table, Tag } from "antd";
+import { Button, Descriptions, Modal, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
-import { outboundApi, warehouseApi } from "../../api";
-import type { OutboundDoc, Warehouse } from "../../types";
+import { salesReturnApi, warehouseApi } from "../../api";
+import type { Warehouse } from "../../types";
+import type { SalesReturn } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
-import { fmtDateTime, REF_TYPE_LABEL } from "../../utils/format";
+import { fmtDate, fmtDateTime } from "../../utils/format";
 import { StatusTag } from "../../components/StatusTag";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
@@ -20,14 +22,13 @@ function toDay(v: unknown): string | undefined {
   return typeof v === "string" ? v : (v as dayjs.Dayjs).format("YYYY-MM-DD");
 }
 
-export function OutboundListPage() {
+export function SalesReturnListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [detail, setDetail] = useState<OutboundDoc | null>(null);
+  const [detail, setDetail] = useState<SalesReturn | null>(null);
   const actionRef = useRef<ActionType>();
   const { hasPerm } = usePermission();
   const location = useLocation();
 
-  // 仓库下拉数据源(异步加载,仅用于筛选项)
   useEffect(() => {
     warehouseApi
       .list({ page: 1, pageSize: 200 })
@@ -41,7 +42,6 @@ export function OutboundListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
   const request = async (params: {
     current?: number;
     pageSize?: number;
@@ -51,7 +51,7 @@ export function OutboundListPage() {
     from?: string;
     to?: string;
   }) => {
-    const res = await outboundApi.list({
+    const res = await salesReturnApi.list({
       docNo: params.docNo,
       status: params.status,
       warehouseId: params.warehouseId,
@@ -60,41 +60,18 @@ export function OutboundListPage() {
       page: params.current ?? 1,
       pageSize: params.pageSize ?? 20,
     });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
     return { data: res.rows, success: true, total: res.total };
   };
 
-  const columns: ProColumns<OutboundDoc>[] = [
+  const columns: ProColumns<SalesReturn>[] = [
     {
       title: "单号",
       dataIndex: "docNo",
       width: 220,
-      fieldProps: { placeholder: "出库单号", allowClear: true },
+      fieldProps: { placeholder: "退货单号", allowClear: true },
       render: (_v, r) => (
         <span style={{ fontFamily: "monospace", fontSize: 13 }}>{r.docNo}</span>
       ),
-    },
-    {
-      title: "仓库",
-      dataIndex: "warehouseId",
-      valueType: "select",
-      hideInTable: true,
-      fieldProps: {
-        allowClear: true,
-        placeholder: "全部",
-        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
-      },
-    },
-    {
-      title: "状态",
-      dataIndex: "status",
-      valueEnum: { finished: { text: "已完成" } },
-      render: (_v, r) =>
-        r.status === "finished" ? (
-          <StatusTag status="outbound" label="已完成" />
-        ) : (
-          <Tag bordered>{r.status}</Tag>
-        ),
     },
     {
       title: "日期",
@@ -110,95 +87,103 @@ export function OutboundListPage() {
     },
     {
       title: "仓库",
+      dataIndex: "warehouseId",
+      valueType: "select",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+    },
+    {
+      title: "状态",
+      dataIndex: "status",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        options: [{ label: "已完成", value: "finished" }],
+      },
+    },
+    {
+      title: "日期",
+      dataIndex: "docDate",
+      width: 110,
+      search: false,
+      render: (_v, r) => fmtDate(r.docDate),
+    },
+    {
+      title: "原销售单号",
+      dataIndex: "salesOrderNo",
+      width: 180,
+      search: false,
+      render: (_v, r) => (
+        <span style={{ fontFamily: "monospace", fontSize: 13 }}>{r.salesOrderNo ?? "-"}</span>
+      ),
+    },
+    {
+      title: "仓库",
+      dataIndex: ["warehouse", "warehouseName"],
       width: 140,
       ellipsis: true,
       search: false,
-      // 后端嵌入 warehouse 对象;缺失时用本地仓库列表兑底,避免显示 ID
-      render: (_v, r) =>
-        r.warehouse?.warehouseName ??
-        warehouses.find((w) => w.id === r.warehouseId)?.warehouseName ??
-        String(r.warehouseId),
     },
     {
-      title: "关联单据",
-      width: 150,
-      search: false,
-      render: (_v, r) => {
-        if (!r.refDocNo) return "-";
-        const label = r.refType ? REF_TYPE_LABEL[r.refType] : undefined;
-        return label ? `${label} ${r.refDocNo}` : r.refDocNo;
-      },
-    },
-    {
-      title: "客户",
-      width: 130,
-      ellipsis: true,
-      search: false,
-      render: (_v, r) => r.customerName ?? "-",
-    },
-    {
-      title: "物品摘要",
-      width: 240,
-      ellipsis: true,
-      search: false,
-      render: (_v, r) => {
-        const items = r.items ?? [];
-        if (items.length === 0) return "-";
-        return (
-          <span>
-            {items.length} 行明细 · 数量合计{" "}
-            {items.reduce((s, it) => s + Number(it.quantity), 0).toFixed(2)}
-          </span>
-        );
-      },
-    },
-    {
-      title: "总数量",
-      width: 100,
+      title: "总金额",
+      dataIndex: "totalAmount",
+      width: 110,
       align: "right",
       className: "num-cell",
       search: false,
-      render: (_v, r) =>
-        (r.items ?? [])
-          .reduce((s, it) => s + Number(it.quantity), 0)
-          .toFixed(4),
+      render: (_v, r) => (r.totalAmount == null ? "-" : Number(r.totalAmount).toFixed(2)),
     },
-    { title: "创建人", dataIndex: "creator", width: 100, ellipsis: true, search: false },
     {
-      title: "创建时间",
-      dataIndex: "createdAt",
-      width: 170,
+      title: "状态",
+      dataIndex: "status",
+      width: 90,
       search: false,
-      render: (_v, r) => fmtDateTime(r.createdAt),
+      render: (_v, r) =>
+        r.status === "finished" ? (
+          <StatusTag status="inbound" label="已完成" />
+        ) : (
+          <Tag bordered>{r.status}</Tag>
+        ),
+    },
+    {
+      title: "备注",
+      dataIndex: "remark",
+      width: 160,
+      ellipsis: true,
+      search: false,
+      render: (_v, r) => r.remark ?? "-",
     },
     {
       title: "操作",
       width: 80,
       fixed: "right" as const,
       search: false,
-      render: (_v, row) => <a onClick={() => setDetail(row)}>查看详情</a>,
+      render: (_v, row) => <a onClick={() => setDetail(row)}>查看</a>,
     },
   ];
 
   return (
     <>
-      <ProTable<OutboundDoc>
+      <ProTable<SalesReturn>
         rowKey="id"
         actionRef={actionRef}
         columns={columns}
         request={request}
         headerTitle={false}
         options={false}
-        scroll={{ x: 1480 }}
+        scroll={{ x: 1250 }}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
           span: 6,
-          // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
-            hasPerm("outbound:create") && (
-              <Link key="new" to="/outbound/new">
+            hasPerm("sales-return:create") && (
+              <Link key="new" to="/sales-returns/new">
                 <Button type="primary">新建</Button>
               </Link>
             ),
@@ -212,7 +197,7 @@ export function OutboundListPage() {
       />
 
       <Modal
-        title={`出库单详情 - ${detail?.docNo ?? ""}`}
+        title={`销售退货单详情 - ${detail?.docNo ?? ""}`}
         open={!!detail}
         onCancel={() => setDetail(null)}
         footer={null}
@@ -225,8 +210,21 @@ export function OutboundListPage() {
               <Descriptions.Item label="单号">
                 <span style={{ fontFamily: "monospace" }}>{detail.docNo}</span>
               </Descriptions.Item>
+              <Descriptions.Item label="日期">
+                {fmtDate(detail.docDate)}
+              </Descriptions.Item>
+              <Descriptions.Item label="原销售单号">
+                <span style={{ fontFamily: "monospace" }}>
+                  {detail.salesOrderNo ?? "-"}
+                </span>
+              </Descriptions.Item>
               <Descriptions.Item label="仓库">
                 {detail.warehouse?.warehouseName ?? "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="总金额">
+                {detail.totalAmount == null
+                  ? "-"
+                  : Number(detail.totalAmount).toFixed(2)}
               </Descriptions.Item>
               <Descriptions.Item label="创建人">
                 {detail.creator ?? "-"}
@@ -234,17 +232,12 @@ export function OutboundListPage() {
               <Descriptions.Item label="创建时间">
                 {fmtDateTime(detail.createdAt)}
               </Descriptions.Item>
-              {/* V9 运输信息(可空) */}
-              <Descriptions.Item label="承运商">{detail.carrier ?? "-"}</Descriptions.Item>
-              <Descriptions.Item label="车牌">{detail.vehicleNo ?? "-"}</Descriptions.Item>
-              <Descriptions.Item label="运费">
-                {detail.freight == null ? "-" : Number(detail.freight).toFixed(2)}
-              </Descriptions.Item>
+              <Descriptions.Item label="状态">已完成</Descriptions.Item>
               <Descriptions.Item label="备注" span={2}>
                 {detail.remark ?? "-"}
               </Descriptions.Item>
             </Descriptions>
-            <div style={{ marginTop: 12, fontWeight: 600 }}>出库明细</div>
+            <div style={{ marginTop: 12, fontWeight: 600 }}>退货明细</div>
             <Table
               style={{ marginTop: 8 }}
               size="small"
@@ -252,37 +245,62 @@ export function OutboundListPage() {
               dataSource={detail.items ?? []}
               pagination={false}
               columns={[
+                { title: "行号", dataIndex: "lineNo", width: 60 },
                 { title: "物品ID", dataIndex: "itemId", width: 80 },
+                {
+                  title: "规格",
+                  dataIndex: "specSnapshot",
+                  width: 140,
+                  ellipsis: true,
+                  render: (v?: string | null) => v ?? "-",
+                },
                 {
                   title: "数量",
                   dataIndex: "quantity",
                   width: 100,
                   align: "right",
                   className: "num-cell",
-                  render: (v: string | number) => Number(v).toFixed(4),
+                  render: (v: string) => Number(v).toFixed(4),
                 },
-                { title: "批次ID", dataIndex: "batchId", width: 80 },
-                { title: "库位ID", dataIndex: "locationId", width: 80 },
                 {
-                  title: "序列号",
-                  dataIndex: "serialNos",
-                  render: (v?: string | null) => {
-                    if (!v) return "-";
-                    try {
-                      const arr = JSON.parse(v);
-                      return (
-                        <Space wrap size={[4, 4]}>
-                          {arr.map((s: string, i: number) => (
-                            <Tag key={i} bordered>
-                              {s}
-                            </Tag>
-                          ))}
-                        </Space>
-                      );
-                    } catch {
-                      return v;
-                    }
-                  },
+                  title: "单价",
+                  dataIndex: "unitPrice",
+                  width: 100,
+                  align: "right",
+                  className: "num-cell",
+                  render: (v: string) => Number(v).toFixed(4),
+                },
+                {
+                  title: "税率(%)",
+                  dataIndex: "taxRate",
+                  width: 90,
+                  align: "right",
+                  className: "num-cell",
+                  render: (v: string) => Number(v).toFixed(2),
+                },
+                {
+                  title: "金额",
+                  dataIndex: "amount",
+                  width: 100,
+                  align: "right",
+                  className: "num-cell",
+                  render: (v: string) => Number(v).toFixed(2),
+                },
+                {
+                  title: "税额",
+                  dataIndex: "taxAmount",
+                  width: 100,
+                  align: "right",
+                  className: "num-cell",
+                  render: (v: string) => Number(v).toFixed(2),
+                },
+                {
+                  title: "价税合计",
+                  dataIndex: "taxInclusiveTotal",
+                  width: 110,
+                  align: "right",
+                  className: "num-cell",
+                  render: (v: string) => Number(v).toFixed(2),
                 },
               ]}
             />

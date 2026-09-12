@@ -653,6 +653,7 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                         line.getSpecSnapshot(), line.getUnit(),
                         QtyUtils.toContractString(line.getOrderedQty()),
                         QtyUtils.toContractString(line.getShippedQty()),
+                        QtyUtils.toContractString(line.getReturnedQty()),
                         line.getCustomerDeliveryDate(), line.getUnitPrice(), line.getTaxRate(),
                         QtyUtils.toContractString(line.getAmount()),
                         QtyUtils.toContractString(line.getTaxAmount()),

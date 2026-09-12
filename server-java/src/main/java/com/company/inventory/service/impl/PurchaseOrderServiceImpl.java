@@ -542,6 +542,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                         line.getSpecSnapshot(), line.getUnit(),
                         QtyUtils.toContractString(line.getOrderedQty()),
                         QtyUtils.toContractString(line.getArrivedQty()),
+                        QtyUtils.toContractString(line.getReturnedQty()),
                         line.getExpectedDeliveryDate(), line.getUnitPrice(), line.getTaxRate(),
                         QtyUtils.toContractString(line.getAmount()),
                         QtyUtils.toContractString(line.getTaxAmount()),

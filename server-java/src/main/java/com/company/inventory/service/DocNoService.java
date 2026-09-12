@@ -7,6 +7,8 @@ import com.company.inventory.model.entity.purchase.PurchaseOrderDO;
 import com.company.inventory.model.entity.sales.SalesOrderDO;
 import com.company.inventory.model.entity.stocktake.StocktakeDocDO;
 import com.company.inventory.model.entity.transfer.TransferDocDO;
+import com.company.inventory.model.entity.returns.PurchaseReturnDO;
+import com.company.inventory.model.entity.returns.SalesReturnDO;
 import com.company.inventory.mapper.InboundDocMapper;
 import com.company.inventory.mapper.OutboundDocMapper;
 import com.company.inventory.mapper.StockAdjustDocMapper;
@@ -14,6 +16,8 @@ import com.company.inventory.mapper.PurchaseOrderMapper;
 import com.company.inventory.mapper.SalesOrderMapper;
 import com.company.inventory.mapper.StocktakeDocMapper;
 import com.company.inventory.mapper.TransferDocMapper;
+import com.company.inventory.mapper.PurchaseReturnMapper;
+import com.company.inventory.mapper.SalesReturnMapper;
 
 
 
@@ -36,8 +40,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 单据编号生成服务:RK/CK(出入库)、CG(采购)、XS(销售)、DB(调拨)、PD(盘点)、TZ(调整)
- * 均为 PREFIX-YYYYMMDD-NNNN 按天序列。
+ * 单据编号生成服务:RK/CK(出入库)、CG(采购)、XS(销售)、DB(调拨)、PD(盘点)、TZ(调整)、
+ * CT(采购退货)、XT(销售退货)均为 PREFIX-YYYYMMDD-NNNN 按天序列。
  *
  * <p>规则与 Fastify 版一致:查当日单据数 + 1,补零 4 位;须在写单据的同一事务内调用。</p>
  *
@@ -67,6 +71,12 @@ public class DocNoService {
     /** 调整单号前缀。 */
     private static final String PREFIX_ADJUST = "TZ";
 
+    /** 采购退货单号前缀。 */
+    private static final String PREFIX_PURCHASE_RETURN = "CT";
+
+    /** 销售退货单号前缀。 */
+    private static final String PREFIX_SALES_RETURN = "XT";
+
     /** 日期格式 yyyyMMdd。 */
     private static final String DATE_FORMAT = "yyyyMMdd";
 
@@ -80,6 +90,8 @@ public class DocNoService {
     private final TransferDocMapper transferDocMapper;
     private final StocktakeDocMapper stocktakeDocMapper;
     private final StockAdjustDocMapper stockAdjustDocMapper;
+    private final PurchaseReturnMapper purchaseReturnMapper;
+    private final SalesReturnMapper salesReturnMapper;
 
     /**
      * 构造服务。
@@ -91,11 +103,14 @@ public class DocNoService {
      * @param transferDocMapper   调拨单 Mapper
      * @param stocktakeDocMapper  盘点单 Mapper
      * @param stockAdjustDocMapper 调整单 Mapper
+     * @param purchaseReturnMapper 采购退货单 Mapper
+     * @param salesReturnMapper    销售退货单 Mapper
      */
     public DocNoService(InboundDocMapper inboundDocMapper, OutboundDocMapper outboundDocMapper,
             PurchaseOrderMapper purchaseOrderMapper, SalesOrderMapper salesOrderMapper,
             TransferDocMapper transferDocMapper, StocktakeDocMapper stocktakeDocMapper,
-            StockAdjustDocMapper stockAdjustDocMapper) {
+            StockAdjustDocMapper stockAdjustDocMapper, PurchaseReturnMapper purchaseReturnMapper,
+            SalesReturnMapper salesReturnMapper) {
         this.inboundDocMapper = inboundDocMapper;
         this.outboundDocMapper = outboundDocMapper;
         this.purchaseOrderMapper = purchaseOrderMapper;
@@ -103,6 +118,8 @@ public class DocNoService {
         this.transferDocMapper = transferDocMapper;
         this.stocktakeDocMapper = stocktakeDocMapper;
         this.stockAdjustDocMapper = stockAdjustDocMapper;
+        this.purchaseReturnMapper = purchaseReturnMapper;
+        this.salesReturnMapper = salesReturnMapper;
     }
 
     /**
@@ -188,6 +205,30 @@ public class DocNoService {
                 .ge(StockAdjustDocDO::getCreatedAt, todayStart())
                 .lt(StockAdjustDocDO::getCreatedAt, todayEnd()));
         return PREFIX_ADJUST + "-" + todayText() + "-" + padSeq(count + 1);
+    }
+
+    /**
+     * 生成采购退货单号(CT-YYYYMMDD-NNNN)。
+     *
+     * @return 单号
+     */
+    public String generatePurchaseReturnNo() {
+        long count = purchaseReturnMapper.selectCount(new LambdaQueryWrapper<PurchaseReturnDO>()
+                .ge(PurchaseReturnDO::getCreatedAt, todayStart())
+                .lt(PurchaseReturnDO::getCreatedAt, todayEnd()));
+        return PREFIX_PURCHASE_RETURN + "-" + todayText() + "-" + padSeq(count + 1);
+    }
+
+    /**
+     * 生成销售退货单号(XT-YYYYMMDD-NNNN)。
+     *
+     * @return 单号
+     */
+    public String generateSalesReturnNo() {
+        long count = salesReturnMapper.selectCount(new LambdaQueryWrapper<SalesReturnDO>()
+                .ge(SalesReturnDO::getCreatedAt, todayStart())
+                .lt(SalesReturnDO::getCreatedAt, todayEnd()));
+        return PREFIX_SALES_RETURN + "-" + todayText() + "-" + padSeq(count + 1);
     }
 
     /**
