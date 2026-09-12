@@ -15,6 +15,7 @@ import {
   Space,
   Tag,
   App,
+  theme,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ProTable } from "@ant-design/pro-components";
@@ -31,6 +32,8 @@ export function WarehouseListPage() {
   const actionRef = useRef<ActionType>();
   const { message } = App.useApp();
   const user = getUser();
+  // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
+  const { token } = theme.useToken();
   const [enableBatch, setEnableBatch] = useState(false);
   const [enableExpiry, setEnableExpiry] = useState(false);
   const [typeOptions, setTypeOptions] = useState<Array<{ code: string; label: string }>>([]);
@@ -246,13 +249,21 @@ export function WarehouseListPage() {
         open={drawerOpen}
         onClose={closeDrawer}
         width={480}
-        extra={
-          <Space>
-            <Button onClick={closeDrawer}>取消</Button>
-            <Button type="primary" onClick={onSave}>
-              保存
-            </Button>
-          </Space>
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:次按钮"取消" + 主按钮"保存"
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button onClick={closeDrawer}>取消</Button>
+              <Button type="primary" onClick={onSave}>
+                保存
+              </Button>
+            </Space>
+          </div>
         }
       >
         <Form form={form} layout="vertical" requiredMark={false}>
@@ -279,17 +290,23 @@ export function WarehouseListPage() {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item
-            label="类型"
-            name="warehouseType"
-            rules={[{ required: true, message: "类型必填" }]}
-          >
-            <Select
-              options={typeOptions.map((d) => ({ label: d.label, value: d.code }))}
-            />
-          </Form.Item>
-
-          <Form.Item label="启用配置">
+          {/* 类型与启用配置:两列对齐规格下分别占一列/整行 */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="类型"
+                name="warehouseType"
+                rules={[{ required: true, message: "类型必填" }]}
+              >
+                <Select
+                  options={typeOptions.map((d) => ({ label: d.label, value: d.code }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label="启用配置">
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <Space>
                 <span style={{ width: 80 }}>批次</span>
@@ -335,7 +352,9 @@ export function WarehouseListPage() {
                 </Space>
               )}
             </div>
-          </Form.Item>
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Drawer>
     </>

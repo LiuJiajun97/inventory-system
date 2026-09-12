@@ -4,7 +4,7 @@
 // 审批即执行:同一事务源仓扣减 + 目的仓入库
 
 import { useEffect, useRef, useState } from "react";
-import { Button, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table } from "antd";
+import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
@@ -44,6 +44,8 @@ export function TransferPage() {
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
+  // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
+  const { token } = theme.useToken();
   const [lines, setLines] = useState<Array<{ key: number; itemId?: number; qty?: number; unitPrice?: number; fromLocationId?: number; toLocationId?: number }>>([{ key: 1 }]);
   const [fromWh, setFromWh] = useState<number>();
   const [toWh, setToWh] = useState<number>();
@@ -366,39 +368,63 @@ export function TransferPage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         width={860}
-        extra={
-          <Button type="primary" loading={saving} onClick={onCreate}>
-            {editId != null ? "保存" : "保存为草稿"}
-          </Button>
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:次按钮"取消" + 主按钮(文案保持现状,loading 态保留)
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button onClick={() => setCreateOpen(false)}>取消</Button>
+              <Button type="primary" loading={saving} onClick={onCreate}>
+                {editId != null ? "保存" : "保存为草稿"}
+              </Button>
+            </Space>
+          </div>
         }
       >
-        <Form form={createForm} layout="vertical">
-          <Space wrap size={24}>
-            <Form.Item label="调拨日期">
-              <DatePicker value={docDate} onChange={(d) => setDocDate(d ?? dayjs())} />
-            </Form.Item>
-            <Form.Item label="源仓库" required>
-              <Select
-                placeholder="选择源仓库"
-                style={{ width: 180 }}
-                options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
-                value={fromWh}
-                onChange={setFromWh}
-              />
-            </Form.Item>
-            <Form.Item label="目的仓库" required>
-              <Select
-                placeholder="选择目的仓库"
-                style={{ width: 180 }}
-                options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
-                value={toWh}
-                onChange={setToWh}
-              />
-            </Form.Item>
-          </Space>
-          <Form.Item label="备注" name="remark">
-            <Input.TextArea rows={2} />
-          </Form.Item>
+        <Form form={createForm} layout="vertical" requiredMark={false}>
+          {/* 表头字段两列对齐(统一规格:两列上限);行明细 Table 不包 Col,联动零改动 */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="调拨日期">
+                <DatePicker value={docDate} onChange={(d) => setDocDate(d ?? dayjs())} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="源仓库" required>
+                <Select
+                  placeholder="选择源仓库"
+                  style={{ width: "100%" }}
+                  options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
+                  value={fromWh}
+                  onChange={setFromWh}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="目的仓库" required>
+                <Select
+                  placeholder="选择目的仓库"
+                  style={{ width: "100%" }}
+                  options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
+                  value={toWh}
+                  onChange={setToWh}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label="备注" name="remark">
+                <Input.TextArea rows={2} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>调拨明细(批次跟随源批,库存审批时扣减)</div>
         <Table

@@ -10,9 +10,12 @@ import {
   Select,
   Button,
   Drawer,
+  Row,
+  Col,
   Space,
   App,
   Tooltip,
+  theme,
 } from "antd";
 import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { ProTable } from "@ant-design/pro-components";
@@ -35,6 +38,8 @@ export function ItemListPage() {
   const actionRef = useRef<ActionType>();
   const user = getUser();
   const { message } = App.useApp();
+  // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
+  const { token } = theme.useToken();
 
   // 分类下拉数据源(异步加载,仅用于筛选项与列展示)
   useEffect(() => {
@@ -277,55 +282,88 @@ export function ItemListPage() {
         open={drawerOpen}
         onClose={closeDrawer}
         width={480}
-        extra={
-          <Space>
-            <Button onClick={closeDrawer}>取消</Button>
-            <Button type="primary" onClick={onSave}>
-              保存
-            </Button>
-          </Space>
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:次按钮"取消" + 主按钮"保存"
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button onClick={closeDrawer}>取消</Button>
+              <Button type="primary" onClick={onSave}>
+                保存
+              </Button>
+            </Space>
+          </div>
         }
       >
         <Form form={form} layout="vertical" requiredMark={false}>
-          <Form.Item
-            label="编码"
-            name="itemCode"
-            rules={[{ required: true, message: "编码必填" }]}
-          >
-            <Input placeholder="如 HW-SCREW-M8" disabled={editing != null} />
-          </Form.Item>
-          <Form.Item
-            label="名称"
-            name="itemName"
-            rules={[{ required: true, message: "名称必填" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            label="单位"
-            name="unit"
-            rules={[{ required: true, message: "单位必填" }]}
-          >
-            <Input placeholder="如 支 / 套 / 公斤" />
-          </Form.Item>
-          <Form.Item label="规格" name="spec">
-            <Input />
-          </Form.Item>
-          <Form.Item label="分类" name="category">
-            <Select
-              allowClear
-              placeholder="选择分类"
-              options={categoryOptions.map((d) => ({ label: d.label, value: d.code }))}
-            />
-          </Form.Item>
-          <Form.Item label="最低库存(预警阈值,留空不预警)" name="minStock">
-            <InputNumber min={0} step={1} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item label="默认税率(%)" name="defaultTaxRate" initialValue={13}>
-            <InputNumber min={0} max={100} step={0.01} style={{ width: "100%" }} />
-          </Form.Item>
-
-          <Form.Item label="扩展属性 (key-value 动态行)">
+          {/* 表头字段两列对齐(统一规格:纯表单抽屉两列上限) */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="编码"
+                name="itemCode"
+                rules={[{ required: true, message: "编码必填" }]}
+              >
+                <Input placeholder="如 HW-SCREW-M8" disabled={editing != null} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="名称"
+                name="itemName"
+                rules={[{ required: true, message: "名称必填" }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="单位"
+                name="unit"
+                rules={[{ required: true, message: "单位必填" }]}
+              >
+                <Input placeholder="如 支 / 套 / 公斤" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="规格" name="spec">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="分类" name="category">
+                <Select
+                  allowClear
+                  placeholder="选择分类"
+                  options={categoryOptions.map((d) => ({ label: d.label, value: d.code }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="最低库存(预警阈值,留空不预警)" name="minStock">
+                <InputNumber min={0} step={1} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="默认税率(%)" name="defaultTaxRate" initialValue={13}>
+                <InputNumber min={0} max={100} step={0.01} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          {/* 动态行区块独占一行 */}
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label="扩展属性 (key-value 动态行)">
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {attrs.map((row, idx) => (
                 <div
@@ -384,7 +422,9 @@ export function ItemListPage() {
                 添加属性
               </Button>
             </div>
-          </Form.Item>
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Drawer>
     </>

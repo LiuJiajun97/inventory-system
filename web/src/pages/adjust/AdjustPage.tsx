@@ -3,7 +3,7 @@
 // gain 盘盈入库 / loss 盘亏出库;审批即执行库存动作;盘点差异生成 + 手工调整共用
 
 import { useEffect, useRef, useState } from "react";
-import { Button, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table } from "antd";
+import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
@@ -38,6 +38,8 @@ export function AdjustPage() {
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
+  // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
+  const { token } = theme.useToken();
   const [adjustType, setAdjustType] = useState<"gain" | "loss" | "scrap">("loss");
   const [lines, setLines] = useState<Array<{ key: number; itemId?: number; qty?: number; unitPrice?: number; reason?: string; batchId?: number; locationId?: number }>>([{ key: 1 }]);
 
@@ -306,42 +308,66 @@ export function AdjustPage() {
         title={editId != null ? "编辑库存调整单" : "新建库存调整单"}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        width={640}
-        extra={
-          <Button type="primary" loading={saving} onClick={onCreate}>
-            {editId != null ? "保存" : "保存为草稿"}
-          </Button>
+        width={860}
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:次按钮"取消" + 主按钮(文案保持现状,loading 态保留)
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button onClick={() => setCreateOpen(false)}>取消</Button>
+              <Button type="primary" loading={saving} onClick={onCreate}>
+                {editId != null ? "保存" : "保存为草稿"}
+              </Button>
+            </Space>
+          </div>
         }
       >
-        <Form form={createForm} layout="vertical">
-          <Space wrap size={24}>
-            <Form.Item label="调整类型" required>
-              <Select
-                value={adjustType}
-                onChange={setAdjustType}
-                style={{ width: 160 }}
-                options={[
-                  { label: "盘盈(入库)", value: "gain" },
-                  { label: "盘亏(出库)", value: "loss" },
-                  // 报损单仅编辑态可能出现(手工报损),新建保持盘盈/盘亏两项
-                  ...(editId != null ? [{ label: "报损(出库)", value: "scrap" }] : []),
-                ]}
-              />
-            </Form.Item>
-            <Form.Item label="调整日期" name="docDate" initialValue={dayjs()}>
-              <DatePicker style={{ width: 160 }} />
-            </Form.Item>
-            <Form.Item label="仓库" name="warehouseId">
-              <Select
-                placeholder="选择仓库"
-                style={{ width: 180 }}
-                options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
-              />
-            </Form.Item>
-          </Space>
-          <Form.Item label="备注" name="remark">
-            <Input.TextArea rows={2} />
-          </Form.Item>
+        <Form form={createForm} layout="vertical" requiredMark={false}>
+          {/* 表头字段两列对齐(统一规格:两列上限);行明细 Table 不包 Col,零改动 */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="调整类型" required>
+                <Select
+                  value={adjustType}
+                  onChange={setAdjustType}
+                  style={{ width: "100%" }}
+                  options={[
+                    { label: "盘盈(入库)", value: "gain" },
+                    { label: "盘亏(出库)", value: "loss" },
+                    // 报损单仅编辑态可能出现(手工报损),新建保持盘盈/盘亏两项
+                    ...(editId != null ? [{ label: "报损(出库)", value: "scrap" }] : []),
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="调整日期" name="docDate" initialValue={dayjs()}>
+                <DatePicker style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="仓库" name="warehouseId">
+                <Select
+                  placeholder="选择仓库"
+                  style={{ width: "100%" }}
+                  options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label="备注" name="remark">
+                <Input.TextArea rows={2} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>调整明细</div>
         <Table

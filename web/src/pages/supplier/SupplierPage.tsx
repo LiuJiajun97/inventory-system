@@ -3,7 +3,7 @@
 // 列表分页 + admin 新建/编辑 Drawer,operator/viewer 只读
 
 import { useEffect, useRef, useState } from "react";
-import { Button, Drawer, Form, Input, InputNumber, Select } from "antd";
+import { Button, Col, Drawer, Form, Input, InputNumber, Row, Select, Space, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { dictApi, supplierApi } from "../../api";
@@ -32,6 +32,8 @@ export function SupplierPage() {
   const [settleOptions, setSettleOptions] = useState<Array<{ label: string; value: string }>>([]);
   const [form] = Form.useForm<FormValues>();
   const actionRef = useRef<ActionType>();
+  // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
+  const { token } = theme.useToken();
 
   // 结算方式字典数据源(异步加载,仅用于列展示)
   useEffect(() => {
@@ -187,51 +189,96 @@ export function SupplierPage() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         width={480}
-        extra={
-          <Button type="primary" onClick={onSubmit}>
-            保存
-          </Button>
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:次按钮"取消" + 主按钮"保存"
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button onClick={() => setDrawerOpen(false)}>取消</Button>
+              <Button type="primary" onClick={onSubmit}>
+                保存
+              </Button>
+            </Space>
+          </div>
         }
       >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            label="供应商编码"
-            name="supplierCode"
-            rules={[{ required: true, message: "供应商编码必填" }]}
-          >
-            <Input disabled={!!editing} placeholder="如 SUP-001" />
-          </Form.Item>
-          <Form.Item
-            label="供应商名称"
-            name="supplierName"
-            rules={[{ required: true, message: "供应商名称必填" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item label="税号" name="taxNo">
-            <Input />
-          </Form.Item>
-          <Form.Item label="默认税率(%)" name="defaultTaxRate" initialValue={13}>
-            <InputNumber min={0} max={100} step={0.01} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item label="联系人" name="contact">
-            <Input />
-          </Form.Item>
-          <Form.Item label="联系电话" name="phone">
-            <Input />
-          </Form.Item>
-          <Form.Item label="地址" name="address">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-          <Form.Item label="结算方式" name="settleMethod">
-            <Select allowClear showSearch optionFilterProp="label" options={settleOptions} />
-          </Form.Item>
-          <Form.Item label="账期天数" name="payTermDays">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item label="备注" name="remark">
-            <Input.TextArea rows={2} />
-          </Form.Item>
+        <Form form={form} layout="vertical" requiredMark={false}>
+          {/* 表头字段两列对齐(统一规格:纯表单抽屉两列上限) */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="供应商编码"
+                name="supplierCode"
+                rules={[{ required: true, message: "供应商编码必填" }]}
+              >
+                <Input disabled={!!editing} placeholder="如 SUP-001" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="供应商名称"
+                name="supplierName"
+                rules={[{ required: true, message: "供应商名称必填" }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="税号" name="taxNo">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="默认税率(%)" name="defaultTaxRate" initialValue={13}>
+                <InputNumber min={0} max={100} step={0.01} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="联系人" name="contact">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="联系电话" name="phone">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          {/* 地址/备注:textarea 独占一行 */}
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label="地址" name="address">
+                <Input.TextArea rows={2} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="结算方式" name="settleMethod">
+                <Select allowClear showSearch optionFilterProp="label" options={settleOptions} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="账期天数" name="payTermDays">
+                <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label="备注" name="remark">
+                <Input.TextArea rows={2} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Drawer>
     </>

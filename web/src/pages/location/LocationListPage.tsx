@@ -4,12 +4,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  Button,
+  Col,
+  Drawer,
   Form,
   Input,
+  Row,
   Select,
-  Button,
-  Modal,
+  Space,
   App,
+  theme,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ProTable } from "@ant-design/pro-components";
@@ -26,6 +30,8 @@ export function LocationListPage() {
   const actionRef = useRef<ActionType>();
   const user = getUser();
   const { message } = App.useApp();
+  // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
+  const { token } = theme.useToken();
 
   // 仓库下拉数据源(异步加载,仅用于筛选项与名称展示)
   useEffect(() => {
@@ -170,47 +176,72 @@ export function LocationListPage() {
         }}
       />
 
-      <Modal
+      {/* 新建/编辑库位抽屉(原 Modal 统一为 Drawer,宽度 480 档) */}
+      <Drawer
         title={editing ? "编辑库位" : "新建库位"}
         open={open}
-        onCancel={closeModal}
-        onOk={onSave}
-        okText="提交"
-        cancelText="取消"
-        width={420}
+        onClose={closeModal}
+        width={480}
         destroyOnClose
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:次按钮"取消" + 主按钮"提交"(文案保持现状)
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button onClick={closeModal}>取消</Button>
+              <Button type="primary" onClick={onSave}>
+                提交
+              </Button>
+            </Space>
+          </div>
+        }
       >
         <Form form={form} layout="vertical" requiredMark={false}>
-          {editing ? (
-            <Form.Item label="所属仓库" name="warehouseName">
-              <Input disabled />
-            </Form.Item>
-          ) : (
-            <Form.Item
-              label="仓库"
-              name="warehouseId"
-              rules={[{ required: true, message: "仓库必填" }]}
-            >
-              <Select
-                options={warehouses.map((w) => ({
-                  label: w.warehouseName,
-                  value: w.id,
-                }))}
-              />
-            </Form.Item>
-          )}
-          <Form.Item
-            label="库位编码"
-            name="locationCode"
-            rules={[{ required: true, message: "编码必填" }]}
-          >
-            <Input placeholder="如 A-03" disabled={editing != null} />
-          </Form.Item>
-          <Form.Item label="库位名称" name="locationName">
-            <Input />
-          </Form.Item>
+          {/* 表头字段两列对齐(统一规格:纯表单抽屉两列上限) */}
+          <Row gutter={16}>
+            <Col span={12}>
+              {editing ? (
+                <Form.Item label="所属仓库" name="warehouseName">
+                  <Input disabled />
+                </Form.Item>
+              ) : (
+                <Form.Item
+                  label="仓库"
+                  name="warehouseId"
+                  rules={[{ required: true, message: "仓库必填" }]}
+                >
+                  <Select
+                    options={warehouses.map((w) => ({
+                      label: w.warehouseName,
+                      value: w.id,
+                    }))}
+                  />
+                </Form.Item>
+              )}
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="库位编码"
+                name="locationCode"
+                rules={[{ required: true, message: "编码必填" }]}
+              >
+                <Input placeholder="如 A-03" disabled={editing != null} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="库位名称" name="locationName">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
-      </Modal>
+      </Drawer>
     </>
   );
 }

@@ -17,6 +17,10 @@ import {
   Tag,
   Popconfirm,
   Typography,
+  Row,
+  Col,
+  Space,
+  theme,
 } from "antd";
 import { PlusOutlined, EditOutlined, ToolOutlined } from "@ant-design/icons";
 import { ProTable } from "@ant-design/pro-components";
@@ -26,6 +30,8 @@ import type { DictItem, DictTypeItem } from "../../types/phase1";
 
 export function DictPage() {
   const { message } = App.useApp();
+  // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
+  const { token } = theme.useToken();
   // 新建类型弹窗
   const [typeModalOpen, setTypeModalOpen] = useState(false);
   const [typeForm] = Form.useForm();
@@ -307,91 +313,164 @@ export function DictPage() {
         pagination={false}
       />
 
-      {/* 新建类型弹窗 */}
-      <Modal
+      {/* 新建类型抽屉(统一:按钮移底部 footer) */}
+      <Drawer
         title="新建字典类型"
         open={typeModalOpen}
-        onOk={onCreateType}
-        onCancel={() => {
+        onClose={() => {
           setTypeModalOpen(false);
           typeForm.resetFields();
         }}
-        width={420}
+        width={480}
+        destroyOnClose
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button
+                onClick={() => {
+                  setTypeModalOpen(false);
+                  typeForm.resetFields();
+                }}
+              >
+                取消
+              </Button>
+              <Button type="primary" onClick={onCreateType}>
+                保存
+              </Button>
+            </Space>
+          </div>
+        }
       >
         <Form form={typeForm} layout="vertical" requiredMark={false}>
-          <Form.Item
-            label="类型编码"
-            name="typeCode"
-            rules={[
-              { required: true, message: "类型编码必填" },
-              {
-                pattern: /^[a-z][a-z0-9_]*$/,
-                message: "只能含小写字母、数字、下划线,且以字母开头",
-              },
-            ]}
-          >
-            <Input placeholder="如 warehouse_type" />
-          </Form.Item>
-          <Form.Item
-            label="类型名称"
-            name="typeName"
-            rules={[{ required: true, message: "类型名称必填" }]}
-          >
-            <Input placeholder="如 仓库类型" />
-          </Form.Item>
-          <Form.Item label="备注" name="remark">
-            <Input placeholder="可选" />
-          </Form.Item>
+          {/* 表头字段两列对齐(统一规格:两列上限) */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="类型编码"
+                name="typeCode"
+                rules={[
+                  { required: true, message: "类型编码必填" },
+                  {
+                    pattern: /^[a-z][a-z0-9_]*$/,
+                    message: "只能含小写字母、数字、下划线,且以字母开头",
+                  },
+                ]}
+              >
+                <Input placeholder="如 warehouse_type" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="类型名称"
+                name="typeName"
+                rules={[{ required: true, message: "类型名称必填" }]}
+              >
+                <Input placeholder="如 仓库类型" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label="备注" name="remark">
+                <Input placeholder="可选" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
-      </Modal>
+      </Drawer>
 
-      {/* 编辑类型弹窗 */}
-      <Modal
+      {/* 编辑类型抽屉(统一:按钮移底部 footer) */}
+      <Drawer
         title="编辑字典类型"
         open={editModalOpen}
-        onOk={onSaveEditType}
-        onCancel={() => {
+        onClose={() => {
           setEditModalOpen(false);
           setEditingType(null);
           editForm.resetFields();
         }}
-        width={420}
+        width={480}
+        destroyOnClose
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button
+                onClick={() => {
+                  setEditModalOpen(false);
+                  setEditingType(null);
+                  editForm.resetFields();
+                }}
+              >
+                取消
+              </Button>
+              <Button type="primary" onClick={onSaveEditType}>
+                保存
+              </Button>
+            </Space>
+          </div>
+        }
       >
         <Form form={editForm} layout="vertical" requiredMark={false}>
-          <Form.Item
-            label="类型名称"
-            name="typeName"
-            rules={[{ required: true, message: "类型名称必填" }]}
-          >
-            <Input placeholder="如 仓库类型" />
-          </Form.Item>
-          <Form.Item label="备注" name="remark">
-            <Input placeholder="可选" />
-          </Form.Item>
+          {/* 表头字段两列对齐(统一规格:两列上限) */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="类型名称"
+                name="typeName"
+                rules={[{ required: true, message: "类型名称必填" }]}
+              >
+                <Input placeholder="如 仓库类型" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label="备注" name="remark">
+                <Input placeholder="可选" />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
-      </Modal>
+      </Drawer>
 
       {/* Drawer: 字典项管理 */}
       <Drawer
         title={drawerType ? `${drawerType.typeName} · 字典项` : "字典项"}
         open={drawerOpen}
         onClose={closeDrawer}
-        width={720}
+        width={860}
         destroyOnClose
-        extra={
-          isAdmin && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                itemForm.resetFields();
-                itemForm.setFieldsValue({ sortOrder: 0 });
-                setItemModalOpen(true);
-              }}
-            >
-              新增项
-            </Button>
-          )
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:"新增项"从右上角 extra 移到底部
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            {isAdmin && (
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => {
+                    itemForm.resetFields();
+                    itemForm.setFieldsValue({ sortOrder: 0 });
+                    setItemModalOpen(true);
+                  }}
+                >
+                  新增项
+                </Button>
+              </Space>
+            )}
+          </div>
         }
       >
         {/* 类型备注 */}
@@ -473,26 +552,37 @@ export function DictPage() {
             setItemModalOpen(false);
             itemForm.resetFields();
           }}
-          width={420}
+          width={480}
         >
           <Form form={itemForm} layout="vertical" requiredMark={false}>
-            <Form.Item
-              label="编码"
-              name="dictKey"
-              rules={[{ required: true, message: "编码必填" }]}
-            >
-              <Input placeholder="如 raw / cold" />
-            </Form.Item>
-            <Form.Item
-              label="中文标签"
-              name="dictLabel"
-              rules={[{ required: true, message: "标签必填" }]}
-            >
-              <Input placeholder="如 原材料仓" />
-            </Form.Item>
-            <Form.Item label="排序" name="sortOrder">
-              <InputNumber min={0} style={{ width: "100%" }} />
-            </Form.Item>
+            {/* 表头字段两列对齐(统一规格:两列上限) */}
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="编码"
+                  name="dictKey"
+                  rules={[{ required: true, message: "编码必填" }]}
+                >
+                  <Input placeholder="如 raw / cold" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="中文标签"
+                  name="dictLabel"
+                  rules={[{ required: true, message: "标签必填" }]}
+                >
+                  <Input placeholder="如 原材料仓" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item label="排序" name="sortOrder">
+                  <InputNumber min={0} style={{ width: "100%" }} />
+                </Form.Item>
+              </Col>
+            </Row>
           </Form>
         </Modal>
       </Drawer>

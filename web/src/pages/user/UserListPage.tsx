@@ -10,10 +10,13 @@ import {
   Button,
   Drawer,
   Modal,
+  Row,
+  Col,
   Switch,
   Space,
   App,
   Alert,
+  theme,
 } from "antd";
 import {
   PlusOutlined,
@@ -51,6 +54,8 @@ export function UserListPage() {
   const [editForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
   const { message } = App.useApp();
+  // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
+  const { token } = theme.useToken();
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
   const request = async (params: {
@@ -197,97 +202,149 @@ export function UserListPage() {
         }}
       />
 
-      <Modal
+      {/* 新建用户抽屉(原 Modal 统一为 Drawer,宽度 480 档) */}
+      <Drawer
         title="新建用户"
         open={createOpen}
-        onCancel={() => setCreateOpen(false)}
-        onOk={onCreate}
-        okText="提交"
-        cancelText="取消"
+        onClose={() => setCreateOpen(false)}
+        width={480}
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:次按钮"取消" + 主按钮"提交"(文案保持现状)
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button onClick={() => setCreateOpen(false)}>取消</Button>
+              <Button type="primary" onClick={onCreate}>
+                提交
+              </Button>
+            </Space>
+          </div>
+        }
       >
         <Form form={createForm} layout="vertical" requiredMark={false}>
-          <Form.Item
-            label="用户名"
-            name="username"
-            rules={[{ required: true, min: 2, message: "用户名至少 2 位" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            label="姓名"
-            name="name"
-            rules={[{ required: true, message: "姓名必填" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            label="密码"
-            name="password"
-            rules={[{ required: true, min: 6, message: "密码至少 6 位" }]}
-          >
-            <Input.Password />
-          </Form.Item>
-          <Form.Item
-            label="角色"
-            name="role"
-            rules={[{ required: true, message: "角色必填" }]}
-          >
-            <Select
-              options={[
-                { label: "管理员 admin", value: "admin" },
-                { label: "库员 operator", value: "operator" },
-                { label: "查看 viewer", value: "viewer" },
-              ]}
-            />
-          </Form.Item>
+          {/* 表头字段两列对齐(统一规格:纯表单抽屉两列上限) */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="用户名"
+                name="username"
+                rules={[{ required: true, min: 2, message: "用户名至少 2 位" }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="姓名"
+                name="name"
+                rules={[{ required: true, message: "姓名必填" }]}
+              >
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="密码"
+                name="password"
+                rules={[{ required: true, min: 6, message: "密码至少 6 位" }]}
+              >
+                <Input.Password />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="角色"
+                name="role"
+                rules={[{ required: true, message: "角色必填" }]}
+              >
+                <Select
+                  options={[
+                    { label: "管理员 admin", value: "admin" },
+                    { label: "库员 operator", value: "operator" },
+                    { label: "查看 viewer", value: "viewer" },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
-      </Modal>
+      </Drawer>
 
       <Drawer
         title={`编辑用户 - ${editTarget?.username ?? ""}`}
         open={!!editTarget}
         onClose={() => setEditTarget(null)}
-        width={420}
-        extra={
-          <Space>
-            <Button onClick={() => setEditTarget(null)}>取消</Button>
-            <Button type="primary" onClick={onUpdate}>
-              保存
-            </Button>
-          </Space>
+        width={480}
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:次按钮"取消" + 主按钮"保存"
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button onClick={() => setEditTarget(null)}>取消</Button>
+              <Button type="primary" onClick={onUpdate}>
+                保存
+              </Button>
+            </Space>
+          </div>
         }
       >
         <Form form={editForm} layout="vertical" requiredMark={false}>
-          <Form.Item label="姓名" name="name">
-            <Input />
-          </Form.Item>
-          <Form.Item label="角色" name="role">
-            <Select
-              options={[
-                { label: "管理员 admin", value: "admin" },
-                { label: "库员 operator", value: "operator" },
-                { label: "查看 viewer", value: "viewer" },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item
-            label="状态"
-            name="status"
-            valuePropName="checked"
-            getValueFromEvent={(v) => (v ? 1 : 0)}
-            getValueProps={(v) => ({ checked: v === 1 })}
-          >
-            <Switch checkedChildren="启用" unCheckedChildren="停用" />
-          </Form.Item>
-          <Form.Item>
-            <Button
-              danger
-              icon={<KeyOutlined />}
-              onClick={() => setResetTarget(editTarget)}
-            >
-              重置密码
-            </Button>
-          </Form.Item>
+          {/* 表头字段两列对齐(统一规格:纯表单抽屉两列上限) */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="姓名" name="name">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="角色" name="role">
+                <Select
+                  options={[
+                    { label: "管理员 admin", value: "admin" },
+                    { label: "库员 operator", value: "operator" },
+                    { label: "查看 viewer", value: "viewer" },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="状态"
+                name="status"
+                valuePropName="checked"
+                getValueFromEvent={(v) => (v ? 1 : 0)}
+                getValueProps={(v) => ({ checked: v === 1 })}
+              >
+                <Switch checkedChildren="启用" unCheckedChildren="停用" />
+              </Form.Item>
+            </Col>
+          </Row>
+          {/* 操作类字段独占一行 */}
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item>
+                <Button
+                  danger
+                  icon={<KeyOutlined />}
+                  onClick={() => setResetTarget(editTarget)}
+                >
+                  重置密码
+                </Button>
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Drawer>
 

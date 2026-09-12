@@ -4,7 +4,7 @@
 // + 差异生成调整单(盘盈/盘亏各一张)+ 状态机操作
 
 import { useEffect, useRef, useState } from "react";
-import { Button, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Table } from "antd";
+import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
@@ -37,6 +37,8 @@ export function StocktakePage() {
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
+  // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
+  const { token } = theme.useToken();
 
   const whName = (id: number) => warehouses.find((w) => w.id === id)?.warehouseName ?? `#${id}`;
 
@@ -309,48 +311,79 @@ export function StocktakePage() {
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         width={480}
-        extra={
-          <Button type="primary" loading={saving} onClick={onCreate}>
-            创建
-          </Button>
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:次按钮"取消" + 主按钮"创建"(文案保持现状,loading 态保留)
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button onClick={() => setCreateOpen(false)}>取消</Button>
+              <Button type="primary" loading={saving} onClick={onCreate}>
+                创建
+              </Button>
+            </Space>
+          </div>
         }
       >
-        <Form form={createForm} layout="vertical" initialValues={{ docDate: dayjs(), scopeType: "all" }}>
-          <Form.Item label="盘点日期" name="docDate" rules={[{ required: true }]}>
-            <DatePicker style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item label="仓库" name="warehouseId" rules={[{ required: true, message: "请选择仓库" }]}>
-            <Select
-              placeholder="选择仓库"
-              options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
-            />
-          </Form.Item>
-          <Form.Item label="盘点范围" name="scopeType">
-            <Select
-              options={[
-                { label: "整仓盘点", value: "all" },
-                { label: "指定物品", value: "item" },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item noStyle shouldUpdate={(a, b) => a.scopeType !== b.scopeType}>
-            {({ getFieldValue }) =>
-              getFieldValue("scopeType") === "item" ? (
-                <Form.Item label="物品" name="itemIds" rules={[{ required: true, message: "请选择物品" }]}>
-                  <Select
-                    mode="multiple"
-                    showSearch
-                    optionFilterProp="label"
-                    placeholder="选择参与盘点的物品"
-                    options={items.map((it) => ({ label: `${it.itemCode} ${it.itemName}`, value: it.id }))}
-                  />
-                </Form.Item>
-              ) : null
-            }
-          </Form.Item>
-          <Form.Item label="备注" name="remark">
-            <Input.TextArea rows={2} />
-          </Form.Item>
+        <Form form={createForm} layout="vertical" requiredMark={false} initialValues={{ docDate: dayjs(), scopeType: "all" }}>
+          {/* 表头字段两列对齐(统一规格:两列上限) */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="盘点日期" name="docDate" rules={[{ required: true }]}>
+                <DatePicker style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="仓库" name="warehouseId" rules={[{ required: true, message: "请选择仓库" }]}>
+                <Select
+                  placeholder="选择仓库"
+                  options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="盘点范围" name="scopeType">
+                <Select
+                  options={[
+                    { label: "整仓盘点", value: "all" },
+                    { label: "指定物品", value: "item" },
+                  ]}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          {/* 条件字段(指定物品时出现,多选)独占一行 */}
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item noStyle shouldUpdate={(a, b) => a.scopeType !== b.scopeType}>
+                {({ getFieldValue }) =>
+                  getFieldValue("scopeType") === "item" ? (
+                    <Form.Item label="物品" name="itemIds" rules={[{ required: true, message: "请选择物品" }]}>
+                      <Select
+                        mode="multiple"
+                        showSearch
+                        optionFilterProp="label"
+                        placeholder="选择参与盘点的物品"
+                        options={items.map((it) => ({ label: `${it.itemCode} ${it.itemName}`, value: it.id }))}
+                      />
+                    </Form.Item>
+                  ) : null
+                }
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label="备注" name="remark">
+                <Input.TextArea rows={2} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Drawer>
 
@@ -358,11 +391,22 @@ export function StocktakePage() {
         title={`录入实盘 - ${actualDoc?.docNo ?? ""}(差异 = 实盘 - 账面)`}
         open={!!actualDoc}
         onClose={() => setActualDoc(null)}
-        width={720}
-        extra={
-          <Button type="primary" loading={saving} onClick={saveActual}>
-            保存实盘
-          </Button>
+        width={860}
+        // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
+        styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
+        // 统一底部操作条:次按钮"取消" + 主按钮"保存实盘"(文案保持现状,loading 态保留)
+        footer={
+          <div
+            className="drawer-footer"
+            style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <Space>
+              <Button onClick={() => setActualDoc(null)}>取消</Button>
+              <Button type="primary" loading={saving} onClick={saveActual}>
+                保存实盘
+              </Button>
+            </Space>
+          </div>
         }
       >
         <div style={{ color: "#999", marginBottom: 8 }}>
