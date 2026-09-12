@@ -11,7 +11,7 @@ import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import { inboundApi, warehouseApi } from "../../api";
 import type { InboundDoc, Warehouse } from "../../types";
-import { getUser } from "../../auth/useAuth";
+import { usePermission } from "../../auth/usePermission";
 import { fmtDateTime } from "../../utils/format";
 import { StatusTag } from "../../components/StatusTag";
 
@@ -26,7 +26,7 @@ export function InboundListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<InboundDoc | null>(null);
   const actionRef = useRef<ActionType>();
-  const user = getUser();
+  const { hasPerm } = usePermission();
   const location = useLocation();
 
   // 仓库下拉数据源(异步加载,仅用于筛选项)
@@ -194,7 +194,7 @@ export function InboundListPage() {
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
-            user?.role !== "viewer" && (
+            hasPerm("inbound:create") && (
               <Link key="new" to="/inbound/new">
                 <Button type="primary">新建</Button>
               </Link>

@@ -20,7 +20,7 @@ import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { warehouseApi } from "../../api";
 import type { Location, Warehouse } from "../../types";
-import { getUser } from "../../auth/useAuth";
+import { usePermission } from "../../auth/usePermission";
 
 export function LocationListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -28,7 +28,10 @@ export function LocationListPage() {
   const [editing, setEditing] = useState<Location | null>(null);
   const [form] = Form.useForm();
   const actionRef = useRef<ActionType>();
-  const user = getUser();
+  const { hasPerm } = usePermission();
+  // 按钮级权限码(前端仅控制显隐,403 兜底由后端拦截)
+  const canEdit = hasPerm("location:edit");
+  const canCreate = hasPerm("location:create");
   const { message } = App.useApp();
   // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
   const { token } = theme.useToken();
@@ -82,7 +85,7 @@ export function LocationListPage() {
       ),
     },
     { title: "名称", dataIndex: "locationName", ellipsis: true, search: false },
-    ...(user?.role === "admin"
+    ...(canEdit
       ? [
           {
             title: "操作",
@@ -162,7 +165,7 @@ export function LocationListPage() {
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
-            user?.role === "admin" && (
+            canCreate && (
               <Button key="new" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                 新建
               </Button>

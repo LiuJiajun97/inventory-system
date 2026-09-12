@@ -12,7 +12,7 @@ import { fmtDate } from "../../utils/format";
 import { itemApi, transferApi, warehouseApi } from "../../api";
 import type { Item, Location, Warehouse } from "../../types";
 import type { TransferDoc } from "../../types/phase1";
-import { getUser } from "../../auth/useAuth";
+import { usePermission } from "../../auth/usePermission";
 import { DocStatusTag } from "../../components/DocStatusTag";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
@@ -32,8 +32,13 @@ const STATUS_ENUM = {
 };
 
 export function TransferPage() {
-  const user = getUser();
-  const isWriter = user?.role === "admin" || user?.role === "operator";
+  const { hasPerm } = usePermission();
+  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePermission 拦截)
+  const canEdit = hasPerm("transfer:edit");
+  const canSubmit = hasPerm("transfer:submit");
+  const canApprove = hasPerm("transfer:approve");
+  const canReject = hasPerm("transfer:reject");
+  const canVoid = hasPerm("transfer:void");
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [detail, setDetail] = useState<TransferDoc | null>(null);
@@ -298,32 +303,46 @@ export function TransferPage() {
       render: (_v, row) => {
         const s = row.status;
         const btns: React.ReactNode[] = [];
-        if (isWriter && (s === "draft" || s === "rejected")) {
+        if (canEdit && (s === "draft" || s === "rejected")) {
           btns.push(
             <a key="edit" className="action-edit" onClick={() => openEdit(row)}>
               编辑
             </a>,
+          );
+        }
+        if (canSubmit && (s === "draft" || s === "rejected")) {
+          btns.push(
             <a key="submit" className="action-submit" onClick={() => doAction(() => transferApi.submit(row.id), "已提交审批")}>
               提交
             </a>,
+          );
+        }
+        if (canVoid && (s === "draft" || s === "rejected")) {
+          btns.push(
             <Popconfirm key="void" title="确认作废该调拨单?" onConfirm={() => doAction(() => transferApi.voidDoc(row.id), "已作废")}>
               <a className="action-void">作废</a>
             </Popconfirm>,
           );
         }
-        if (isWriter && s === "pending") {
-          btns.push(
-            <Popconfirm
-              key="approve"
-              title="审批即执行调拨:源仓扣减并入库目的仓,源仓库存不足将整单回滚。确认?"
-              onConfirm={() => doAction(() => transferApi.approve(row.id), "调拨已执行完成")}
-            >
-              <a className="action-approve">审批执行</a>
-            </Popconfirm>,
-            <a key="reject" className="action-reject" onClick={() => setRejectTarget(row)}>
-              驳回
-            </a>,
-          );
+        if (s === "pending") {
+          if (canApprove) {
+            btns.push(
+              <Popconfirm
+                key="approve"
+                title="审批即执行调拨:源仓扣减并入库目的仓,源仓库存不足将整单回滚。确认?"
+                onConfirm={() => doAction(() => transferApi.approve(row.id), "调拨已执行完成")}
+              >
+                <a className="action-approve">审批执行</a>
+              </Popconfirm>,
+            );
+          }
+          if (canReject) {
+            btns.push(
+              <a key="reject" className="action-reject" onClick={() => setRejectTarget(row)}>
+                驳回
+              </a>,
+            );
+          }
         }
         return <Space size={12}>{btns.length ? btns : <span style={{ color: "#999" }}>-</span>}</Space>;
       },
@@ -349,7 +368,8 @@ export function TransferPage() {
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
-            isWriter && (
+            // 调拨无独立 :create 码,按约定复用 :edit(能编辑即可新建)
+            canEdit && (
               <Button key="new" type="primary" onClick={openCreate}>
                 新建
               </Button>

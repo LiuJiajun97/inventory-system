@@ -12,7 +12,7 @@ import { fmtDate } from "../../utils/format";
 import { itemApi, stocktakeApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
 import type { StocktakeDoc, StocktakeLine } from "../../types/phase1";
-import { getUser } from "../../auth/useAuth";
+import { usePermission } from "../../auth/usePermission";
 import { DocStatusTag } from "../../components/DocStatusTag";
 
 // 状态机枚举:筛选下拉用 valueEnum,表格单元格仍用 DocStatusTag 自定义渲染(样式不变)
@@ -25,8 +25,14 @@ const STATUS_ENUM = {
 };
 
 export function StocktakePage() {
-  const user = getUser();
-  const isWriter = user?.role === "admin" || user?.role === "operator";
+  const { hasPerm } = usePermission();
+  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePermission 拦截)
+  // 录入实盘/刷新快照属编辑动作 → :edit;生成调整单为审批后动作 → :approve
+  const canEdit = hasPerm("stocktake:edit");
+  const canSubmit = hasPerm("stocktake:submit");
+  const canApprove = hasPerm("stocktake:approve");
+  const canReject = hasPerm("stocktake:reject");
+  const canVoid = hasPerm("stocktake:void");
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [detail, setDetail] = useState<StocktakeDoc | null>(null);
@@ -181,7 +187,7 @@ export function StocktakePage() {
       render: (_v, row) => {
         const s = row.status;
         const btns: React.ReactNode[] = [];
-        if (isWriter && (s === "draft" || s === "pending")) {
+        if (canEdit && (s === "draft" || s === "pending")) {
           btns.push(<a key="actual" className="action-submit" onClick={() => openActual(row)}>录入实盘</a>);
           btns.push(
             <a key="refresh" className="action-submit" onClick={() => doAction(() => stocktakeApi.refreshBook(row.id), "快照已刷新")}>
@@ -189,7 +195,7 @@ export function StocktakePage() {
             </a>,
           );
         }
-        if (isWriter && s === "approved") {
+        if (canApprove && s === "approved") {
           btns.push(
             <Popconfirm
               key="adjust"
@@ -200,25 +206,37 @@ export function StocktakePage() {
             </Popconfirm>,
           );
         }
-        if (isWriter && (s === "draft" || s === "rejected")) {
-          btns.push(
-            <a key="submit" className="action-submit" onClick={() => doAction(() => stocktakeApi.submit(row.id), "已提交审批")}>
-              提交
-            </a>,
-            <Popconfirm key="void" title="确认作废该盘点单?" onConfirm={() => doAction(() => stocktakeApi.voidDoc(row.id), "已作废")}>
-              <a className="action-void">作废</a>
-            </Popconfirm>,
-          );
+        if (s === "draft" || s === "rejected") {
+          if (canSubmit) {
+            btns.push(
+              <a key="submit" className="action-submit" onClick={() => doAction(() => stocktakeApi.submit(row.id), "已提交审批")}>
+                提交
+              </a>,
+            );
+          }
+          if (canVoid) {
+            btns.push(
+              <Popconfirm key="void" title="确认作废该盘点单?" onConfirm={() => doAction(() => stocktakeApi.voidDoc(row.id), "已作废")}>
+                <a className="action-void">作废</a>
+              </Popconfirm>,
+            );
+          }
         }
-        if (isWriter && s === "pending") {
-          btns.push(
-            <a key="approve" className="action-approve" onClick={() => doAction(() => stocktakeApi.approve(row.id), "已审批通过")}>
-              审批
-            </a>,
-            <a key="reject" className="action-reject" onClick={() => setRejectTarget(row)}>
-              驳回
-            </a>,
-          );
+        if (s === "pending") {
+          if (canApprove) {
+            btns.push(
+              <a key="approve" className="action-approve" onClick={() => doAction(() => stocktakeApi.approve(row.id), "已审批通过")}>
+                审批
+              </a>,
+            );
+          }
+          if (canReject) {
+            btns.push(
+              <a key="reject" className="action-reject" onClick={() => setRejectTarget(row)}>
+                驳回
+              </a>,
+            );
+          }
         }
         return <Space size={10}>{btns.length ? btns : <span style={{ color: "#999" }}>-</span>}</Space>;
       },
@@ -292,7 +310,8 @@ export function StocktakePage() {
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
-            isWriter && (
+            // 盘点无独立 :create 码,按约定复用 :edit(能编辑即可新建)
+            canEdit && (
               <Button key="new" type="primary" onClick={() => setCreateOpen(true)}>
                 新建
               </Button>

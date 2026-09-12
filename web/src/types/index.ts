@@ -16,6 +16,18 @@ export interface LoginResponse {
   user: UserInfo;
 }
 
+// 动态菜单节点(与 GET /auth/menus、/menus/tree 返回结构一致)
+// type: directory=目录(一级分组) / menu=菜单页(有 path) / button=按钮权限点(无 path,以 permissions 挂叶子菜单)
+export interface MenuNode {
+  menuCode: string;
+  menuName: string;
+  path: string | null;
+  sort: number;
+  type: "directory" | "menu" | "button";
+  permissions: string[];
+  children: MenuNode[];
+}
+
 export interface Warehouse {
   id: number;
   warehouseCode: string;

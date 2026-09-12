@@ -1,6 +1,7 @@
 // token + 用户信息管理
 import { useEffect, useState } from "react";
 import type { UserInfo } from "../types";
+import { AUTH_CHANGED_EVENT } from "./MenuContext";
 
 const TOKEN_KEY = "token";
 const USER_KEY = "user";
@@ -22,11 +23,15 @@ export function getUser(): UserInfo | null {
 export function setAuth(token: string, user: UserInfo): void {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  // 通知菜单上下文重新拉取当前用户菜单/权限
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
 }
 
 export function clearAuth(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+  // 退出时清掉菜单/权限缓存
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
 }
 
 export function useAuth() {

@@ -9,7 +9,7 @@ import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import { outboundApi, warehouseApi } from "../../api";
 import type { OutboundDoc, Warehouse } from "../../types";
-import { getUser } from "../../auth/useAuth";
+import { usePermission } from "../../auth/usePermission";
 import { fmtDateTime } from "../../utils/format";
 import { StatusTag } from "../../components/StatusTag";
 
@@ -24,7 +24,7 @@ export function OutboundListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<OutboundDoc | null>(null);
   const actionRef = useRef<ActionType>();
-  const user = getUser();
+  const { hasPerm } = usePermission();
   const location = useLocation();
 
   // 仓库下拉数据源(异步加载,仅用于筛选项)
@@ -193,7 +193,7 @@ export function OutboundListPage() {
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
-            user?.role !== "viewer" && (
+            hasPerm("outbound:create") && (
               <Link key="new" to="/outbound/new">
                 <Button type="primary">新建</Button>
               </Link>

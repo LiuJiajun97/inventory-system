@@ -30,11 +30,14 @@ import { AlertPage } from "./pages/alert/AlertPage";
 import { DictPage } from "./pages/dict/DictPage";
 import { MonitorPage } from "./pages/monitor/MonitorPage";
 import { RequireAuth } from "./auth/RequireAuth";
+import { MenuProvider } from "./auth/MenuContext";
 
 export default function App() {
   return (
     <ConfigProvider locale={zhCN} theme={themeConfig}>
       <AntdApp>
+        {/* 全局菜单/权限上下文:登录拉 /auth/menus,守卫与按钮显隐共用 */}
+        <MenuProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -52,7 +55,7 @@ export default function App() {
               <Route
                 path="inbound/new"
                 element={
-                  <RequireAuth roles={["admin", "operator"]}>
+                  <RequireAuth>
                     <InboundFormPage />
                   </RequireAuth>
                 }
@@ -61,7 +64,7 @@ export default function App() {
               <Route
                 path="outbound/new"
                 element={
-                  <RequireAuth roles={["admin", "operator"]}>
+                  <RequireAuth>
                     <OutboundFormPage />
                   </RequireAuth>
                 }
@@ -74,7 +77,7 @@ export default function App() {
               <Route
                 path="purchase-orders/new/:id?"
                 element={
-                  <RequireAuth roles={["admin", "operator"]}>
+                  <RequireAuth>
                     <PurchaseOrderNewPage />
                   </RequireAuth>
                 }
@@ -83,7 +86,7 @@ export default function App() {
               <Route
                 path="sales-orders/new/:id?"
                 element={
-                  <RequireAuth roles={["admin", "operator"]}>
+                  <RequireAuth>
                     <SalesOrderNewPage />
                   </RequireAuth>
                 }
@@ -96,7 +99,7 @@ export default function App() {
               <Route
                 path="items/new"
                 element={
-                  <RequireAuth roles={["admin"]}>
+                  <RequireAuth>
                     <ItemFormPage />
                   </RequireAuth>
                 }
@@ -104,7 +107,7 @@ export default function App() {
               <Route
                 path="warehouses"
                 element={
-                  <RequireAuth roles={["admin"]}>
+                  <RequireAuth>
                     <WarehouseListPage />
                   </RequireAuth>
                 }
@@ -112,7 +115,7 @@ export default function App() {
               <Route
                 path="locations"
                 element={
-                  <RequireAuth roles={["admin"]}>
+                  <RequireAuth>
                     <LocationListPage />
                   </RequireAuth>
                 }
@@ -120,7 +123,7 @@ export default function App() {
               <Route
                 path="users"
                 element={
-                  <RequireAuth roles={["admin"]}>
+                  <RequireAuth>
                     <UserListPage />
                   </RequireAuth>
                 }
@@ -128,7 +131,7 @@ export default function App() {
               <Route
                 path="dicts"
                 element={
-                  <RequireAuth roles={["admin"]}>
+                  <RequireAuth>
                     <DictPage />
                   </RequireAuth>
                 }
@@ -136,7 +139,7 @@ export default function App() {
               <Route
                 path="monitor"
                 element={
-                  <RequireAuth roles={["admin"]}>
+                  <RequireAuth>
                     <MonitorPage />
                   </RequireAuth>
                 }
@@ -158,6 +161,7 @@ export default function App() {
             />
           </Routes>
         </BrowserRouter>
+        </MenuProvider>
       </AntdApp>
     </ConfigProvider>
   );

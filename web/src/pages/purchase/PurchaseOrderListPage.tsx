@@ -13,7 +13,7 @@ import { fmtDate, fmtDateTime } from "../../utils/format";
 import { purchaseApi, supplierApi } from "../../api";
 import type { PurchaseOrder } from "../../types/phase1";
 import type { Supplier } from "../../types/phase1";
-import { getUser } from "../../auth/useAuth";
+import { usePermission } from "../../auth/usePermission";
 import { DocStatusTag } from "../../components/DocStatusTag";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
@@ -35,8 +35,14 @@ const STATUS_ENUM = {
 };
 
 export function PurchaseOrderListPage() {
-  const user = getUser();
-  const isWriter = user?.role === "admin" || user?.role === "operator";
+  const { hasPerm } = usePermission();
+  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePermission 拦截)
+  const canEdit = hasPerm("purchase-order:edit");
+  const canSubmit = hasPerm("purchase-order:submit");
+  const canApprove = hasPerm("purchase-order:approve");
+  const canReject = hasPerm("purchase-order:reject");
+  const canClose = hasPerm("purchase-order:close");
+  const canVoid = hasPerm("purchase-order:void");
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [detail, setDetail] = useState<PurchaseOrder | null>(null);
@@ -143,42 +149,58 @@ export function PurchaseOrderListPage() {
       render: (_v, row) => {
         const s = row.status;
         const btns: React.ReactNode[] = [];
-        if (isWriter && (s === "draft" || s === "rejected")) {
+        if (canEdit && (s === "draft" || s === "rejected")) {
           btns.push(
             <a key="edit" className="action-edit" onClick={() => navigate(`/purchase-orders/new/${row.id}`)}>
               编辑
             </a>,
+          );
+        }
+        if (canSubmit && (s === "draft" || s === "rejected")) {
+          btns.push(
             <a key="submit" className="action-submit" onClick={() => doAction(() => purchaseApi.submit(row.id), "已提交审批")}>
               提交
             </a>,
           );
         }
-        if (isWriter && s === "draft") {
+        if (canVoid && s === "draft") {
           btns.push(
             <Popconfirm key="void" title="确认作废该草稿?" onConfirm={() => doAction(() => purchaseApi.voidDoc(row.id), "已作废")}>
               <a className="action-void">作废</a>
             </Popconfirm>,
           );
         }
-        if (isWriter && s === "pending") {
-          btns.push(
-            <a key="approve" className="action-approve" onClick={() => doAction(() => purchaseApi.approve(row.id), "已审批通过")}>
-              审批
-            </a>,
-            <a key="reject" className="action-reject" onClick={() => setRejectTarget(row)}>
-              驳回
-            </a>,
-          );
+        if (s === "pending") {
+          if (canApprove) {
+            btns.push(
+              <a key="approve" className="action-approve" onClick={() => doAction(() => purchaseApi.approve(row.id), "已审批通过")}>
+                审批
+              </a>,
+            );
+          }
+          if (canReject) {
+            btns.push(
+              <a key="reject" className="action-reject" onClick={() => setRejectTarget(row)}>
+                驳回
+              </a>,
+            );
+          }
         }
-        if (isWriter && s === "approved") {
-          btns.push(
-            <Popconfirm key="close" title="关闭后未到货部分不再接收,确认关闭?" onConfirm={() => doAction(() => purchaseApi.close(row.id), "已关闭")}>
-              <a className="action-close">关闭</a>
-            </Popconfirm>,
-            <Popconfirm key="void" title="确认作废该订单?" onConfirm={() => doAction(() => purchaseApi.voidDoc(row.id), "已作废")}>
-              <a className="action-void">作废</a>
-            </Popconfirm>,
-          );
+        if (s === "approved") {
+          if (canClose) {
+            btns.push(
+              <Popconfirm key="close" title="关闭后未到货部分不再接收,确认关闭?" onConfirm={() => doAction(() => purchaseApi.close(row.id), "已关闭")}>
+                <a className="action-close">关闭</a>
+              </Popconfirm>,
+            );
+          }
+          if (canVoid) {
+            btns.push(
+              <Popconfirm key="void" title="确认作废该订单?" onConfirm={() => doAction(() => purchaseApi.voidDoc(row.id), "已作废")}>
+                <a className="action-void">作废</a>
+              </Popconfirm>,
+            );
+          }
         }
         return <Space size={12}>{btns.length ? btns : <span style={{ color: "#999" }}>-</span>}</Space>;
       },
@@ -202,7 +224,8 @@ export function PurchaseOrderListPage() {
           // 新建按钮放筛选行右侧(替代默认工具栏行);4 字段单行放得下,不显示展开/收起
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
-            isWriter && (
+            // 采购订单无独立 :create 码,按约定复用 :edit(能编辑即可新建)
+            canEdit && (
               <Link key="new" to="/purchase-orders/new">
                 <Button type="primary">新建</Button>
               </Link>

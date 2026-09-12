@@ -14,6 +14,7 @@ import type {
   MonitorOverview,
   UserInfo,
   Role,
+  MenuNode,
 } from "../types";
 import type {
   Supplier,
@@ -35,6 +36,72 @@ export const authApi = {
   changePassword: (oldPassword: string, newPassword: string) =>
     http.post("/auth/password", { oldPassword, newPassword }),
   me: () => http.get<unknown, UserInfo>("/auth/me"),
+  // 当前用户(多角色并集)菜单树:目录/菜单节点 + 各节点 permissions 权限码
+  menus: () => http.get<unknown, MenuNode[]>("/auth/menus"),
+  // 权限码探针:后端 @RequirePermission 拦截,无权限返回 403
+  permCheck: (code: string) =>
+    http.get<unknown, { ok: boolean }>("/auth/perm-check", { params: { code } }),
+};
+
+// RBAC 角色管理(仅 admin,批 2 角色权限页用;批 1b 顺手建好)
+export interface RoleRow {
+  id: number;
+  roleCode: string;
+  roleName: string;
+  remark?: string | null;
+  isBuiltin: boolean;
+  status: number;
+  createdAt?: string;
+}
+
+export const roleApi = {
+  // 角色列表(不分页,管理页用)
+  list: () => http.get<unknown, RoleRow[]>("/roles"),
+  get: (id: number) => http.get<unknown, RoleRow>(`/roles/${id}`),
+  create: (data: { roleCode: string; roleName: string; remark?: string }) =>
+    http.post<unknown, RoleRow>("/roles", data),
+  update: (
+    id: number,
+    data: { roleCode?: string; roleName?: string; remark?: string; status?: number },
+  ) => http.put<unknown, RoleRow>(`/roles/${id}`, data),
+  delete: (id: number) => http.delete(`/roles/${id}`),
+  // 角色-菜单全量分配(空数组 = 清空)
+  assignMenus: (id: number, menuIds: number[]) =>
+    http.put(`/roles/${id}/menus`, { menuIds }),
+  // 角色已绑定菜单 ID(分配页回显)
+  menuIds: (id: number) => http.get<unknown, number[]>(`/roles/${id}/menus`),
+};
+
+// RBAC 菜单管理(仅 admin,批 2 菜单管理页用;批 1b 顺手建好)
+// 注意:/menus/tree 节点结构含 id/parentId/status,无 permissions(与 /auth/menus 不同)
+export interface ManageMenuNode {
+  id: number;
+  parentId: number;
+  menuCode: string;
+  menuName: string;
+  type: "directory" | "menu" | "button";
+  path: string | null;
+  sort: number;
+  status: number;
+  children: ManageMenuNode[];
+}
+
+export const menuApi = {
+  // 全量菜单树(管理页用,含按钮型节点)
+  tree: () => http.get<unknown, ManageMenuNode[]>("/menus/tree"),
+  create: (data: {
+    parentId: number;
+    menuCode: string;
+    menuName: string;
+    type: "directory" | "menu" | "button";
+    path?: string;
+    sort?: number;
+  }) => http.post<unknown, ManageMenuNode>("/menus", data),
+  update: (
+    id: number,
+    data: { parentId?: number; menuName?: string; path?: string; sort?: number; status?: number },
+  ) => http.put<unknown, ManageMenuNode>(`/menus/${id}`, data),
+  delete: (id: number) => http.delete(`/menus/${id}`),
 };
 
 export const dashboardApi = {

@@ -8,7 +8,7 @@ import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { dictApi, supplierApi } from "../../api";
 import type { Supplier } from "../../types/phase1";
-import { getUser } from "../../auth/useAuth";
+import { usePermission } from "../../auth/usePermission";
 import { StatusTag } from "../../components/StatusTag";
 
 interface FormValues {
@@ -25,8 +25,10 @@ interface FormValues {
 }
 
 export function SupplierPage() {
-  const user = getUser();
-  const isAdmin = user?.role === "admin";
+  const { hasPerm } = usePermission();
+  // 按钮级权限码(前端仅控制显隐,403 兜底由后端拦截)
+  const canEdit = hasPerm("supplier:edit");
+  const canCreate = hasPerm("supplier:create");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [settleOptions, setSettleOptions] = useState<Array<{ label: string; value: string }>>([]);
@@ -130,7 +132,7 @@ export function SupplierPage() {
       render: (_v, r) =>
         r.status === 1 ? <StatusTag status="enabled" /> : <StatusTag status="disabled" />,
     },
-    ...(isAdmin
+    ...(canEdit
       ? ([
           {
             title: "操作",
@@ -170,7 +172,7 @@ export function SupplierPage() {
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
-            isAdmin && (
+            canCreate && (
               <Button key="new" type="primary" onClick={openCreate}>
                 新建
               </Button>
