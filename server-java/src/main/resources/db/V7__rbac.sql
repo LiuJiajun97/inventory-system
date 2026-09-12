@@ -197,11 +197,13 @@ WHERE r.role_code = 'operator'
   AND m.parent_id <> (SELECT id FROM sys_menu WHERE menu_code = 'system-dir')
 ON CONFLICT (role_id, menu_id) DO NOTHING;
 
--- viewer:全部目录+菜单,不含任何按钮
+-- viewer:全部目录+菜单,不含任何按钮,不含"系统"组(及其子菜单)
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.id, m.id FROM sys_role r CROSS JOIN sys_menu m
 WHERE r.role_code = 'viewer'
   AND m.type <> 'button'
+  AND m.menu_code <> 'system-dir'
+  AND m.parent_id <> (SELECT id FROM sys_menu WHERE menu_code = 'system-dir')
 ON CONFLICT (role_id, menu_id) DO NOTHING;
 
 -- ---------- 外键引用(幂等:不存在才创建;测试 TRUNCATE ... CASCADE 可级联清绑定行) ----------
