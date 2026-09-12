@@ -14,11 +14,13 @@ import com.company.inventory.model.entity.customer.CustomerDO;
 import com.company.inventory.model.entity.outbound.OutboundDocDO;
 import com.company.inventory.model.entity.outbound.OutboundDocItemDO;
 import com.company.inventory.model.entity.sales.SalesOrderDO;
+import com.company.inventory.model.entity.stock.SerialDO;
 import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.CustomerMapper;
 import com.company.inventory.mapper.OutboundDocItemMapper;
 import com.company.inventory.mapper.OutboundDocMapper;
 import com.company.inventory.mapper.SalesOrderMapper;
+import com.company.inventory.mapper.SerialMapper;
 import com.company.inventory.mapper.WarehouseMapper;
 import com.company.inventory.model.query.OutboundDocQuery;
 import com.company.inventory.service.DocNoService;
@@ -34,6 +36,7 @@ import com.company.inventory.model.vo.stock.StockOpResult;
 import com.company.inventory.model.vo.warehouse.WarehouseVO;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -51,6 +54,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 出库单服务实现:整单一个事务,单据头 + 行 + 库存扣减 + 序列号同事务。
@@ -82,6 +86,8 @@ public class OutboundServiceImpl implements OutboundService {
     private final SalesOrderMapper salesOrderMapper;
     /** 客户 Mapper(列表展示关联客户)。 */
     private final CustomerMapper customerMapper;
+    /** 序列号 Mapper(V9 追溯链补写)。 */
+    private final SerialMapper serialMapper;
     /** JSON 序列化(serialNos 列存 JSON 数组字符串)。 */
     private final ObjectMapper objectMapper;
 
@@ -96,6 +102,7 @@ public class OutboundServiceImpl implements OutboundService {
      * @param salesOrderService     销售订单服务
      * @param salesOrderMapper      销售订单 Mapper
      * @param customerMapper        客户 Mapper
+     * @param serialMapper          序列号 Mapper
      * @param objectMapper          JSON 序列化器
      */
     public OutboundServiceImpl(OutboundDocMapper outboundDocMapper,
@@ -106,6 +113,7 @@ public class OutboundServiceImpl implements OutboundService {
                                SalesOrderService salesOrderService,
                                SalesOrderMapper salesOrderMapper,
                                CustomerMapper customerMapper,
+                               SerialMapper serialMapper,
                                ObjectMapper objectMapper) {
         this.outboundDocMapper = outboundDocMapper;
         this.outboundDocItemMapper = outboundDocItemMapper;
@@ -115,6 +123,7 @@ public class OutboundServiceImpl implements OutboundService {
         this.salesOrderService = salesOrderService;
         this.salesOrderMapper = salesOrderMapper;
         this.customerMapper = customerMapper;
+        this.serialMapper = serialMapper;
         this.objectMapper = objectMapper;
     }
 
@@ -128,6 +137,9 @@ public class OutboundServiceImpl implements OutboundService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public OutboundDocCreatedVO create(OutboundCreateDTO dto, String username) {
+        // V9 追溯链:方法开头记录基准时间(留 5 秒容差,防止 JVM 与数据库时钟漂移导致漏补写),
+        // 过账后补写本单序列号的 ref_out_doc_no
+        LocalDateTime ts = LocalDateTime.now().minusSeconds(5);
         String docNo = docNoService.generateOutboundDocNo();
 
         boolean salesShip = ErrorCode.REF_TYPE_SALES.equals(dto.refType())
@@ -159,6 +171,9 @@ public class OutboundServiceImpl implements OutboundService {
         doc.setRefType(dto.refType());
         doc.setRefDocId(dto.refDocId());
         doc.setDocDate(dto.docDate());
+        doc.setCarrier(dto.carrier());
+        doc.setVehicleNo(dto.vehicleNo());
+        doc.setFreight(dto.freight());
         outboundDocMapper.insert(doc);
 
         StockOpRequest request = new StockOpRequest();
@@ -194,6 +209,7 @@ public class OutboundServiceImpl implements OutboundService {
         if (salesShip) {
             salesOrderService.applyShipment(dto.refDocId(), shipLines);
         }
+        backfillSerialRef(dto.items(), docNo, dto.warehouseId(), ts);
         LOGGER.info("新建出库单: docNo={}, warehouseId={}, refType={}, 行数={}, operator={}",
                 docNo, dto.warehouseId(), dto.refType(), dto.items().size(), username);
         return toCreatedVO(doc);
@@ -308,7 +324,9 @@ public class OutboundServiceImpl implements OutboundService {
                     whMap.get(doc.getWarehouseId()), itemVos,
                     doc.getRefType(), doc.getRefDocId(),
                     refOrder == null ? null : refOrder.getDocNo(), customerName,
-                    doc.getDocDate()));
+                    doc.getDocDate(), doc.getCarrier(), doc.getVehicleNo(),
+                    doc.getFreight() == null ? null
+                            : QtyUtils.toContractString(doc.getFreight())));
         }
         return vos;
     }
@@ -353,6 +371,32 @@ public class OutboundServiceImpl implements OutboundService {
     private OutboundDocCreatedVO toCreatedVO(OutboundDocDO doc) {
         return new OutboundDocCreatedVO(doc.getId(), doc.getDocNo(), doc.getWarehouseId(),
                 doc.getStatus(), doc.getRemark(), doc.getCreator(), doc.getCreatedAt());
+    }
+
+    /**
+     * V9 追溯链补写:出库过账后把本单行序列号挂上本单 doc_no(同一事务,与库存数量无关)。
+     *
+     * @param items       出库行列表
+     * @param docNo       本单单据号
+     * @param warehouseId 本仓 ID
+     * @param ts          过账前基准时间(只补写本单出库产生的序列号)
+     */
+    private void backfillSerialRef(List<OutboundLineDTO> items, String docNo, Long warehouseId,
+            LocalDateTime ts) {
+        Set<String> serialNos = new HashSet<>();
+        for (OutboundLineDTO line : items) {
+            if (line.serialNos() != null) {
+                serialNos.addAll(line.serialNos());
+            }
+        }
+        if (serialNos.isEmpty()) {
+            return;
+        }
+        serialMapper.update(null, new LambdaUpdateWrapper<SerialDO>()
+                .eq(SerialDO::getWarehouseId, warehouseId)
+                .in(SerialDO::getSerialNo, serialNos)
+                .ge(SerialDO::getOutboundTime, ts)
+                .set(SerialDO::getRefOutDocNo, docNo));
     }
 
     /**

@@ -288,6 +288,12 @@ export function SalesOrderListPage() {
               <Descriptions.Item label="价税合计">
                 {Number(detail.totalTaxInclusive).toFixed(2)}
               </Descriptions.Item>
+              {/* V9 通用字段 */}
+              <Descriptions.Item label="合同号">{detail.contractNo ?? "-"}</Descriptions.Item>
+              <Descriptions.Item label="运费">
+                {detail.freight == null ? "-" : Number(detail.freight).toFixed(2)}
+              </Descriptions.Item>
+              <Descriptions.Item label="交货地址">{detail.shippingAddress ?? "-"}</Descriptions.Item>
               <Descriptions.Item label="创建人">{detail.creator ?? "-"}</Descriptions.Item>
               <Descriptions.Item label="审批人">{detail.approver ?? "-"}</Descriptions.Item>
               <Descriptions.Item label="驳回原因">{detail.rejectReason ?? "-"}</Descriptions.Item>

@@ -51,5 +51,11 @@ public class OutboundDocDO {
     private Long refDocId;
     /** 单据日期(可空)。 */
     private LocalDate docDate;
+    /** 承运商(可空)。 */
+    private String carrier;
+    /** 车牌(可空)。 */
+    private String vehicleNo;
+    /** 运费(可空)。 */
+    private java.math.BigDecimal freight;
 
 }

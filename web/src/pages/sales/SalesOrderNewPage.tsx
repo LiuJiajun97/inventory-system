@@ -17,7 +17,9 @@ import {
   ProCard,
   ProForm,
   ProFormDatePicker,
+  ProFormDigit,
   ProFormSelect,
+  ProFormText,
   ProFormTextArea,
 } from "@ant-design/pro-components";
 import { ArrowLeftOutlined } from "@ant-design/icons";
@@ -85,6 +87,9 @@ export function SalesOrderNewPage() {
           customerId: doc.customerId,
           salespersonId: doc.salespersonId,
           warehouseId: doc.warehouseId,
+          contractNo: doc.contractNo ?? undefined,
+          freight: doc.freight == null ? undefined : Number(doc.freight),
+          shippingAddress: doc.shippingAddress ?? undefined,
           remark: doc.remark ?? undefined,
         });
         const rows: LineRow[] = (doc.items ?? []).map((l, i) => ({
@@ -131,6 +136,9 @@ export function SalesOrderNewPage() {
         customerId: v.customerId,
         salespersonId: v.salespersonId,
         warehouseId: v.warehouseId,
+        contractNo: v.contractNo,
+        freight: v.freight,
+        shippingAddress: v.shippingAddress,
         remark: v.remark,
         items: validLines.map((l) => ({
           itemId: l.itemId!,
@@ -308,6 +316,24 @@ export function SalesOrderNewPage() {
               placeholder="选择发货仓库"
               options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
               rules={[{ required: true, message: "请选择发货仓库" }]}
+            />
+            {/* V9 通用字段(可空):合同号/运费/交货地址 */}
+            <ProFormText
+              name="contractNo"
+              label="合同号"
+              colProps={{ span: 6 }}
+            />
+            <ProFormDigit
+              name="freight"
+              label="运费"
+              colProps={{ span: 6 }}
+              min={0}
+              fieldProps={{ step: 0.01 }}
+            />
+            <ProFormText
+              name="shippingAddress"
+              label="交货地址"
+              colProps={{ span: 12 }}
             />
             <ProFormTextArea
               name="remark"

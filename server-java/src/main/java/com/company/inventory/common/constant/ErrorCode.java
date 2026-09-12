@@ -44,6 +44,9 @@ public final class ErrorCode {
     /** 物品编码已存在。 */
     public static final String ITEM_CODE_DUP = "ITEM_CODE_DUP";
 
+    /** 物品条码已存在。 */
+    public static final String ITEM_BARCODE_DUP = "ITEM_BARCODE_DUP";
+
     /** 仓库编码已存在。 */
     public static final String WAREHOUSE_CODE_DUP = "WAREHOUSE_CODE_DUP";
 

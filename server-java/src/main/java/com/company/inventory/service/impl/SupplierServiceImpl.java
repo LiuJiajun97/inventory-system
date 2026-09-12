@@ -113,6 +113,10 @@ public class SupplierServiceImpl implements SupplierService {
         supplier.setAddress(dto.address());
         supplier.setSettleMethod(dto.settleMethod());
         supplier.setPayTermDays(dto.payTermDays());
+        supplier.setBankName(dto.bankName());
+        supplier.setBankAccount(dto.bankAccount());
+        supplier.setCreditLimit(dto.creditLimit());
+        supplier.setDeliveryAddress(dto.deliveryAddress());
         supplier.setRemark(dto.remark());
         supplier.setStatus(1);
         supplier.setCreator(username);
@@ -162,6 +166,18 @@ public class SupplierServiceImpl implements SupplierService {
         if (dto.payTermDays() != null) {
             supplier.setPayTermDays(dto.payTermDays());
         }
+        if (dto.bankName() != null) {
+            supplier.setBankName(dto.bankName());
+        }
+        if (dto.bankAccount() != null) {
+            supplier.setBankAccount(dto.bankAccount());
+        }
+        if (dto.creditLimit() != null) {
+            supplier.setCreditLimit(dto.creditLimit());
+        }
+        if (dto.deliveryAddress() != null) {
+            supplier.setDeliveryAddress(dto.deliveryAddress());
+        }
         if (dto.status() != null) {
             supplier.setStatus(dto.status());
         }
@@ -184,7 +200,8 @@ public class SupplierServiceImpl implements SupplierService {
     private SupplierVO toVO(SupplierDO s) {
         return new SupplierVO(s.getId(), s.getSupplierCode(), s.getSupplierName(), s.getTaxNo(),
                 s.getDefaultTaxRate(), s.getContact(), s.getPhone(), s.getAddress(),
-                s.getSettleMethod(), s.getPayTermDays(), s.getStatus(), s.getRemark(),
+                s.getSettleMethod(), s.getPayTermDays(), s.getBankName(), s.getBankAccount(),
+                s.getCreditLimit(), s.getDeliveryAddress(), s.getStatus(), s.getRemark(),
                 s.getCreator(), s.getCreatedAt(), s.getUpdater(), s.getUpdatedAt());
     }
 }

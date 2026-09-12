@@ -7,13 +7,15 @@
   - Spring @Service 构造器注入的参数数量由依赖关系决定,拆分会破坏构造器注入的可读性,
     对参数超 7 的构造器精确豁免 ParameterNumberCheck(仅限构造器签名行区间);
   - StockCoreService.insertTransaction 为 8/9 参私有方法(与 StockTransaction 字段一一对应,
-    属核心业务落库路径,不改签名),精确豁免 ParameterNumberCheck(仅限该方法所在行区间)。
+    属核心业务落库路径,不改签名),精确豁免 ParameterNumberCheck(仅限该方法所在行区间);
+  - V9 加字段后新增的"兼容旧签名构造器"(保留旧参数量,既有测试不动)参数超 7,
+    对 6 个 DTO 的兼容构造器精确豁免 ParameterNumberCheck(仅限构造器签名行区间)。
 -->
 <suppressions>
-    <!-- 入库单服务构造器:9 个依赖注入(Mapper/StockCoreService/DocNoService 等),属 Spring 构造器注入 -->
-    <suppress files="[\\/]InboundServiceImpl\.java" checks="ParameterNumberCheck" lines="95-105"/>
-    <!-- 出库单服务构造器:9 个依赖注入,属 Spring 构造器注入 -->
-    <suppress files="[\\/]OutboundServiceImpl\.java" checks="ParameterNumberCheck" lines="94-104"/>
+    <!-- 入库单服务构造器:10 个依赖注入(Mapper/StockCoreService/DocNoService 等),属 Spring 构造器注入 -->
+    <suppress files="[\\/]InboundServiceImpl\.java" checks="ParameterNumberCheck" lines="107-116"/>
+    <!-- 出库单服务构造器:10 个依赖注入,属 Spring 构造器注入 -->
+    <suppress files="[\\/]OutboundServiceImpl\.java" checks="ParameterNumberCheck" lines="108-117"/>
     <!-- 销售订单服务构造器:11 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
     <suppress files="[\\/]SalesOrderServiceImpl\.java" checks="ParameterNumberCheck" lines="110-116"/>
     <!-- 库存调整单服务构造器:9 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
@@ -27,4 +29,11 @@
     <!-- StockCoreService.insertTransaction 为 8/9 参私有方法(与 StockTransaction 字段一一对应,
          属核心业务落库路径,不改签名),精确豁免 ParameterNumberCheck(仅限两重载签名行区间) -->
     <suppress files="[\\/]StockCoreService\.java" checks="ParameterNumberCheck" lines="844-890"/>
+    <!-- V9 兼容旧签名构造器(既有测试/调用不动,参数数等于旧签名),精确豁免(仅限签名行区间) -->
+    <suppress files="[\\/]SupplierCreateDTO\.java" checks="ParameterNumberCheck" lines="43-45"/>
+    <suppress files="[\\/]SupplierUpdateDTO\.java" checks="ParameterNumberCheck" lines="41-43"/>
+    <suppress files="[\\/]CustomerCreateDTO\.java" checks="ParameterNumberCheck" lines="43-45"/>
+    <suppress files="[\\/]CustomerUpdateDTO\.java" checks="ParameterNumberCheck" lines="41-43"/>
+    <suppress files="[\\/]ItemCreateDTO\.java" checks="ParameterNumberCheck" lines="36-38"/>
+    <suppress files="[\\/]ItemUpdateDTO\.java" checks="ParameterNumberCheck" lines="37-38"/>
 </suppressions>

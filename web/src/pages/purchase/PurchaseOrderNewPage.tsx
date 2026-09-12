@@ -12,6 +12,7 @@ import {
   ProFormDatePicker,
   ProFormDigit,
   ProFormSelect,
+  ProFormText,
   ProFormTextArea,
 } from "@ant-design/pro-components";
 import type { ProColumns } from "@ant-design/pro-components";
@@ -64,6 +65,9 @@ export function PurchaseOrderNewPage() {
           supplierId: doc.supplierId,
           buyerId: doc.buyerId,
           allowOverReceiptRate: Number(doc.allowOverReceiptRate),
+          contractNo: doc.contractNo ?? undefined,
+          freight: doc.freight == null ? undefined : Number(doc.freight),
+          shippingAddress: doc.shippingAddress ?? undefined,
           remark: doc.remark ?? undefined,
         });
         const rows: LineRow[] = (doc.items ?? []).map((l, i) => ({
@@ -216,6 +220,9 @@ export function PurchaseOrderNewPage() {
         supplierId: values.supplierId as number,
         buyerId: values.buyerId as number,
         allowOverReceiptRate: (values.allowOverReceiptRate as number) ?? 0,
+        contractNo: values.contractNo as string | undefined,
+        freight: values.freight as number | undefined,
+        shippingAddress: values.shippingAddress as string | undefined,
         remark: values.remark as string | undefined,
         items: validLines.map((l) => ({
           itemId: l.itemId!,
@@ -301,6 +308,24 @@ export function PurchaseOrderNewPage() {
             max={100}
             fieldProps={{ step: 0.1 }}
             tooltip="到货量上限 = 订购量 × (1 + 比例)"
+          />
+          {/* V9 通用字段(可空):合同号/运费/交货地址 */}
+          <ProFormText
+            name="contractNo"
+            label="合同号"
+            colProps={{ span: 6 }}
+          />
+          <ProFormDigit
+            name="freight"
+            label="运费"
+            colProps={{ span: 6 }}
+            min={0}
+            fieldProps={{ step: 0.01 }}
+          />
+          <ProFormText
+            name="shippingAddress"
+            label="交货地址"
+            colProps={{ span: 12 }}
           />
           <ProFormTextArea
             name="remark"

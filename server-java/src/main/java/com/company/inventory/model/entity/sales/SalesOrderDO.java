@@ -41,6 +41,12 @@ public class SalesOrderDO {
     private BigDecimal totalTaxAmount;
     /** 整单价税合计。 */
     private BigDecimal totalTaxInclusive;
+    /** 合同号(可空)。 */
+    private String contractNo;
+    /** 运费(可空)。 */
+    private BigDecimal freight;
+    /** 交货地址(可空)。 */
+    private String shippingAddress;
     /** 单据状态。 */
     private String status;
     /** 制单人。 */

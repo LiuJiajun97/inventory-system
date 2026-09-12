@@ -376,6 +376,7 @@ public class TransferServiceImpl implements TransferService {
             oi.setUnitPrice(line.unitPrice());
             oi.setFromLocationId(line.fromLocationId());
             oi.setToLocationId(line.toLocationId());
+            oi.setVehicleNo(line.vehicleNo());
             oi.setLineRemark(line.lineRemark());
             itemMapper.insert(oi);
         }
@@ -452,7 +453,8 @@ public class TransferServiceImpl implements TransferService {
                         item == null ? null : item.getItemName(),
                         line.getSpecSnapshot(), line.getUnit(),
                         QtyUtils.toContractString(line.getQty()), line.getUnitPrice(),
-                        line.getFromLocationId(), line.getToLocationId(), line.getLineRemark()));
+                        line.getFromLocationId(), line.getToLocationId(), line.getLineRemark(),
+                        line.getVehicleNo()));
             }
             vos.add(new TransferDocVO(doc.getId(), doc.getDocNo(), doc.getDocDate(),
                     doc.getFromWarehouseId(), whMap.get(doc.getFromWarehouseId()),

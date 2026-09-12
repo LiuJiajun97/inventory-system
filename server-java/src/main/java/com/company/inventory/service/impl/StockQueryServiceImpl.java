@@ -377,7 +377,8 @@ public class StockQueryServiceImpl implements StockQueryService {
         return new ItemVO(item.getId(), item.getItemCode(), item.getItemName(),
                 item.getUnit(), item.getSpec(), item.getAttributes(),
                 item.getStatus(), item.getCreatedAt(),
-                item.getCategory(), item.getMinStock(), item.getDefaultTaxRate());
+                item.getCategory(), item.getMinStock(), item.getDefaultTaxRate(),
+                item.getBarcode(), item.getSecondUnit(), item.getConvertFactor(), item.getBrand());
     }
 
     /**

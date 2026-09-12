@@ -121,6 +121,7 @@ public class ItemServiceImpl implements ItemService {
         if (exist != null && exist > 0) {
             throw new BizException("物品编码已存在", ErrorCode.ITEM_CODE_DUP, ErrorCode.HTTP_BAD_REQUEST);
         }
+        assertBarcodeFree(dto.barcode(), null);
         ItemDO item = new ItemDO();
         item.setItemCode(dto.itemCode());
         item.setItemName(dto.itemName());
@@ -130,6 +131,10 @@ public class ItemServiceImpl implements ItemService {
         item.setCategory(dto.category());
         item.setMinStock(dto.minStock());
         item.setDefaultTaxRate(dto.defaultTaxRate() == null ? DEFAULT_TAX_RATE : dto.defaultTaxRate());
+        item.setBarcode(dto.barcode());
+        item.setSecondUnit(dto.secondUnit());
+        item.setConvertFactor(dto.convertFactor());
+        item.setBrand(dto.brand());
         itemMapper.insert(item);
         LOGGER.info("新建物品: code={}, name={}", dto.itemCode(), dto.itemName());
         return toVO(item);
@@ -149,6 +154,7 @@ public class ItemServiceImpl implements ItemService {
         if (item == null) {
             throw BizException.notFound("物品不存在");
         }
+        assertBarcodeFree(dto.barcode(), id);
         if (dto.itemName() != null) {
             item.setItemName(dto.itemName());
         }
@@ -170,12 +176,45 @@ public class ItemServiceImpl implements ItemService {
         if (dto.defaultTaxRate() != null) {
             item.setDefaultTaxRate(dto.defaultTaxRate());
         }
+        if (dto.barcode() != null) {
+            item.setBarcode(dto.barcode());
+        }
+        if (dto.secondUnit() != null) {
+            item.setSecondUnit(dto.secondUnit());
+        }
+        if (dto.convertFactor() != null) {
+            item.setConvertFactor(dto.convertFactor());
+        }
+        if (dto.brand() != null) {
+            item.setBrand(dto.brand());
+        }
         if (dto.status() != null) {
             item.setStatus(dto.status());
         }
         itemMapper.updateById(item);
         LOGGER.info("编辑物品: id={}, code={}", id, item.getItemCode());
         return toVO(item);
+    }
+
+    /**
+     * 校验条码唯一(非空时;barcode 列另有部分唯一索引兜底)。
+     *
+     * @param barcode  待校验条码(可空)
+     * @param excludeId 编辑时排除的物品 ID(可空)
+     */
+    private void assertBarcodeFree(String barcode, Long excludeId) {
+        if (barcode == null || barcode.isBlank()) {
+            return;
+        }
+        LambdaQueryWrapper<ItemDO> wrapper = new LambdaQueryWrapper<ItemDO>()
+                .eq(ItemDO::getBarcode, barcode.trim());
+        if (excludeId != null) {
+            wrapper.ne(ItemDO::getId, excludeId);
+        }
+        Long dup = itemMapper.selectCount(wrapper);
+        if (dup != null && dup > 0) {
+            throw new BizException("物品条码已存在", ErrorCode.ITEM_BARCODE_DUP, ErrorCode.HTTP_BAD_REQUEST);
+        }
     }
 
     /**
@@ -188,6 +227,7 @@ public class ItemServiceImpl implements ItemService {
         return new ItemVO(item.getId(), item.getItemCode(), item.getItemName(),
                 item.getUnit(), item.getSpec(), item.getAttributes(),
                 item.getStatus(), item.getCreatedAt(),
-                item.getCategory(), item.getMinStock(), item.getDefaultTaxRate());
+                item.getCategory(), item.getMinStock(), item.getDefaultTaxRate(),
+                item.getBarcode(), item.getSecondUnit(), item.getConvertFactor(), item.getBrand());
     }
 }

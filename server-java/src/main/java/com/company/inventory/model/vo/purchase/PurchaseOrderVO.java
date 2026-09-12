@@ -20,6 +20,9 @@ import java.util.List;
  * @param totalAmount            整单不含税合计(字符串)
  * @param totalTaxAmount         整单税额合计(字符串)
  * @param totalTaxInclusive      整单价税合计(字符串)
+ * @param contractNo             合同号(V9 增量)
+ * @param freight                运费(V9 增量,字符串)
+ * @param shippingAddress        交货地址(V9 增量)
  * @param status                 单据状态
  * @param creator                制单人
  * @param createdAt              制单时间
@@ -35,6 +38,7 @@ import java.util.List;
 public record PurchaseOrderVO(Long id, String docNo, LocalDate docDate, Long supplierId,
         SupplierVO supplier, Long buyerId, BigDecimal allowOverReceiptRate,
         String totalAmount, String totalTaxAmount, String totalTaxInclusive,
+        String contractNo, String freight, String shippingAddress,
         String status, String creator, LocalDateTime createdAt,
         String updater, LocalDateTime updatedAt, String approver, LocalDateTime approvedAt,
         String rejectReason, String remark, List<PurchaseOrderItemVO> items) {

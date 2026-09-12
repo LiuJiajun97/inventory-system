@@ -42,6 +42,14 @@ public class CustomerDO {
     private String settleMethod;
     /** 客户账期天数。 */
     private Integer payTermDays;
+    /** 开户行(可空)。 */
+    private String bankName;
+    /** 银行账号(可空)。 */
+    private String bankAccount;
+    /** 信用额度(可空)。 */
+    private BigDecimal creditLimit;
+    /** 交货地址(可空)。 */
+    private String deliveryAddress;
     /** 状态,1 启用 0 停用。 */
     private Integer status;
     /** 备注。 */

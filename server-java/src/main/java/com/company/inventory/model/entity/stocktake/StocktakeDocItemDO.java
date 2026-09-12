@@ -43,6 +43,10 @@ public class StocktakeDocItemDO {
     private BigDecimal actualQty;
     /** 差异数量。 */
     private BigDecimal diffQty;
+    /** 盘点人(可空)。 */
+    private String checkerName;
+    /** 盘点日期(可空)。 */
+    private java.time.LocalDate checkDate;
     /** 创建人。 */
     @TableField(fill = FieldFill.INSERT)
     private String creator;

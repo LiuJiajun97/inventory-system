@@ -126,6 +126,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         order.setBuyerId(dto.buyerId());
         order.setAllowOverReceiptRate(
                 dto.allowOverReceiptRate() == null ? ZERO_RATE : dto.allowOverReceiptRate());
+        order.setContractNo(dto.contractNo());
+        order.setFreight(dto.freight());
+        order.setShippingAddress(dto.shippingAddress());
         order.setStatus(DocStatus.DRAFT);
         order.setRemark(dto.remark());
         order.setCreator(username);
@@ -198,6 +201,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
         order.setBuyerId(dto.buyerId());
         order.setAllowOverReceiptRate(
                 dto.allowOverReceiptRate() == null ? ZERO_RATE : dto.allowOverReceiptRate());
+        order.setContractNo(dto.contractNo());
+        order.setFreight(dto.freight());
+        order.setShippingAddress(dto.shippingAddress());
         order.setRemark(dto.remark());
         order.setUpdater(username);
         order.setUpdatedAt(LocalDateTime.now());
@@ -542,6 +548,9 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                     QtyUtils.toContractString(order.getTotalAmount()),
                     QtyUtils.toContractString(order.getTotalTaxAmount()),
                     QtyUtils.toContractString(order.getTotalTaxInclusive()),
+                    order.getContractNo(),
+                    order.getFreight() == null ? null : QtyUtils.toContractString(order.getFreight()),
+                    order.getShippingAddress(),
                     order.getStatus(), order.getCreator(), order.getCreatedAt(),
                     order.getUpdater(), order.getUpdatedAt(), order.getApprover(),
                     order.getApprovedAt(), order.getRejectReason(), order.getRemark(), lineVos));
@@ -558,7 +567,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
     private SupplierVO toSupplierVO(SupplierDO s) {
         return new SupplierVO(s.getId(), s.getSupplierCode(), s.getSupplierName(), s.getTaxNo(),
                 s.getDefaultTaxRate(), s.getContact(), s.getPhone(), s.getAddress(),
-                s.getSettleMethod(), s.getPayTermDays(), s.getStatus(), s.getRemark(),
+                s.getSettleMethod(), s.getPayTermDays(), s.getBankName(), s.getBankAccount(),
+                s.getCreditLimit(), s.getDeliveryAddress(), s.getStatus(), s.getRemark(),
                 s.getCreator(), s.getCreatedAt(), s.getUpdater(), s.getUpdatedAt());
     }
 }

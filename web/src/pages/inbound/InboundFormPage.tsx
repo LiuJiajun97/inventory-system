@@ -154,6 +154,9 @@ export function InboundFormPage() {
       await inboundApi.create({
         warehouseId,
         remark: form.getFieldValue("remark"),
+        carrier: form.getFieldValue("carrier"),
+        vehicleNo: form.getFieldValue("vehicleNo"),
+        freight: form.getFieldValue("freight"),
         items: lines.map((l) => ({
           itemId: l.itemId!,
           qty: l.qty!,
@@ -378,6 +381,24 @@ export function InboundFormPage() {
                     disabled
                     prefix={<InfoCircleOutlined style={{ color: "#9ca3af" }} />}
                   />
+                </Form.Item>
+              </Col>
+            </Row>
+            {/* V9 通用字段(可空):承运商/车牌/运费 */}
+            <Row gutter={16}>
+              <Col span={6}>
+                <Form.Item label="承运商" name="carrier">
+                  <Input placeholder="可选" />
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item label="车牌" name="vehicleNo">
+                  <Input placeholder="可选" />
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item label="运费" name="freight">
+                  <InputNumber min={0} step={0.01} style={{ width: "100%" }} placeholder="可选" />
                 </Form.Item>
               </Col>
             </Row>

@@ -1,5 +1,7 @@
 package com.company.inventory.model.vo.stocktake;
 
+import java.time.LocalDate;
+
 /**
  * 盘点单行出参(bookQty/actualQty/diffQty 均为字符串,未盘为 null)。
  *
@@ -15,9 +17,12 @@ package com.company.inventory.model.vo.stocktake;
  * @param bookQty      账面快照(字符串)
  * @param actualQty    实盘数量(字符串,未盘 null)
  * @param diffQty      差异数量(字符串,未盘 null)
+ * @param checkerName  盘点人(V9 增量)
+ * @param checkDate    盘点日期(V9 增量)
  * @author inventory
  */
 public record StocktakeDocItemVO(Long id, Integer lineNo, Long itemId, String itemCode,
         String itemName, String specSnapshot, String unit, Long batchId, Long locationId,
-        String bookQty, String actualQty, String diffQty) {
+        String bookQty, String actualQty, String diffQty, String checkerName,
+        LocalDate checkDate) {
 }

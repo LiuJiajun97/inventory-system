@@ -225,6 +225,8 @@ public class StocktakeServiceImpl implements StocktakeService {
             target.setActualQty(line.actualQty());
             target.setDiffQty(line.actualQty() == null ? null
                     : line.actualQty().subtract(target.getBookQty()));
+            target.setCheckerName(line.checkerName());
+            target.setCheckDate(line.checkDate());
             itemMapper.updateById(target);
         }
         doc.setUpdater(username);
@@ -543,7 +545,8 @@ public class StocktakeServiceImpl implements StocktakeService {
                         line.getLocationId(),
                         QtyUtils.toContractString(line.getBookQty()),
                         line.getActualQty() == null ? null : QtyUtils.toContractString(line.getActualQty()),
-                        line.getDiffQty() == null ? null : QtyUtils.toContractString(line.getDiffQty())));
+                        line.getDiffQty() == null ? null : QtyUtils.toContractString(line.getDiffQty()),
+                        line.getCheckerName(), line.getCheckDate()));
             }
             vos.add(new StocktakeDocVO(doc.getId(), doc.getDocNo(), doc.getDocDate(),
                     doc.getWarehouseId(), whMap.get(doc.getWarehouseId()), doc.getScopeType(),

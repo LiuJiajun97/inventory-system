@@ -35,5 +35,9 @@ public class SerialDO {
     private LocalDateTime inboundTime;
     /** 出库时间(UTC)。 */
     private LocalDateTime outboundTime;
+    /** 最近入库单号(V9 追溯链,可空)。 */
+    private String refDocNo;
+    /** 最近出库单号(V9 追溯链,可空)。 */
+    private String refOutDocNo;
 
 }

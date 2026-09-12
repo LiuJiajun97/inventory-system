@@ -142,6 +142,9 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         order.setCustomerId(dto.customerId());
         order.setSalespersonId(dto.salespersonId());
         order.setWarehouseId(dto.warehouseId());
+        order.setContractNo(dto.contractNo());
+        order.setFreight(dto.freight());
+        order.setShippingAddress(dto.shippingAddress());
         order.setStatus(DocStatus.DRAFT);
         order.setRemark(dto.remark());
         order.setCreator(username);
@@ -214,6 +217,9 @@ public class SalesOrderServiceImpl implements SalesOrderService {
         order.setCustomerId(dto.customerId());
         order.setSalespersonId(dto.salespersonId());
         order.setWarehouseId(dto.warehouseId());
+        order.setContractNo(dto.contractNo());
+        order.setFreight(dto.freight());
+        order.setShippingAddress(dto.shippingAddress());
         order.setRemark(dto.remark());
         order.setUpdater(username);
         order.setUpdatedAt(LocalDateTime.now());
@@ -653,6 +659,9 @@ public class SalesOrderServiceImpl implements SalesOrderService {
                     QtyUtils.toContractString(order.getTotalAmount()),
                     QtyUtils.toContractString(order.getTotalTaxAmount()),
                     QtyUtils.toContractString(order.getTotalTaxInclusive()),
+                    order.getContractNo(),
+                    order.getFreight() == null ? null : QtyUtils.toContractString(order.getFreight()),
+                    order.getShippingAddress(),
                     order.getStatus(), order.getCreator(), order.getCreatedAt(),
                     order.getUpdater(), order.getUpdatedAt(), order.getApprover(),
                     order.getApprovedAt(), order.getRejectReason(), order.getRemark(), lineVos));
@@ -669,7 +678,8 @@ public class SalesOrderServiceImpl implements SalesOrderService {
     private CustomerVO toCustomerVO(CustomerDO c) {
         return new CustomerVO(c.getId(), c.getCustomerCode(), c.getCustomerName(), c.getTaxNo(),
                 c.getDefaultTaxRate(), c.getContact(), c.getPhone(), c.getAddress(),
-                c.getSettleMethod(), c.getPayTermDays(), c.getStatus(), c.getRemark(),
+                c.getSettleMethod(), c.getPayTermDays(), c.getBankName(), c.getBankAccount(),
+                c.getCreditLimit(), c.getDeliveryAddress(), c.getStatus(), c.getRemark(),
                 c.getCreator(), c.getCreatedAt(), c.getUpdater(), c.getUpdatedAt());
     }
 }

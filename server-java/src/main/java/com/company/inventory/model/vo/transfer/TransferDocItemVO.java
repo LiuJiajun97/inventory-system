@@ -17,9 +17,10 @@ import java.math.BigDecimal;
  * @param fromLocationId 源库位 ID
  * @param toLocationId   目的库位 ID
  * @param lineRemark     行备注
+ * @param vehicleNo      车牌(V9 增量)
  * @author inventory
  */
 public record TransferDocItemVO(Long id, Integer lineNo, Long itemId, String itemCode,
         String itemName, String specSnapshot, String unit, String qty, BigDecimal unitPrice,
-        Long fromLocationId, Long toLocationId, String lineRemark) {
+        Long fromLocationId, Long toLocationId, String lineRemark, String vehicleNo) {
 }

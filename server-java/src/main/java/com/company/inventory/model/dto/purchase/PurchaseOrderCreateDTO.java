@@ -16,6 +16,9 @@ import java.util.List;
  * @param supplierId           供应商 ID
  * @param buyerId              采购员用户 ID
  * @param allowOverReceiptRate 超收比例(0.10=允超 10%,可空默认 0)
+ * @param contractNo           合同号(可空)
+ * @param freight              运费(可空)
+ * @param shippingAddress      交货地址(可空)
  * @param remark               备注
  * @param items                订单行(至少 1 行)
  * @author inventory
@@ -27,7 +30,17 @@ public record PurchaseOrderCreateDTO(
         @NotNull(message = "采购员 ID 必填")
         @Positive(message = "采购员 ID 必须为正数") Long buyerId,
         BigDecimal allowOverReceiptRate,
+        String contractNo,
+        BigDecimal freight,
+        String shippingAddress,
         String remark,
         @Valid
         @NotEmpty(message = "至少 1 行") List<PurchaseOrderLineDTO> items) {
+
+    /** 兼容旧签名构造器(V9 新增字段默认 null,既有调用/测试不受影响)。 */
+    public PurchaseOrderCreateDTO(LocalDate docDate, Long supplierId, Long buyerId,
+            BigDecimal allowOverReceiptRate, String remark,
+            @Valid @NotEmpty(message = "至少 1 行") List<PurchaseOrderLineDTO> items) {
+        this(docDate, supplierId, buyerId, allowOverReceiptRate, null, null, null, remark, items);
+    }
 }

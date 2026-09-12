@@ -12,6 +12,11 @@ export interface Supplier {
   address?: string | null;
   settleMethod?: string | null;
   payTermDays?: number | null;
+  // V9 通用字段(可空)
+  bankName?: string | null;
+  bankAccount?: string | null;
+  creditLimit?: string | number | null;
+  deliveryAddress?: string | null;
   status: number;
   remark?: string | null;
   creator?: string | null;
@@ -29,6 +34,11 @@ export interface Customer {
   address?: string | null;
   settleMethod?: string | null;
   payTermDays?: number | null;
+  // V9 通用字段(可空)
+  bankName?: string | null;
+  bankAccount?: string | null;
+  creditLimit?: string | number | null;
+  deliveryAddress?: string | null;
   status: number;
   remark?: string | null;
   creator?: string | null;
@@ -75,6 +85,10 @@ export interface PurchaseOrder {
   totalAmount: string;
   totalTaxAmount: string;
   totalTaxInclusive: string;
+  // V9 通用字段(可空)
+  contractNo?: string | null;
+  freight?: string | null;
+  shippingAddress?: string | null;
   status: DocStatus;
   creator?: string | null;
   createdAt: string;
@@ -115,6 +129,10 @@ export interface SalesOrder {
   totalAmount: string;
   totalTaxAmount: string;
   totalTaxInclusive: string;
+  // V9 通用字段(可空)
+  contractNo?: string | null;
+  freight?: string | null;
+  shippingAddress?: string | null;
   status: DocStatus;
   creator?: string | null;
   createdAt: string;
@@ -138,6 +156,8 @@ export interface TransferLine {
   fromLocationId?: number | null;
   toLocationId?: number | null;
   lineRemark?: string | null;
+  // V9 车牌(可空)
+  vehicleNo?: string | null;
 }
 
 export interface TransferDoc {
@@ -170,6 +190,9 @@ export interface StocktakeLine {
   bookQty: string;
   actualQty?: string | null;
   diffQty?: string | null;
+  // V9 盘点人/盘点日期(可空)
+  checkerName?: string | null;
+  checkDate?: string | null;
 }
 
 export interface StocktakeDoc {

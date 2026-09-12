@@ -169,6 +169,10 @@ export interface PurchaseCreatePayload {
   supplierId: number;
   buyerId: number;
   allowOverReceiptRate?: number;
+  // V9 通用字段(可空)
+  contractNo?: string;
+  freight?: number;
+  shippingAddress?: string;
   remark?: string;
   items: Array<{
     itemId: number;
@@ -185,6 +189,10 @@ export interface SalesCreatePayload {
   customerId: number;
   salespersonId: number;
   warehouseId: number;
+  // V9 通用字段(可空)
+  contractNo?: string;
+  freight?: number;
+  shippingAddress?: string;
   remark?: string;
   items: Array<{
     itemId: number;
@@ -208,6 +216,8 @@ export interface TransferCreatePayload {
     fromLocationId?: number;
     toLocationId?: number;
     lineRemark?: string;
+    // V9 车牌(可空)
+    vehicleNo?: string;
   }>;
 }
 
@@ -317,7 +327,13 @@ export const stocktakeApi = {
     http.post<unknown, StocktakeDoc>("/stocktakes", data),
   enterActual: (
     id: number,
-    lines: Array<{ lineId: number; actualQty: number | null }>,
+    lines: Array<{
+      lineId: number;
+      actualQty: number | null;
+      // V9 盘点人/盘点日期(可空)
+      checkerName?: string;
+      checkDate?: string;
+    }>,
   ) =>
     http.put<unknown, StocktakeDoc>(`/stocktakes/${id}/actual`, { lines }),
   refreshBook: (id: number) => http.post(`/stocktakes/${id}/refresh-book`),
@@ -405,6 +421,10 @@ export const inboundApi = {
     refType?: string;
     refDocId?: number;
     docDate?: string;
+    // V9 运输信息(可空)
+    carrier?: string;
+    vehicleNo?: string;
+    freight?: number;
     items: Array<{
       itemId: number;
       qty: number;
@@ -436,6 +456,10 @@ export const outboundApi = {
     refType?: string;
     refDocId?: number;
     docDate?: string;
+    // V9 运输信息(可空)
+    carrier?: string;
+    vehicleNo?: string;
+    freight?: number;
     items: Array<{
       itemId: number;
       qty: number;

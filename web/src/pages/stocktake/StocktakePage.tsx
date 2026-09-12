@@ -39,6 +39,9 @@ export function StocktakePage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [actualDoc, setActualDoc] = useState<StocktakeDoc | null>(null);
   const [actuals, setActuals] = useState<Record<number, number | null>>({});
+  // V9 盘点人/盘点日期(整单统一,随每行实盘提交,可空)
+  const [checkerName, setCheckerName] = useState<string>("");
+  const [checkDate, setCheckDate] = useState<Dayjs | null>(dayjs());
   const [rejectTarget, setRejectTarget] = useState<StocktakeDoc | null>(null);
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
@@ -118,6 +121,9 @@ export function StocktakePage() {
     const full = await stocktakeApi.get(row.id);
     setActualDoc(full);
     setActuals(Object.fromEntries((full.items ?? []).map((l) => [l.id, l.actualQty ? Number(l.actualQty) : null])));
+    // V9:盘点人/盘点日期默认空/今天(已有值则回显首行)
+    setCheckerName(full.items?.[0]?.checkerName ?? "");
+    setCheckDate(full.items?.[0]?.checkDate ? dayjs(full.items[0].checkDate) : dayjs());
   };
 
   const saveActual = async () => {
@@ -126,7 +132,13 @@ export function StocktakePage() {
     try {
       const lines = (actualDoc.items ?? [])
         .filter((l) => actuals[l.id] !== undefined)
-        .map((l) => ({ lineId: l.id, actualQty: actuals[l.id] }));
+        .map((l) => ({
+          lineId: l.id,
+          actualQty: actuals[l.id],
+          // V9 盘点人/盘点日期(可空)
+          checkerName: checkerName.trim() || undefined,
+          checkDate: checkDate ? checkDate.format("YYYY-MM-DD") : undefined,
+        }));
       const full = await stocktakeApi.enterActual(actualDoc.id, lines);
       setActualDoc(full);
       setActuals(Object.fromEntries((full.items ?? []).map((l) => [l.id, l.actualQty ? Number(l.actualQty) : null])));
@@ -431,6 +443,26 @@ export function StocktakePage() {
         <div style={{ color: "#999", marginBottom: 8 }}>
           留空表示该行为"未盘"(不计差异);保存后差异自动重算。
         </div>
+        {/* V9 盘点人/盘点日期(可空,默认今天) */}
+        <Row gutter={16} style={{ marginBottom: 12 }}>
+          <Col span={12}>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>盘点人(可选)</div>
+            <Input
+              placeholder="可选"
+              value={checkerName}
+              onChange={(e) => setCheckerName(e.target.value)}
+            />
+          </Col>
+          <Col span={12}>
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>盘点日期(可选,默认今天)</div>
+            <DatePicker
+              style={{ width: "100%" }}
+              value={checkDate}
+              onChange={(d) => setCheckDate(d)}
+              allowClear
+            />
+          </Col>
+        </Row>
         {actualDoc && lineTable(actualDoc.items ?? [], true)}
       </Drawer>
 

@@ -15,6 +15,7 @@ import java.util.List;
  * @param fromLocationId 源库位 ID(源仓启用库位时必填)
  * @param toLocationId   目的库位 ID(目的仓启用库位时必填)
  * @param serialNos      序列号列表(源仓启用序列号时必填)
+ * @param vehicleNo      车牌(可空)
  * @param lineRemark     行备注
  * @author inventory
  */
@@ -27,5 +28,13 @@ public record TransferLineDTO(
         @Positive(message = "源库位 ID 必须为正数") Long fromLocationId,
         @Positive(message = "目的库位 ID 必须为正数") Long toLocationId,
         List<String> serialNos,
+        String vehicleNo,
         String lineRemark) {
+
+    /** 兼容旧签名构造器(V9 新增字段默认 null,既有调用/测试不受影响)。 */
+    public TransferLineDTO(Long itemId, BigDecimal qty, BigDecimal unitPrice,
+            Long fromLocationId, Long toLocationId, List<String> serialNos,
+            String lineRemark) {
+        this(itemId, qty, unitPrice, fromLocationId, toLocationId, serialNos, null, lineRemark);
+    }
 }

@@ -40,6 +40,14 @@ public class ItemDO {
     private BigDecimal minStock;
     /** 默认税率(百分数,默认 13.00,单据行取默认可改)。 */
     private BigDecimal defaultTaxRate;
+    /** 条码(可空,唯一部分索引 uk_item_barcode)。 */
+    private String barcode;
+    /** 辅助单位(可空,如"箱";unit 保持基本单位)。 */
+    private String secondUnit;
+    /** 换算率(可空,1 辅助单位对应的基本单位数)。 */
+    private BigDecimal convertFactor;
+    /** 品牌(可空)。 */
+    private String brand;
     /** 状态:1 启用。 */
     private Integer status;
     /** 创建人。 */

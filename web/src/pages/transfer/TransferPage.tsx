@@ -51,7 +51,7 @@ export function TransferPage() {
   const actionRef = useRef<ActionType>();
   // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
   const { token } = theme.useToken();
-  const [lines, setLines] = useState<Array<{ key: number; itemId?: number; qty?: number; unitPrice?: number; fromLocationId?: number; toLocationId?: number }>>([{ key: 1 }]);
+  const [lines, setLines] = useState<Array<{ key: number; itemId?: number; qty?: number; unitPrice?: number; fromLocationId?: number; toLocationId?: number; vehicleNo?: string }>>([{ key: 1 }]);
   const [fromWh, setFromWh] = useState<number>();
   const [toWh, setToWh] = useState<number>();
   const [fromLocations, setFromLocations] = useState<Location[]>([]);
@@ -153,6 +153,7 @@ export function TransferPage() {
           unitPrice: l.unitPrice != null ? Number(l.unitPrice) : undefined,
           fromLocationId: l.fromLocationId ?? undefined,
           toLocationId: l.toLocationId ?? undefined,
+          vehicleNo: l.vehicleNo ?? undefined,
         })));
         setFromWh(doc.fromWarehouseId);
         setToWh(doc.toWarehouseId);
@@ -200,6 +201,7 @@ export function TransferPage() {
           unitPrice: l.unitPrice,
           fromLocationId: l.fromLocationId,
           toLocationId: l.toLocationId,
+          vehicleNo: l.vehicleNo,
         })),
       };
       if (editId != null) {
@@ -527,6 +529,18 @@ export function TransferPage() {
                 ) : (
                   <span style={{ color: "#999" }}>-</span>
                 ),
+            },
+            {
+              // V9 车牌(行内输入,可空)
+              title: "车牌",
+              width: 130,
+              render: (_v: unknown, l) => (
+                <Input
+                  placeholder="可选"
+                  value={l.vehicleNo}
+                  onChange={(e) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, vehicleNo: e.target.value || undefined } : x)))}
+                />
+              ),
             },
             {
               title: "",

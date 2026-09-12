@@ -231,6 +231,12 @@ export function InboundListPage() {
               <Descriptions.Item label="创建时间">
                 {fmtDateTime(detail.createdAt)}
               </Descriptions.Item>
+              {/* V9 运输信息(可空) */}
+              <Descriptions.Item label="承运商">{detail.carrier ?? "-"}</Descriptions.Item>
+              <Descriptions.Item label="车牌">{detail.vehicleNo ?? "-"}</Descriptions.Item>
+              <Descriptions.Item label="运费">
+                {detail.freight == null ? "-" : Number(detail.freight).toFixed(2)}
+              </Descriptions.Item>
               <Descriptions.Item label="备注" span={2}>
                 {detail.remark ?? "-"}
               </Descriptions.Item>

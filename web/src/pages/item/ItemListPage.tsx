@@ -176,6 +176,10 @@ export function ItemListPage() {
       category: r.category,
       minStock: r.minStock == null ? undefined : Number(r.minStock),
       defaultTaxRate: r.defaultTaxRate == null ? undefined : Number(r.defaultTaxRate),
+      barcode: r.barcode ?? undefined,
+      secondUnit: r.secondUnit ?? undefined,
+      convertFactor: r.convertFactor == null ? undefined : Number(r.convertFactor),
+      brand: r.brand ?? undefined,
     });
     setAttrs(attrsFromItem(r.attributes));
     setDrawerOpen(true);
@@ -199,6 +203,11 @@ export function ItemListPage() {
           category: v.category,
           minStock: v.minStock,
           defaultTaxRate: v.defaultTaxRate,
+          // V9 通用字段(可空)
+          barcode: v.barcode,
+          secondUnit: v.secondUnit,
+          convertFactor: v.convertFactor,
+          brand: v.brand,
         });
         message.success("物品已更新");
       } else {
@@ -211,6 +220,11 @@ export function ItemListPage() {
           category: v.category,
           minStock: v.minStock,
           defaultTaxRate: v.defaultTaxRate,
+          // V9 通用字段(可空)
+          barcode: v.barcode,
+          secondUnit: v.secondUnit,
+          convertFactor: v.convertFactor,
+          brand: v.brand,
         });
         message.success("物品创建成功");
       }
@@ -360,6 +374,31 @@ export function ItemListPage() {
             <Col span={12}>
               <Form.Item label="默认税率(%)" name="defaultTaxRate" initialValue={13}>
                 <InputNumber min={0} max={100} step={0.01} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            {/* V9 通用字段(可空):条码/辅助单位/换算率/品牌 */}
+            <Col span={12}>
+              <Form.Item label="条码" name="barcode">
+                <Input placeholder="可选,非空唯一" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="辅助单位" name="secondUnit">
+                <Input placeholder="如 箱(unit 保持基本单位)" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="换算率(1 辅助单位=多少基本单位)" name="convertFactor">
+                <InputNumber min={0.0001} step={1} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="品牌" name="brand">
+                <Input />
               </Form.Item>
             </Col>
           </Row>

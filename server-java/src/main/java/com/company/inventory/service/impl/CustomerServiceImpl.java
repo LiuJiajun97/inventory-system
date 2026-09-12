@@ -113,6 +113,10 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setAddress(dto.address());
         customer.setSettleMethod(dto.settleMethod());
         customer.setPayTermDays(dto.payTermDays());
+        customer.setBankName(dto.bankName());
+        customer.setBankAccount(dto.bankAccount());
+        customer.setCreditLimit(dto.creditLimit());
+        customer.setDeliveryAddress(dto.deliveryAddress());
         customer.setRemark(dto.remark());
         customer.setStatus(1);
         customer.setCreator(username);
@@ -162,6 +166,18 @@ public class CustomerServiceImpl implements CustomerService {
         if (dto.payTermDays() != null) {
             customer.setPayTermDays(dto.payTermDays());
         }
+        if (dto.bankName() != null) {
+            customer.setBankName(dto.bankName());
+        }
+        if (dto.bankAccount() != null) {
+            customer.setBankAccount(dto.bankAccount());
+        }
+        if (dto.creditLimit() != null) {
+            customer.setCreditLimit(dto.creditLimit());
+        }
+        if (dto.deliveryAddress() != null) {
+            customer.setDeliveryAddress(dto.deliveryAddress());
+        }
         if (dto.status() != null) {
             customer.setStatus(dto.status());
         }
@@ -184,7 +200,8 @@ public class CustomerServiceImpl implements CustomerService {
     private CustomerVO toVO(CustomerDO s) {
         return new CustomerVO(s.getId(), s.getCustomerCode(), s.getCustomerName(), s.getTaxNo(),
                 s.getDefaultTaxRate(), s.getContact(), s.getPhone(), s.getAddress(),
-                s.getSettleMethod(), s.getPayTermDays(), s.getStatus(), s.getRemark(),
+                s.getSettleMethod(), s.getPayTermDays(), s.getBankName(), s.getBankAccount(),
+                s.getCreditLimit(), s.getDeliveryAddress(), s.getStatus(), s.getRemark(),
                 s.getCreator(), s.getCreatedAt(), s.getUpdater(), s.getUpdatedAt());
     }
 }

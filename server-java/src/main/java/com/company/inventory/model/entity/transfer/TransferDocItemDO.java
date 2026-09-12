@@ -43,6 +43,8 @@ public class TransferDocItemDO {
     private Long toLocationId;
     /** 行备注。 */
     private String lineRemark;
+    /** 车牌(可空)。 */
+    private String vehicleNo;
     /** 创建人。 */
     @TableField(fill = FieldFill.INSERT)
     private String creator;

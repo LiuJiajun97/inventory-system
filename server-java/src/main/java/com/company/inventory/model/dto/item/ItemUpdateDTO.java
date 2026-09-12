@@ -12,6 +12,10 @@ import java.math.BigDecimal;
  * @param category       物料分类
  * @param minStock       最低库存预警线
  * @param defaultTaxRate 默认税率(百分数)
+ * @param barcode        条码
+ * @param secondUnit     辅助单位
+ * @param convertFactor  换算率
+ * @param brand          品牌
  * @param status         状态,1 启用 0 停用
  * @author inventory
  */
@@ -23,5 +27,16 @@ public record ItemUpdateDTO(
         String category,
         BigDecimal minStock,
         BigDecimal defaultTaxRate,
+        String barcode,
+        String secondUnit,
+        BigDecimal convertFactor,
+        String brand,
         Integer status) {
+
+    /** 兼容旧签名构造器(V9 新增字段默认 null,既有调用/测试不受影响)。 */
+    public ItemUpdateDTO(String itemName, String unit, String spec, String attributes,
+            String category, BigDecimal minStock, BigDecimal defaultTaxRate, Integer status) {
+        this(itemName, unit, spec, attributes, category, minStock, defaultTaxRate,
+                null, null, null, null, status);
+    }
 }

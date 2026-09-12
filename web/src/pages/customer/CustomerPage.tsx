@@ -21,6 +21,11 @@ interface FormValues {
   address?: string;
   settleMethod?: string;
   payTermDays?: number;
+  // V9 通用字段(可空)
+  bankName?: string;
+  bankAccount?: string;
+  creditLimit?: number;
+  deliveryAddress?: string;
   remark?: string;
 }
 
@@ -78,6 +83,10 @@ export function CustomerPage() {
       address: row.address ?? undefined,
       settleMethod: row.settleMethod ?? undefined,
       payTermDays: row.payTermDays ?? undefined,
+      bankName: row.bankName ?? undefined,
+      bankAccount: row.bankAccount ?? undefined,
+      creditLimit: row.creditLimit == null ? undefined : Number(row.creditLimit),
+      deliveryAddress: row.deliveryAddress ?? undefined,
       remark: row.remark ?? undefined,
     });
     setDrawerOpen(true);
@@ -271,6 +280,31 @@ export function CustomerPage() {
             <Col span={12}>
               <Form.Item label="账期天数" name="payTermDays">
                 <InputNumber min={0} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          {/* V9 通用字段(可空):开户行/银行账号/信用额度/交货地址 */}
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="开户行" name="bankName">
+                <Input />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="银行账号" name="bankAccount">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="信用额度" name="creditLimit">
+                <InputNumber min={0} precision={2} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="交货地址" name="deliveryAddress">
+                <Input />
               </Form.Item>
             </Col>
           </Row>

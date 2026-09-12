@@ -70,6 +70,11 @@ export interface Item {
   category?: string | null;
   minStock?: string | number | null;
   defaultTaxRate?: string | number | null;
+  // V9 通用字段(可空):条码/辅助单位/换算率/品牌
+  barcode?: string | null;
+  secondUnit?: string | null;
+  convertFactor?: string | number | null;
+  brand?: string | null;
   creator?: string | null;
   createdAt?: string | null;
 }
@@ -135,6 +140,10 @@ export interface InboundDoc {
   refDocNo?: string | null;
   supplierName?: string | null;
   docDate?: string | null;
+  // V9 运输信息(可空)
+  carrier?: string | null;
+  vehicleNo?: string | null;
+  freight?: string | null;
 }
 
 export interface OutboundDocItem {
@@ -162,6 +171,10 @@ export interface OutboundDoc {
   refDocNo?: string | null;
   customerName?: string | null;
   docDate?: string | null;
+  // V9 运输信息(可空)
+  carrier?: string | null;
+  vehicleNo?: string | null;
+  freight?: string | null;
 }
 
 export interface PagedResponse<T> {

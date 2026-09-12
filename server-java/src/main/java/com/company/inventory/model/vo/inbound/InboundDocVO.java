@@ -22,10 +22,14 @@ import java.util.List;
  * @param refDocNo    关联采购订单号(增量)
  * @param supplierName 关联供应商名称(增量)
  * @param docDate     单据日期(增量)
+ * @param carrier     承运商(V9 增量)
+ * @param vehicleNo   车牌(V9 增量)
+ * @param freight     运费(V9 增量,字符串)
  * @author inventory
  */
 public record InboundDocVO(Long id, String docNo, Long warehouseId, String status,
         String remark, String creator, LocalDateTime createdAt,
         WarehouseVO warehouse, List<InboundDocItemVO> items,
-        String refType, Long refDocId, String refDocNo, String supplierName, LocalDate docDate) {
+        String refType, Long refDocId, String refDocNo, String supplierName, LocalDate docDate,
+        String carrier, String vehicleNo, String freight) {
 }
