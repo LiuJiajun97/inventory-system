@@ -1,8 +1,11 @@
-// 主布局(SPEC-WEB V2 1.2)
+// 主布局(SPEC-WEB V2 1.2 / RBAC 批 1b 动态菜单)
 // 左侧白底 Sider 208 + 顶栏白底 + 内容区浅灰底
-// 面包屑按路由自动生成;用户区:头像首字+姓名+角色 Tag+退出
+// 侧栏菜单由 GET /auth/menus 动态渲染:目录为一级分组(可展开),菜单为二级;
+// 图标按 menuCode 静态映射,未知编码回退默认图标;菜单加载中显示 Spin,不闪现硬编码
+// 面包屑按动态菜单树自动推导(所属目录 + 当前页)
 
-import { Layout, Menu, Breadcrumb, Button, Tooltip } from "antd";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Layout, Menu, Breadcrumb, Button, Tooltip, Spin } from "antd";
 import {
   DashboardOutlined,
   ImportOutlined,
@@ -23,281 +26,168 @@ import {
   ToolOutlined,
   AlertOutlined,
   MonitorOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
 import { clearAuth, getUser } from "../auth/useAuth";
-import type { Role } from "../types";
+import { useMenus } from "../auth/MenuContext";
 import { BrandLogo } from "../components/BrandLogo";
 import { UserAvatar } from "../components/UserAvatar";
 import { RoleTag } from "../components/StatusTag";
+import type { MenuNode } from "../types";
 
 const { Sider, Header, Content } = Layout;
 
-interface MenuItem {
-  key: string;
-  icon: React.ReactNode;
-  label: string;
-  path: string;
-  roles: Role[];
-  parent?: string; // 面包屑父级
-  breadcrumbLabel?: string;
+// 一级目录图标映射(按 menuCode;未知目录回退 SettingOutlined,不崩)
+const DIR_ICON: Record<string, React.ReactNode> = {
+  "dashboard-dir": <DashboardOutlined />,
+  "purchase-dir": <ShoppingCartOutlined />,
+  "sales-dir": <DollarOutlined />,
+  "stock-dir": <DatabaseOutlined />,
+  "base-dir": <AppstoreOutlined />,
+  "system-dir": <SettingOutlined />,
+};
+
+// 二级菜单图标映射(按 menuCode;未知菜单回退 SettingOutlined,不崩)
+const MENU_ICON: Record<string, React.ReactNode> = {
+  dashboard: <DashboardOutlined />,
+  alerts: <AlertOutlined />,
+  "purchase-orders": <ShoppingCartOutlined />,
+  "sales-orders": <DollarOutlined />,
+  inbound: <ImportOutlined />,
+  outbound: <ExportOutlined />,
+  transfers: <SwapOutlined />,
+  stocktakes: <AuditOutlined />,
+  "stock-adjusts": <ToolOutlined />,
+  stock: <DatabaseOutlined />,
+  transactions: <FileSearchOutlined />,
+  items: <AppstoreOutlined />,
+  warehouses: <HomeOutlined />,
+  locations: <ShopOutlined />,
+  suppliers: <ShopOutlined />,
+  customers: <TeamOutlined />,
+  users: <TeamOutlined />,
+  roles: <TeamOutlined />,
+  dicts: <AuditOutlined />,
+  monitor: <MonitorOutlined />,
+};
+
+const FALLBACK_ICON = <SettingOutlined />;
+
+// 展开状态持久化 key(按用户区分,不同角色目录不同,恢复时还会按当前 nodes 过滤)
+const menuOpenStorageKey = (username?: string) => `menu-open-${username}`;
+
+/** 读取上次手动展开状态;无记录返回 null(区别于"记录为空数组=全部收起")。 */
+function loadSavedOpenKeys(username?: string): string[] | null {
+  if (!username) return null;
+  try {
+    const raw = sessionStorage.getItem(menuOpenStorageKey(username));
+    if (!raw) return null;
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((k) => typeof k === "string") : null;
+  } catch {
+    return null; // 脏数据兜底,走默认全展开
+  }
 }
 
-const ALL_ITEMS: MenuItem[] = [
-  {
-    key: "dashboard",
-    icon: <DashboardOutlined />,
-    label: "总览",
-    path: "/dashboard",
-    breadcrumbLabel: "总览",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "inbound",
-    icon: <ImportOutlined />,
-    label: "入库单",
-    path: "/inbound",
-    breadcrumbLabel: "入库单",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "inbound-new",
-    icon: <ImportOutlined />,
-    label: "新建入库单",
-    path: "/inbound/new",
-    breadcrumbLabel: "新建入库单",
-    roles: ["admin", "operator"],
-    parent: "inbound",
-  },
-  {
-    key: "outbound",
-    icon: <ExportOutlined />,
-    label: "出库单",
-    path: "/outbound",
-    breadcrumbLabel: "出库单",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "outbound-new",
-    icon: <ExportOutlined />,
-    label: "新建出库单",
-    path: "/outbound/new",
-    breadcrumbLabel: "新建出库单",
-    roles: ["admin", "operator"],
-    parent: "outbound",
-  },
-  {
-    key: "stock",
-    icon: <DatabaseOutlined />,
-    label: "库存查询",
-    path: "/stock",
-    breadcrumbLabel: "库存查询",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "transactions",
-    icon: <FileSearchOutlined />,
-    label: "流水查询",
-    path: "/transactions",
-    breadcrumbLabel: "流水查询",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "items",
-    icon: <AppstoreOutlined />,
-    label: "物品",
-    path: "/items",
-    breadcrumbLabel: "物品",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "suppliers",
-    icon: <ShopOutlined />,
-    label: "供应商",
-    path: "/suppliers",
-    breadcrumbLabel: "供应商",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "customers",
-    icon: <TeamOutlined />,
-    label: "客户",
-    path: "/customers",
-    breadcrumbLabel: "客户",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "purchase-orders",
-    icon: <ShoppingCartOutlined />,
-    label: "采购订单",
-    path: "/purchase-orders",
-    breadcrumbLabel: "采购订单",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "purchase-orders-new",
-    icon: <ShoppingCartOutlined />,
-    label: "新建采购订单",
-    path: "/purchase-orders/new",
-    breadcrumbLabel: "新建采购订单",
-    roles: ["admin", "operator"],
-    parent: "purchase-orders",
-  },
-  {
-    key: "sales-orders",
-    icon: <DollarOutlined />,
-    label: "销售订单",
-    path: "/sales-orders",
-    breadcrumbLabel: "销售订单",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "sales-orders-new",
-    icon: <DollarOutlined />,
-    label: "新建销售订单",
-    path: "/sales-orders/new",
-    breadcrumbLabel: "新建销售订单",
-    roles: ["admin", "operator"],
-    parent: "sales-orders",
-  },
-  {
-    key: "transfers",
-    icon: <SwapOutlined />,
-    label: "调拨单",
-    path: "/transfers",
-    breadcrumbLabel: "调拨单",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "stocktakes",
-    icon: <AuditOutlined />,
-    label: "盘点单",
-    path: "/stocktakes",
-    breadcrumbLabel: "盘点单",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "stock-adjusts",
-    icon: <ToolOutlined />,
-    label: "库存调整",
-    path: "/stock-adjusts",
-    breadcrumbLabel: "库存调整",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "alerts",
-    icon: <AlertOutlined />,
-    label: "预警中心",
-    path: "/alerts",
-    breadcrumbLabel: "预警中心",
-    roles: ["admin", "operator", "viewer"],
-  },
-  {
-    key: "items-new",
-    icon: <AppstoreOutlined />,
-    label: "新建物品",
-    path: "/items/new",
-    breadcrumbLabel: "新建物品",
-    roles: ["admin"],
-    parent: "items",
-  },
-  {
-    key: "warehouses",
-    icon: <HomeOutlined />,
-    label: "仓库",
-    path: "/warehouses",
-    breadcrumbLabel: "仓库",
-    roles: ["admin"],
-  },
-  {
-    key: "locations",
-    icon: <ShopOutlined />,
-    label: "库位",
-    path: "/locations",
-    breadcrumbLabel: "库位",
-    roles: ["admin"],
-  },
-  {
-    key: "users",
-    icon: <TeamOutlined />,
-    label: "用户",
-    path: "/users",
-    breadcrumbLabel: "用户",
-    roles: ["admin"],
-  },
-  {
-    key: "dicts",
-    icon: <AuditOutlined />,
-    label: "字典",
-    path: "/dicts",
-    breadcrumbLabel: "字典",
-    roles: ["admin"],
-  },
-  {
-    key: "monitor",
-    icon: <MonitorOutlined />,
-    label: "系统监控",
-    path: "/monitor",
-    breadcrumbLabel: "系统监控",
-    roles: ["admin"],
-  },
-];
-
-function buildBreadcrumb(pathname: string): Array<{ label: string; to?: string }> {
-  const items: Array<{ label: string; to?: string }> = [];
-  // 找到精确匹配或最长前缀匹配
-  const exact = ALL_ITEMS.find((it) => it.path === pathname);
-  let main = exact;
-  if (!main) {
-    main = ALL_ITEMS.find(
-      (it) => pathname.startsWith(it.path + "/") || pathname === it.path,
-    );
+/** 用户手动变更展开状态后写入 sessionStorage(下次刷新恢复用)。 */
+function saveOpenKeys(username: string | undefined, keys: string[]): void {
+  if (!username) return;
+  try {
+    sessionStorage.setItem(menuOpenStorageKey(username), JSON.stringify(keys));
+  } catch {
+    // 存储满/禁用时静默失败,不影响交互
   }
-  if (!main) {
-    items.push({ label: "首页" });
-    return items;
-  }
-  if (main.parent) {
-    const parent = ALL_ITEMS.find((it) => it.key === main!.parent);
-    if (parent) {
-      items.push({ label: parent.breadcrumbLabel ?? parent.label, to: parent.path });
-    }
-  }
-  items.push({ label: main.breadcrumbLabel ?? main.label });
-  return items;
 }
 
 export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const user = getUser();
-  const role: Role | undefined = user?.role;
+  const role = user?.role;
   const [collapsed, setCollapsed] = useState(false);
+  const { nodes, paths, loading } = useMenus();
 
-  const visibleItems = useMemo(
-    () => ALL_ITEMS.filter((it) => role && it.roles.includes(role) && !it.parent),
-    [role],
+  // 展开状态:初始只做一次,之后完全由用户控制,任何情况下不强制重置
+  // (修复:旧版用 openKeys.length === 0 判断"默认展开",用户把所有一级目录
+  // 全部收起后 openKeys 变空,effect 会把目录强制重新全部展开)
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
+  const didInitOpenRef = useRef(false);
+  useEffect(() => {
+    if (nodes.length === 0 || didInitOpenRef.current) return;
+    didInitOpenRef.current = true;
+    const codes = nodes.map((n) => n.menuCode);
+    const saved = loadSavedOpenKeys(user?.username);
+    if (saved) {
+      // 恢复上次状态:按当前目录编码过滤,防角色/菜单变更后残留脏数据
+      setOpenKeys(saved.filter((k) => codes.includes(k)));
+    } else {
+      // 无记录:默认展开全部一级目录
+      setOpenKeys(codes);
+    }
+  }, [nodes, user?.username]);
+
+  // 用户手动展开/收起:更新状态并持久化到 sessionStorage(按用户 key)
+  const onOpenChange = (keys: string[]) => {
+    setOpenKeys(keys);
+    saveOpenKeys(user?.username, keys);
+  };
+
+  // 动态菜单:仅渲染有 path 的叶子(排除 button 型节点),空目录不展示
+  const menuItems = useMemo(
+    () =>
+      nodes
+        .map((dir) => ({
+          key: dir.menuCode,
+          icon: DIR_ICON[dir.menuCode] ?? FALLBACK_ICON,
+          label: dir.menuName,
+          children: (dir.children ?? [])
+            .filter((c) => c.path)
+            .map((c) => ({
+              key: c.menuCode,
+              icon: MENU_ICON[c.menuCode] ?? FALLBACK_ICON,
+              label: <Link to={c.path as string}>{c.menuName}</Link>,
+            })),
+        }))
+        .filter((dir) => dir.children.length > 0),
+    [nodes],
   );
 
-  const selectedKey =
-    ALL_ITEMS.find(
-      (it) =>
-        (location.pathname === it.path ||
-          (it.path !== "/" &&
-            location.pathname.startsWith(it.path + "/"))) &&
-        !it.parent,
-    )?.key ?? "dashboard";
+  // 选中态:按 pathname 在菜单 path 集合中精确/最长前缀匹配
+  const selectedKey = useMemo(() => {
+    const matched = Array.from(paths).sort((a, b) => b.length - a.length).find(
+      (p) => location.pathname === p || location.pathname.startsWith(p + "/"),
+    );
+    return nodes
+      .flatMap((d) => d.children ?? [])
+      .find((c) => c.path === matched)?.menuCode ?? "";
+  }, [location.pathname, paths, nodes]);
+
+  // 面包屑:所属一级目录(无 path,纯文本)+ 当前叶子页名
+  const crumbs = useMemo(() => {
+    const matched = Array.from(paths).sort((a, b) => b.length - a.length).find(
+      (p) => location.pathname === p || location.pathname.startsWith(p + "/"),
+    );
+    const leaf = nodes
+      .flatMap((d) => (d.children ?? []).map((c) => ({ dir: d, c })))
+      .find(({ c }) => c.path === matched);
+    if (!leaf) {
+      return [{ label: "首页" }];
+    }
+    return [
+      { label: leaf.dir.menuName },
+      { label: leaf.c.menuName },
+    ];
+  }, [location.pathname, paths, nodes]);
 
   const onLogout = () => {
+    // clearAuth 内部派发 auth-changed,菜单缓存随之清空
     clearAuth();
     navigate("/login", { replace: true });
   };
 
-  const crumbs = buildBreadcrumb(location.pathname);
-
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout className="app-layout">
       <Sider
         width={208}
         collapsible
@@ -306,16 +196,20 @@ export function MainLayout() {
         className="app-sider"
       >
         <BrandLogo collapsed={collapsed} />
-        <Menu
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          style={{ borderRight: 0, padding: "8px 0" }}
-          items={visibleItems.map((it) => ({
-            key: it.key,
-            icon: it.icon,
-            label: <Link to={it.path}>{it.label}</Link>,
-          }))}
-        />
+        {loading ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+            <Spin />
+          </div>
+        ) : (
+          <Menu
+            mode="inline"
+            selectedKeys={[selectedKey]}
+            openKeys={openKeys}
+            onOpenChange={onOpenChange}
+            style={{ borderRight: 0, padding: "8px 0" }}
+            items={menuItems}
+          />
+        )}
       </Sider>
       <Layout>
         <Header className="app-header">
@@ -329,9 +223,7 @@ export function MainLayout() {
               </span>
             </Tooltip>
             <Breadcrumb
-              items={crumbs.map((c) => ({
-                title: c.to ? <Link to={c.to}>{c.label}</Link> : c.label,
-              }))}
+              items={crumbs.map((c) => ({ title: c.label }))}
             />
           </div>
           <div className="app-header-right">

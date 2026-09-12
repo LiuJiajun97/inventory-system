@@ -249,7 +249,19 @@ body {
   margin-right: 8px;
 }
 
-/* ====== 顶部 Header / Sider 微调 ====== */
+/* ====== 顶部 Header / Sider 微调 ======
+   锁视口布局(修复:菜单全展开撑高整页、顶栏/内容随文档滚出视野):
+   根布局锁 100vh 不滚,侧栏菜单内部滚,右侧内容区内部滚,顶栏永远固定 */
+.app-layout {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-layout > .ant-layout {
+  height: 100vh;
+  overflow: hidden;
+}
+
 .app-header {
   background: var(--color-bg-white);
   padding: 0 24px;
@@ -285,6 +297,15 @@ body {
 .app-sider {
   background: var(--color-bg-white);
   border-right: 1px solid var(--color-border-light);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 侧栏菜单区:logo 固定,菜单超出一屏时内部滚动(菜单全展开不再撑高整页) */
+.app-sider .ant-menu {
+  max-height: calc(100vh - 56px);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .app-sider-brand {
@@ -312,10 +333,13 @@ body {
   padding: 0;
 }
 
-/* ====== 内容区 ====== */
+/* ====== 内容区 ======
+   锁视口下:内容区占满剩余高度,自身内部滚动(不再撑高整页) */
 .app-content {
   padding: 16px;
-  min-height: calc(100vh - 56px);
+  height: calc(100vh - 56px);
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--color-bg-layout);
 }
 
