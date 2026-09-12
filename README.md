@@ -114,6 +114,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 后端用 `JwtInterceptor` + `@RequireRole` 注解:无 token 返回 `401 {statusCode,error,message}`,角色不够返回 `403`,message 为中文。
 RBAC(V7 起):JWT claim 由单 `role` 升级为 `roles` 数组(旧单值 token 兼容回退);`@RequireRole` 语义改为"用户角色集与注解有交集即通过";新增 `@RequirePermission("code")` 按钮级权限码注解(权限码 = 用户多角色 sys_role_menu 并集中 type='button' 的 menu_code);`GET /auth/menus` 返回当前用户并集菜单树(仅目录+菜单,附各菜单下按钮权限码)供前端动态导航(前端动态化在批 1b)。用户多角色(sys_user_role 并集),`sys_user.role` 列存量兼容保留(未绑定角色的存量用户登录回退读该列)。
 RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`PUT /users/:id` 传 `roleIds` 可选 + `warehouseIds` 可选,空列表 = 清空仓库授权);VO 新增 `roles`(编码+名称)与 `warehouseIds`,旧 `role` 字段保留取首角色。数据权限:`JwtInterceptor` 每请求写 `DataScope`(admin 豁免 null / 空 = 查空 / 非空 = 仅授权仓),库存/流水/入库/出库/盘点/调整/调拨 7 个列表接口按授权仓过滤(调拨为源仓或目的仓任一命中;仪表盘/预警/详情暂不纳入)。V8 seed 补系统组按钮码(user/role/menu/dict 共 13 个)+「菜单管理」菜单(/menus,sort 在角色权限之后),全部绑 admin。
+批 3 回归验收修复 seed 两处越权:① V7 operator 段原误绑基础数据组(物品/仓库/库位/供应商/客户)15 个按钮码,而后端这些写端点一期起即 `@RequireRole("admin")`,前后端不一致(operator 前端能点、后端 403),现 operator 不再绑基础数据按钮(operator=纯业务 65);② V7 operator/viewer 排除系统组原只排除 `system-dir` 及其直接子菜单,V8 追加的系统组按钮 parent 是二级菜单故未排除,在含 V8 菜单的库上重跑 V7 会把 13 个系统组按钮污染给 operator(后端 `@RequirePermission` 放行=越权),改递归子树排除根治。生产库终态:99 菜单 / 185 绑定(admin 99 / operator 65 / viewer 21)。
 审批资格由 `common/support/ApprovalGuard` 统一裁决:**admin 可审批自己提交的单据,operator 禁自批**(防"提交-审批"死锁)。
 前端 axios 拦截器:401 自动清 token 跳 `/login`,403 弹错误提示。
 
