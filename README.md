@@ -1,9 +1,9 @@
 # 库存管理系统
 
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable、单据表单页 ProForm 表头)。
-> 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占 + 基础出入库,18 个 Controller,前端 27 个页面(23 个业务模块)。
+> 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占/退货 + 基础出入库,20 个 Controller,前端 31 个页面(25 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **140 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **148 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -68,7 +68,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 140 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 148 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -100,13 +100,14 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | 物品 / 仓库 / 库位:增改 / 查 | ✅ / 查 | 查 | 查 |
 | 入库单 / 出库单 创建 | ✅ | ✅ | ❌ |
 | 采购 / 销售 / 调拨 / 盘点 / 调整 单据创建 | ✅ | ✅ | ❌ |
+| 采购退货单 / 销售退货单 创建(create 即过账,V11) | ✅ | ✅ | ❌ |
 | 草稿 / 已驳回单据编辑(采购、销售、调拨、调整,已驳回编辑后回草稿) | ✅ | ✅ | ❌ |
 | 单据审批 / 驳回(采购、销售、调拨、盘点、调整) | ✅(可自批) | ✅(禁自批) | ❌ |
 | 低库存 / 临期预警 查询 | ✅ | ✅ | ✅ |
 | 字典:读 | ✅ | ✅ | ✅ |
 | 字典:增删改/停用 | ✅ | ❌ | ❌ |
 | 用户管理 | ✅ | ❌ | ❌ |
-| 数据权限(7 个库存列表行级过滤,批 2) | 豁免全量 | 仅授权仓 | 仅授权仓(未授权查空) |
+| 数据权限(9 个库存列表行级过滤,批 2 + V11 退货列表) | 豁免全量 | 仅授权仓 | 仅授权仓(未授权查空) |
 | 系统监控 | ✅ | ❌ | ❌ |
 | 角色管理(RBAC:角色 CRUD + 角色-菜单分配) | ✅ | ❌ | ❌ |
 | 菜单管理(RBAC:菜单树查看/增删改) | ✅ | ❌ | ❌ |
@@ -138,6 +139,8 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 | GET/POST/PUT | `/suppliers` `/customers` | 供应商 / 客户 | 登录 / admin |
 | GET/POST/PUT | `/purchase-orders` `/purchase-orders/:id/...` | 采购订单 + 提交/审批/驳回/到货(PUT 编辑,仅草稿/已驳回) | 登录 / admin+operator |
 | GET/POST/PUT | `/sales-orders` `/sales-orders/:id/...` | 销售订单 + 提交/审批/驳回/发货(PUT 编辑,仅草稿/已驳回) | 登录 / admin+operator |
+| GET/POST | `/purchase-returns` `/purchase-returns/:id` | 采购退货单(create 即过账,联动出库单 ref_type=purchase_return) | 登录 / admin+operator |
+| GET/POST | `/sales-returns` `/sales-returns/:id` | 销售退货单(create 即过账,联动入库单 ref_type=sales_return) | 登录 / admin+operator |
 | GET/POST/PUT | `/transfers` | 调拨单(原子一步:出+入同事务;PUT 编辑仅草稿/已驳回) | 登录 / admin+operator |
 | GET/POST | `/stocktakes` `/stocktakes/:id/...` | 盘点单 + 录入实盘/审批 | 登录 / admin+operator |
 | GET/POST/PUT | `/stock-adjusts` | 库存调整单(盘盈亏/报损,含审批;PUT 编辑仅草稿/已驳回) | 登录 / admin+operator |
@@ -167,7 +170,7 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 6. **流水**:只插不改,必带 `afterQty`(变动后结存)。
 7. **序列号台账**:独立表,出库逐号条件更新,任一失败整单回滚。
 8. **整单事务**:单据头 + 行 + 流水 + 余额 + 序列号 同事务。
-9. **单据号**:`RK/CK/CG/XS/DB/PD/TZ-YYYYMMDD-NNNN`,按天序列(`DocNoService`)。
+9. **单据号**:`RK/CK/CG/XS/DB/PD/TZ/CT/XT-YYYYMMDD-NNNN`,按天序列(`DocNoService`);CT=采购退货、XT=销售退货。
 
 **进销存一期**
 10. **价税分离**:订单明细 `unitPrice`(不含税)/`taxRate`/`taxAmount`/`totalAmount`(含税),合计 `sum = Σ totalAmount`。
@@ -178,6 +181,7 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 15. **盘点/调整**:盘点录入实盘差异 → 生成调整单 → 审批后过账,流水 type 为 `adjust_in/adjust_out`。
 16. **预警**:低库存(`minStock` 阈值)与临期(效期 N 天内)只读查询,不自动改库存。
 17. **字典**:配置类枚举(仓库类型/物品分类/结算方式)进字典表,类型可动态管理(DictType 表);状态机枚举(单据状态等)不进字典。停用被业务表引用的字典项被拒(400);停用含启用项的类型被拒(400);引用校验通过 `DictReferenceRegistry` 注册表统一管理。
+18. **退货(V11)**:独立采购退货单(CT)/销售退货单(XT),**create 即过账**(与出入库单一致,无草稿/作废):单事务内校验原单已审批(含自动 completed/手工 closed)→ 逐行校验可退量(上限=原行已到货/已发货 − 已退累计,超量整单回滚)→ 落退货单头/行(单价/税率锁原行快照,服务端取值)→ 生成出库/入库单走现有过账链路(序列号等仓库配置校验复用)→ 回写原单行 `returned_qty`(销售退货不改 `shipped_qty`,净发货=shipped−returned)。联动出入库单 `ref_type` 落 `purchase_return`/`sales_return`,前端流水/列表中文映射同步。
 
 ---
 
@@ -196,22 +200,23 @@ inventory-system/
 │   │   ├── InventoryApplication.java  入口(@MapperScan mapper 包;JVM 时区锁 Asia/Shanghai)
 │   │   ├── common/            错误码 / BizException / 全局异常 / 分页 / ApprovalGuard
 │   │   ├── config/            MybatisPlus / Jwt / @RequireRole / Swagger / Jackson(东八区+格式)
-│   │   ├── controller/        18 个 Controller
+│   │   ├── controller/        20 个 Controller
 │   │   ├── model/             数据层:entity(DO)/dto/vo/query 四包,按功能再分包
-│   │   ├── mapper/            27 个 Mapper + resources/mapper/*.xml
+│   │   ├── mapper/            31 个 Mapper + resources/mapper/*.xml
 │   │   ├── service/ (+impl/)  业务层;StockCoreService = 库存核心
 │   │   └── support/           DictReferenceRegistry(字典引用校验注册表)
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
-│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,seed}.sql
-│   └── src/test/java/         21 个测试类,140 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐)
+│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,V11__return,seed}.sql
+│   └── src/test/java/         22 个测试类,148 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/
-        ├── pages/             27 个页面(23 个业务模块):login / dashboard / inbound(list+form) /
+        ├── pages/             31 个页面(25 个业务模块):login / dashboard / inbound(list+form) /
         │                      outbound(list+form) / stock / transaction / item(list+form) /
         │                      warehouse / location / user / role / menu / purchase(list+new) /
-        │                      sales(list+new) / transfer / stocktake / adjust / alert /
+        │                      sales(list+new) / purchase-return(list+new) / sales-return(list+new) /
+        │                      transfer / stocktake / adjust / alert /
         │                      supplier / customer / dict / monitor
         ├── main.tsx           入口:dayjs.locale("zh-cn")(日历中文)
         └── styles/  theme.ts  浅色底 + 深蓝主色
