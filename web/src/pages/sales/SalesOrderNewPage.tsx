@@ -1,8 +1,26 @@
 // 新建销售订单(一期新增)
 // 服务端重算价税三列,前端仅展示输入;行级:物品/数量/单价/税率
+// 布局与采购页统一:页面头部 + 单卡片(ProForm 表头 + 明细表 + 底部固定操作条)
+// 行明细保留原 antd Table 手工编辑机制(物品→默认税率联动在 onItemChange,不改)
 
 import { useEffect, useState } from "react";
-import { Button, Card, DatePicker, Form, Input, InputNumber, message, Select, Space, Table } from "antd";
+import {
+  Button,
+  DatePicker,
+  Input,
+  InputNumber,
+  message,
+  Select,
+  Table,
+} from "antd";
+import {
+  ProCard,
+  ProForm,
+  ProFormDatePicker,
+  ProFormSelect,
+  ProFormTextArea,
+} from "@ant-design/pro-components";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import dayjs, { type Dayjs } from "dayjs";
 import { itemApi, salesApi, customerApi, userApi, warehouseApi } from "../../api";
@@ -34,7 +52,7 @@ export function SalesOrderNewPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [lines, setLines] = useState<LineRow[]>([{ key: lineSeq++ }]);
   const [saving, setSaving] = useState(false);
-  const [form] = Form.useForm();
+  const [form] = ProForm.useForm();
 
   useEffect(() => {
     customerApi
@@ -238,80 +256,92 @@ export function SalesOrderNewPage() {
   ];
 
   return (
-    <Card
-      title={editId != null ? `编辑销售订单 - ${docNo || "..."}` : "新建销售订单"}
-      extra={
-        <Link to="/sales-orders">
-          <Button>返回列表</Button>
+    <>
+      {/* 页面头部:返回 + 标题 + 编辑态单号摘要 */}
+      <div className="doc-page-head">
+        <Link className="doc-page-back" to="/sales-orders">
+          <ArrowLeftOutlined /> 返回列表
         </Link>
-      }
-    >
-      <Form form={form} layout="vertical" style={{ maxWidth: 720 }}>
-        <Space wrap size={24}>
-          <Form.Item
-            label="开单日期"
-            name="docDate"
-            initialValue={dayjs()}
-            rules={[{ required: true, message: "请选择开单日期" }]}
-          >
-            <DatePicker />
-          </Form.Item>
-          <Form.Item
-            label="客户"
-            name="customerId"
-            rules={[{ required: true, message: "请选择客户" }]}
-          >
-            <Select
-              showSearch
-              optionFilterProp="label"
-              style={{ width: 240 }}
-              placeholder="选择客户"
-              options={customers.map((s) => ({ label: `${s.customerCode} ${s.customerName}`, value: s.id }))}
+        <h1 className="doc-page-title">
+          {editId != null ? "编辑销售订单" : "新建销售订单"}
+        </h1>
+        {editId != null && <span className="doc-page-meta">单号 {docNo || "..."}</span>}
+      </div>
+
+      {/* 单卡片布局:表头 + 明细 + 底部固定操作条 */}
+      <ProCard bodyStyle={{ padding: 0 }}>
+        <div className="doc-form-body">
+          {/* 表头:统一 grid + md 宽度,四列对齐 */}
+          <ProForm form={form} layout="vertical" grid submitter={false}>
+            <ProFormDatePicker
+              name="docDate"
+              label="开单日期"
+              colProps={{ span: 6 }}
+              initialValue={dayjs()}
+              rules={[{ required: true, message: "请选择开单日期" }]}
             />
-          </Form.Item>
-          <Form.Item label="销售员" name="salespersonId" rules={[{ required: true, message: "请选择销售员" }]}>
-            <Select
-              style={{ width: 160 }}
+            <ProFormSelect
+              name="customerId"
+              label="客户"
+              colProps={{ span: 6 }}
+              showSearch
+              placeholder="选择客户"
+              options={customers.map((s) => ({
+                label: `${s.customerCode} ${s.customerName}`,
+                value: s.id,
+              }))}
+              fieldProps={{ optionFilterProp: "label" }}
+              rules={[{ required: true, message: "请选择客户" }]}
+            />
+            <ProFormSelect
+              name="salespersonId"
+              label="销售员"
+              colProps={{ span: 6 }}
               placeholder="选择销售员"
               options={users.map((u) => ({ label: u.name, value: u.id }))}
+              rules={[{ required: true, message: "请选择销售员" }]}
             />
-          </Form.Item>
-          <Form.Item
-            label="发货仓库"
-            name="warehouseId"
-            rules={[{ required: true, message: "请选择发货仓库" }]}
-          >
-            <Select
-              style={{ width: 180 }}
+            <ProFormSelect
+              name="warehouseId"
+              label="发货仓库"
+              colProps={{ span: 6 }}
               placeholder="选择发货仓库"
               options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
+              rules={[{ required: true, message: "请选择发货仓库" }]}
             />
-          </Form.Item>
-        </Space>
-        <Form.Item label="备注" name="remark">
-          <Input.TextArea rows={2} />
-        </Form.Item>
-      </Form>
+            <ProFormTextArea
+              name="remark"
+              label="备注"
+              colProps={{ span: 24 }}
+              fieldProps={{ rows: 2 }}
+            />
+          </ProForm>
 
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>订单明细(金额由服务端按价税分离重算)</div>
-      <Table
-        rowKey="key"
-        size="small"
-        dataSource={lines}
-        pagination={false}
-        columns={lineColumns}
-        scroll={{ x: 900 }}
-      />
-      <Space style={{ marginTop: 16 }}>
-        <Button
-          onClick={() => setLines((ls) => [...ls, { key: lineSeq++ }])}
-        >
-          添加行
-        </Button>
-        <Button type="primary" loading={saving} onClick={onSubmit}>
-          {editId != null ? "保存" : "保存为草稿"}
-        </Button>
-      </Space>
-    </Card>
+          <div className="doc-form-section-title">订单明细</div>
+          {/* 明细保留原手工编辑 Table(物品→税率联动走 onItemChange) */}
+          <Table
+            rowKey="key"
+            size="small"
+            dataSource={lines}
+            pagination={false}
+            columns={lineColumns}
+            scroll={{ x: 900, y: "calc(100vh - 520px)" }}
+          />
+        </div>
+        {/* 底部固定操作条:左摘要,右 添加行 + 保存 */}
+        <div className="doc-form-footer">
+          <div className="doc-form-footer-summary">
+            共 {lines.length} 行明细
+            <span className="doc-form-footer-muted">金额以服务端价税重算为准</span>
+          </div>
+          <div className="doc-form-footer-actions">
+            <Button onClick={() => setLines((ls) => [...ls, { key: lineSeq++ }])}>添加行</Button>
+            <Button type="primary" loading={saving} onClick={onSubmit}>
+              {editId != null ? "保存" : "保存为草稿"}
+            </Button>
+          </div>
+        </div>
+      </ProCard>
+    </>
   );
 }

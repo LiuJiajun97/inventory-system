@@ -3,7 +3,8 @@
 // 选物品后自动带出默认税率(联动走数据流,不依赖 setFields)
 
 import { useEffect, useState } from "react";
-import { Button, Space } from "antd";
+import { Button } from "antd";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import {
   EditableProTable,
   ProCard,
@@ -244,33 +245,38 @@ export function PurchaseOrderNewPage() {
   };
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
-      <ProCard
-        title={editId != null ? `编辑采购订单 - ${docNo || "..."}` : "表头信息"}
-        extra={
-          <Link to="/purchase-orders">
-            <Button>返回列表</Button>
-          </Link>
-        }
-      >
+    <>
+      {/* 页面头部:返回 + 标题 + 编辑态单号摘要 */}
+      <div className="doc-page-head">
+        <Link className="doc-page-back" to="/purchase-orders">
+          <ArrowLeftOutlined /> 返回列表
+        </Link>
+        <h1 className="doc-page-title">
+          {editId != null ? "编辑采购订单" : "新建采购订单"}
+        </h1>
+        {editId != null && <span className="doc-page-meta">单号 {docNo || "..."}</span>}
+      </div>
+
+      {/* 单卡片布局:表头 + 明细 + 底部固定操作条 */}
+      <ProCard bodyStyle={{ padding: 0 }}>
+        <div className="doc-form-body">
         <ProForm
           form={headerForm}
-          layout="horizontal"
+          layout="vertical"
           grid
           submitter={false}
-          style={{ maxWidth: 960 }}
         >
           <ProFormDatePicker
             name="docDate"
             label="下单日期"
-            width="md"
+            colProps={{ span: 6 }}
             initialValue={dayjs()}
             rules={[{ required: true, message: "请选择下单日期" }]}
           />
           <ProFormSelect
             name="supplierId"
             label="供应商"
-            width="lg"
+            colProps={{ span: 6 }}
             showSearch
             options={suppliers.map((s) => ({
               label: `${s.supplierCode} ${s.supplierName}`,
@@ -282,14 +288,14 @@ export function PurchaseOrderNewPage() {
           <ProFormSelect
             name="buyerId"
             label="采购员"
-            width="md"
+            colProps={{ span: 6 }}
             options={users.map((u) => ({ label: u.name, value: u.id }))}
             rules={[{ required: true, message: "请选择采购员" }]}
           />
           <ProFormDigit
             name="allowOverReceiptRate"
             label="允许超收比例(%)"
-            width="md"
+            colProps={{ span: 6 }}
             initialValue={0}
             min={0}
             max={100}
@@ -303,9 +309,7 @@ export function PurchaseOrderNewPage() {
             fieldProps={{ rows: 2 }}
           />
         </ProForm>
-      </ProCard>
-
-      <ProCard title="订单明细(金额由服务端按价税分离重算)">
+        <div className="doc-form-section-title">订单明细</div>
         <EditableProTable<LineRow>
           rowKey="key"
           columns={columns}
@@ -318,7 +322,7 @@ export function PurchaseOrderNewPage() {
           search={false}
           options={false}
           pagination={false}
-          scroll={{ x: 900 }}
+          scroll={{ x: 900, y: "calc(100vh - 520px)" }}
           editable={{
             type: "multiple",
             form: lineForm,
@@ -329,13 +333,21 @@ export function PurchaseOrderNewPage() {
             actionRender: (_row, _config, dom) => [dom.delete],
           }}
         />
-        <Space style={{ marginTop: 16 }} align="center">
-          <Button onClick={addLine}>+ 添加行</Button>
-          <Button type="primary" loading={saving} onClick={onSubmit}>
-            {editId != null ? "保存" : "保存为草稿"}
-          </Button>
-        </Space>
+        </div>
+        {/* 底部固定操作条:左摘要,右 添加行 + 保存 */}
+        <div className="doc-form-footer">
+          <div className="doc-form-footer-summary">
+            共 {data.length} 行明细
+            <span className="doc-form-footer-muted">金额以服务端价税重算为准</span>
+          </div>
+          <div className="doc-form-footer-actions">
+            <Button onClick={addLine}>添加行</Button>
+            <Button type="primary" loading={saving} onClick={onSubmit}>
+              {editId != null ? "保存" : "保存为草稿"}
+            </Button>
+          </div>
+        </div>
       </ProCard>
-    </Space>
+    </>
   );
 }

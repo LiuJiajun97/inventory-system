@@ -1,11 +1,13 @@
 // 新建入库单(SPEC-WEB V2 2.4)
-// Card 入库信息(仓库/备注/操作人) + Card 入库明细(动态行内编辑)
+// 布局与采购/销售统一:页面头部 + 单卡片(表头 + 明细 + 底部固定操作条)
 // 序列号与数量联动校验:启用序列号时,序列号数量必须 = 总数量,行内红色提示
-// 底部固定操作条:取消/提交入库
+// 明细保留原 antd Table 手工编辑机制(关联采购单行模板/仓库配置联动不改)
 
 import { useEffect, useState } from "react";
 import {
   Form,
+  Row,
+  Col,
   Select,
   Input,
   InputNumber,
@@ -13,19 +15,16 @@ import {
   Button,
   Table,
   Tag,
-  Row,
-  Col,
   App,
-  Space,
 } from "antd";
-import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import { ProCard } from "@ant-design/pro-components";
+import { Link, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 import { inboundApi, itemApi, purchaseApi, warehouseApi } from "../../api";
 import type { Item, Location, Warehouse } from "../../types";
 import type { PurchaseOrder } from "../../types/phase1";
-import { PageHeader } from "../../components/PageHeader";
 import { getUser } from "../../auth/useAuth";
 
 interface Line {
@@ -326,84 +325,69 @@ export function InboundFormPage() {
 
   return (
     <>
-      <PageHeader
-        title="新建入库单"
-        extra={
-          <Space>
-            <Button onClick={() => navigate("/inbound")}>取消</Button>
-            <Button
-              type="primary"
-              loading={submitting}
-              onClick={onSubmit}
-            >
-              提交入库
-            </Button>
-          </Space>
-        }
-      />
+      {/* 页面头部:返回 + 标题 */}
+      <div className="doc-page-head">
+        <Link className="doc-page-back" to="/inbound">
+          <ArrowLeftOutlined /> 返回列表
+        </Link>
+        <h1 className="doc-page-title">新建入库单</h1>
+      </div>
 
-      <div className="table-card" style={{ marginBottom: 16 }}>
-        <div
-          style={{
-            fontWeight: 600,
-            marginBottom: 12,
-            color: "#1f2937",
-            fontSize: 14,
-          }}
-        >
-          入库信息
-        </div>
-        <Form form={form} layout="vertical" requiredMark={false}>
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item label="仓库" required>
-                <Select
-                  placeholder="选择仓库"
-                  value={warehouseId}
-                  options={warehouses.map((w) => ({
-                    label: `${w.warehouseCode} - ${w.warehouseName}`,
-                    value: w.id,
-                  }))}
-                  onChange={setWarehouseId}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item
-                label="关联采购订单"
-                tooltip="选后自动加载订单行作为明细模板(物品/未收数量),提交时回写采购单到货进度"
-              >
-                <Select
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="可选,选后加载订单行模板"
-                  value={refOrderId}
-                  options={purchaseOrders.map((o) => ({
-                    label: `${o.docNo} (${o.status === "pending" ? "待审批" : "已审批"})`,
-                    value: o.id,
-                  }))}
-                  onChange={(v) => void onRefOrderChange(v)}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={10}>
-              <Form.Item label="备注" name="remark">
-                <Input placeholder="可选" />
-              </Form.Item>
-            </Col>
-            <Col span={6}>
-              <Form.Item label="操作人">
-                <Input
-                  value={`${user?.name ?? ""} (${user?.username ?? ""})`}
-                  disabled
-                  prefix={<InfoCircleOutlined style={{ color: "#9ca3af" }} />}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+      {/* 单卡片布局:表头 + 明细 + 底部固定操作条 */}
+      <ProCard bodyStyle={{ padding: 0 }}>
+        <div className="doc-form-body">
+          {/* 表头:统一 grid + md 宽度,四列对齐 */}
+          <Form form={form} layout="vertical" requiredMark={false}>
+            <Row gutter={16}>
+              <Col span={6}>
+                <Form.Item label="仓库" required>
+                  <Select
+                    placeholder="选择仓库"
+                    value={warehouseId}
+                    options={warehouses.map((w) => ({
+                      label: `${w.warehouseCode} - ${w.warehouseName}`,
+                      value: w.id,
+                    }))}
+                    onChange={setWarehouseId}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item
+                  label="关联采购订单"
+                  tooltip="选后自动加载订单行作为明细模板(物品/未收数量),提交时回写采购单到货进度"
+                >
+                  <Select
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="可选,选后加载订单行模板"
+                    value={refOrderId}
+                    options={purchaseOrders.map((o) => ({
+                      label: `${o.docNo} (${o.status === "pending" ? "待审批" : "已审批"})`,
+                      value: o.id,
+                    }))}
+                    onChange={(v) => void onRefOrderChange(v)}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item label="操作人">
+                  <Input
+                    value={`${user?.name ?? ""} (${user?.username ?? ""})`}
+                    disabled
+                    prefix={<InfoCircleOutlined style={{ color: "#9ca3af" }} />}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            {/* 备注独占一行,与采购/销售页统一 */}
+            <Form.Item label="备注" name="remark">
+              <Input placeholder="可选" />
+            </Form.Item>
+          </Form>
           {currentWarehouse && (
-            <div style={{ fontSize: 12, color: "#6b7280", marginTop: -8 }}>
+            <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
               当前仓库配置:
               <Tag style={{ marginLeft: 8 }}>
                 批次 {currentWarehouse.enableBatch ? "✓" : "✗"}
@@ -413,34 +397,32 @@ export function InboundFormPage() {
               <Tag>库位 {currentWarehouse.enableLocation ? "✓" : "✗"}</Tag>
             </div>
           )}
-        </Form>
-      </div>
 
-      <div className="table-card">
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ fontWeight: 600, color: "#1f2937", fontSize: 14 }}>
-            入库明细
-          </div>
-          <Button type="dashed" icon={<PlusOutlined />} onClick={addLine}>
-            添加行
-          </Button>
+          <div className="doc-form-section-title">入库明细</div>
+          {/* 明细保留原手工编辑 Table,加纵向滚动使底部操作条始终可见 */}
+          <Table
+            rowKey="idx"
+            columns={columns}
+            dataSource={lines.map((l, i) => ({ idx: i, line: l }))}
+            pagination={false}
+            size="small"
+            scroll={{ x: 1300 }}
+          />
         </div>
-        <Table
-          rowKey="idx"
-          columns={columns}
-          dataSource={lines.map((l, i) => ({ idx: i, line: l }))}
-          pagination={false}
-          size="small"
-          scroll={{ x: 1300 }}
-        />
-      </div>
+        {/* 底部固定操作条:左摘要,右 取消/添加行/提交 */}
+        <div className="doc-form-footer">
+          <div className="doc-form-footer-summary">共 {lines.length} 行明细</div>
+          <div className="doc-form-footer-actions">
+            <Button onClick={() => navigate("/inbound")}>取消</Button>
+            <Button icon={<PlusOutlined />} onClick={addLine}>
+              添加行
+            </Button>
+            <Button type="primary" loading={submitting} onClick={onSubmit}>
+              提交入库
+            </Button>
+          </div>
+        </div>
+      </ProCard>
     </>
   );
 }

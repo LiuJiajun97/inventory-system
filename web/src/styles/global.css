@@ -624,6 +624,99 @@ a.action-edit .anticon {
   box-shadow: var(--shadow-lg);
 }
 
+/* ====== 单据新增/编辑页(采购/销售/入库/出库 4 页统一) ====== */
+/* 页面头部:返回链接 + 标题 + 右侧单据摘要 */
+.doc-page-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.doc-page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.doc-page-back:hover {
+  color: var(--color-primary);
+}
+
+.doc-page-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.doc-page-meta {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+
+/* 单卡片内容区(卡片 body 去内边距,由该类统一控制) */
+.doc-form-body {
+  padding: 20px 20px 8px;
+}
+
+/* 表头与明细之间的分节标题 */
+/* 表头四列 grid:控件列内撑满,仅表头 form 内,不影响明细表行内控件 */
+.doc-form-body form .ant-select,
+.doc-form-body form .ant-picker,
+.doc-form-body form .ant-input-number,
+.doc-form-body form .ant-input,
+.doc-form-body form .ant-input-textarea {
+  width: 100%;
+  max-width: 100%;
+}
+.doc-form-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 20px 0 12px;
+}
+
+/* 底部固定操作条:sticky 吸底,左摘要右按钮组 */
+.doc-form-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--color-bg-white);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 -2px 8px rgba(16, 24, 40, 0.04);
+}
+
+.doc-form-footer-summary {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.doc-form-footer-muted {
+  font-size: 12px;
+  color: var(--color-text-quaternary);
+  margin-left: 8px;
+}
+
+.doc-form-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ====== 欢迎语样式 ====== */
 .welcome-section {
   margin-bottom: 20px;
