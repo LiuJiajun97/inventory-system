@@ -1,5 +1,8 @@
 package com.company.inventory.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.company.inventory.model.entity.adjust.StockAdjustDocDO;
 import com.company.inventory.model.entity.inbound.InboundDocDO;
 import com.company.inventory.model.entity.outbound.OutboundDocDO;
@@ -19,31 +22,20 @@ import com.company.inventory.mapper.TransferDocMapper;
 import com.company.inventory.mapper.PurchaseReturnMapper;
 import com.company.inventory.mapper.SalesReturnMapper;
 
-
-
-
-
-
-
-
-
-
-
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-
-
-
-
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * 单据编号生成服务:RK/CK(出入库)、CG(采购)、XS(销售)、DB(调拨)、PD(盘点)、TZ(调整)、
  * CT(采购退货)、XT(销售退货)均为 PREFIX-YYYYMMDD-NNNN 按天序列。
  *
- * <p>规则与 Fastify 版一致:查当日单据数 + 1,补零 4 位;须在写单据的同一事务内调用。</p>
+ * <p>序号取"当日已用最大值 + 1"(按单号前缀 LIKE 匹配),而非"当日计数 + 1":
+ * 当天单据被物理删除后计数回退会重号撞唯一约束,最大值天然抗删除。</p>
+ *
+ * <p>注意:须在写单据的同一事务内调用,避免并发重号(重号由唯一约束兜底报错)。</p>
  *
  * @author inventory
  */
@@ -128,11 +120,7 @@ public class DocNoService {
      * @return 单号
      */
     public String generateInboundDocNo() {
-        long count = inboundDocMapper.selectCount(new LambdaQueryWrapper<InboundDocDO>()
-                .ge(InboundDocDO::getCreatedAt, todayStart())
-                .lt(InboundDocDO::getCreatedAt, todayEnd()));
-        return PREFIX_INBOUND + "-" + LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern(DATE_FORMAT))
-                + "-" + padSeq(count + 1);
+        return buildNo(PREFIX_INBOUND, inboundDocMapper, InboundDocDO::getDocNo);
     }
 
     /**
@@ -141,10 +129,7 @@ public class DocNoService {
      * @return 单号
      */
     public String generateOutboundDocNo() {
-        long count = outboundDocMapper.selectCount(new LambdaQueryWrapper<OutboundDocDO>()
-                .ge(OutboundDocDO::getCreatedAt, todayStart())
-                .lt(OutboundDocDO::getCreatedAt, todayEnd()));
-        return PREFIX_OUTBOUND + "-" + todayText() + "-" + padSeq(count + 1);
+        return buildNo(PREFIX_OUTBOUND, outboundDocMapper, OutboundDocDO::getDocNo);
     }
 
     /**
@@ -153,10 +138,7 @@ public class DocNoService {
      * @return 单号
      */
     public String generatePurchaseOrderNo() {
-        long count = purchaseOrderMapper.selectCount(new LambdaQueryWrapper<PurchaseOrderDO>()
-                .ge(PurchaseOrderDO::getCreatedAt, todayStart())
-                .lt(PurchaseOrderDO::getCreatedAt, todayEnd()));
-        return PREFIX_PURCHASE + "-" + todayText() + "-" + padSeq(count + 1);
+        return buildNo(PREFIX_PURCHASE, purchaseOrderMapper, PurchaseOrderDO::getDocNo);
     }
 
     /**
@@ -165,10 +147,7 @@ public class DocNoService {
      * @return 单号
      */
     public String generateSalesOrderNo() {
-        long count = salesOrderMapper.selectCount(new LambdaQueryWrapper<SalesOrderDO>()
-                .ge(SalesOrderDO::getCreatedAt, todayStart())
-                .lt(SalesOrderDO::getCreatedAt, todayEnd()));
-        return PREFIX_SALES + "-" + todayText() + "-" + padSeq(count + 1);
+        return buildNo(PREFIX_SALES, salesOrderMapper, SalesOrderDO::getDocNo);
     }
 
     /**
@@ -177,10 +156,7 @@ public class DocNoService {
      * @return 单号
      */
     public String generateTransferDocNo() {
-        long count = transferDocMapper.selectCount(new LambdaQueryWrapper<TransferDocDO>()
-                .ge(TransferDocDO::getCreatedAt, todayStart())
-                .lt(TransferDocDO::getCreatedAt, todayEnd()));
-        return PREFIX_TRANSFER + "-" + todayText() + "-" + padSeq(count + 1);
+        return buildNo(PREFIX_TRANSFER, transferDocMapper, TransferDocDO::getDocNo);
     }
 
     /**
@@ -189,10 +165,7 @@ public class DocNoService {
      * @return 单号
      */
     public String generateStocktakeDocNo() {
-        long count = stocktakeDocMapper.selectCount(new LambdaQueryWrapper<StocktakeDocDO>()
-                .ge(StocktakeDocDO::getCreatedAt, todayStart())
-                .lt(StocktakeDocDO::getCreatedAt, todayEnd()));
-        return PREFIX_STOCKTAKE + "-" + todayText() + "-" + padSeq(count + 1);
+        return buildNo(PREFIX_STOCKTAKE, stocktakeDocMapper, StocktakeDocDO::getDocNo);
     }
 
     /**
@@ -201,10 +174,7 @@ public class DocNoService {
      * @return 单号
      */
     public String generateAdjustDocNo() {
-        long count = stockAdjustDocMapper.selectCount(new LambdaQueryWrapper<StockAdjustDocDO>()
-                .ge(StockAdjustDocDO::getCreatedAt, todayStart())
-                .lt(StockAdjustDocDO::getCreatedAt, todayEnd()));
-        return PREFIX_ADJUST + "-" + todayText() + "-" + padSeq(count + 1);
+        return buildNo(PREFIX_ADJUST, stockAdjustDocMapper, StockAdjustDocDO::getDocNo);
     }
 
     /**
@@ -213,10 +183,7 @@ public class DocNoService {
      * @return 单号
      */
     public String generatePurchaseReturnNo() {
-        long count = purchaseReturnMapper.selectCount(new LambdaQueryWrapper<PurchaseReturnDO>()
-                .ge(PurchaseReturnDO::getCreatedAt, todayStart())
-                .lt(PurchaseReturnDO::getCreatedAt, todayEnd()));
-        return PREFIX_PURCHASE_RETURN + "-" + todayText() + "-" + padSeq(count + 1);
+        return buildNo(PREFIX_PURCHASE_RETURN, purchaseReturnMapper, PurchaseReturnDO::getDocNo);
     }
 
     /**
@@ -225,37 +192,46 @@ public class DocNoService {
      * @return 单号
      */
     public String generateSalesReturnNo() {
-        long count = salesReturnMapper.selectCount(new LambdaQueryWrapper<SalesReturnDO>()
-                .ge(SalesReturnDO::getCreatedAt, todayStart())
-                .lt(SalesReturnDO::getCreatedAt, todayEnd()));
-        return PREFIX_SALES_RETURN + "-" + todayText() + "-" + padSeq(count + 1);
+        return buildNo(PREFIX_SALES_RETURN, salesReturnMapper, SalesReturnDO::getDocNo);
     }
 
     /**
-     * 当日日期文本(yyyyMMdd)。
+     * 组装单号:前缀-当日日期-序号(序号 = 当日已用最大值 + 1)。
      *
-     * @return 日期文本
+     * @param prefix 单号前缀
+     * @param mapper 单据表 Mapper
+     * @param docCol 单号列
+     * @param <T>    单据实体类型
+     * @return 单号
      */
-    private String todayText() {
-        return LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern(DATE_FORMAT));
+    private <T> String buildNo(String prefix, BaseMapper<T> mapper, SFunction<T, String> docCol) {
+        String head = prefix + "-" + LocalDate.now().format(DateTimeFormatter.ofPattern(DATE_FORMAT));
+        long max = maxSeqOfDay(mapper, docCol, head);
+        return head + "-" + padSeq(max + 1);
     }
 
     /**
-     * 当日 0 点。
+     * 取某单据表当日已用最大序号(按"前缀-日期-"前缀 LIKE 匹配,取末 4 位最大值)。
      *
-     * @return 当日开始时间
+     * @param mapper 单据表 Mapper
+     * @param docCol 单号列
+     * @param head   前缀-日期文本(如 CK-20260913)
+     * @param <T>    单据实体类型
+     * @return 当日已用最大序号(无单据返回 0)
      */
-    private LocalDateTime todayStart() {
-        return LocalDate.now().atStartOfDay();
-    }
-
-    /**
-     * 次日 0 点(当日范围右开区间)。
-     *
-     * @return 次日开始时间
-     */
-    private LocalDateTime todayEnd() {
-        return LocalDate.now().plusDays(1).atStartOfDay();
+    private <T> long maxSeqOfDay(BaseMapper<T> mapper, SFunction<T, String> docCol, String head) {
+        List<T> rows = mapper.selectList(new LambdaQueryWrapper<T>().select(docCol).likeRight(docCol, head + "-"));
+        long max = 0L;
+        for (T row : rows) {
+            String no = docCol.apply(row);
+            String seqPart = no.substring(no.lastIndexOf('-') + 1);
+            try {
+                max = Math.max(max, Long.parseLong(seqPart));
+            } catch (NumberFormatException ignored) {
+                // 非标准单号忽略
+            }
+        }
+        return max;
     }
 
     /**
