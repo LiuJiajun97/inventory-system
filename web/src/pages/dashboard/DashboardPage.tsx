@@ -13,7 +13,7 @@ import {
   FieldTimeOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
-import { alertApi, dashboardApi, stockApi, transactionApi } from "../../api";
+import { alertApi, dashboardApi, settlementApi, stockApi, transactionApi } from "../../api";
 import { fmtDateTime } from "../../utils/format";
 import type {
   DashboardSummary,
@@ -42,7 +42,13 @@ export function DashboardPage() {
   const [txs, setTxs] = useState<StockTransaction[]>([]);
   const [expiryCount, setExpiryCount] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
+  // V18 结算:应付/应收余额两卡
+  const [settlement, setSettlement] = useState<{ apBalance: number; arBalance: number } | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    settlementApi.dashboard().then(setSettlement).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     // 预警计数只取 total,不阻断主加载
@@ -175,6 +181,42 @@ export function DashboardPage() {
                 <div style={{ fontSize: 12, color: "#9ca3af" }}>
                   {summary?.todayOutboundCount ?? 0} 单
                 </div>
+              </div>
+            </div>
+          </div>
+        </Col>
+
+        {/* 应付余额(V18 结算域) */}
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="stat-icon red">
+                <AlertOutlined />
+              </div>
+              <div>
+                <div className="stat-card-label">应付余额</div>
+                <div className="stat-card-value" style={Number(settlement?.apBalance ?? 0) < 0 ? { color: "#16a34a" } : { color: "#dc2626" }}>
+                  {Number(settlement?.apBalance ?? 0).toFixed(2)}
+                </div>
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>确认采购票净额 - 已付</div>
+              </div>
+            </div>
+          </div>
+        </Col>
+
+        {/* 应收余额(V18 结算域) */}
+        <Col xs={24} sm={12} md={6}>
+          <div className="stat-card">
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div className="stat-icon green">
+                <FieldTimeOutlined />
+              </div>
+              <div>
+                <div className="stat-card-label">应收余额</div>
+                <div className="stat-card-value" style={Number(settlement?.arBalance ?? 0) < 0 ? { color: "#dc2626" } : { color: "#16a34a" }}>
+                  {Number(settlement?.arBalance ?? 0).toFixed(2)}
+                </div>
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>确认销售票净额 - 已收</div>
               </div>
             </div>
           </div>

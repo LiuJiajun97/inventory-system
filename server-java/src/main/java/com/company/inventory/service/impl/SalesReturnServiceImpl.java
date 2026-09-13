@@ -25,6 +25,7 @@ import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.model.query.SalesReturnQuery;
 import com.company.inventory.service.DocNoService;
 import com.company.inventory.service.InboundService;
+import com.company.inventory.service.InvoiceService;
 import com.company.inventory.service.SalesOrderService;
 import com.company.inventory.service.SalesReturnService;
 import com.company.inventory.model.vo.inbound.InboundDocCreatedVO;
@@ -79,6 +80,8 @@ public class SalesReturnServiceImpl implements SalesReturnService {
     private final SalesOrderMapper orderMapper;
     /** 入库单服务(过账链路)。 */
     private final InboundService inboundService;
+    /** 发票服务(退货自动生成红字凭单)。 */
+    private final InvoiceService invoiceService;
     /** 单据号服务。 */
     private final DocNoService docNoService;
     /** 仓库 Mapper(列表展示仓库)。 */
@@ -93,13 +96,15 @@ public class SalesReturnServiceImpl implements SalesReturnService {
      * @param orderItemMapper   销售订单行 Mapper
      * @param orderMapper       销售订单 Mapper
      * @param inboundService    入库单服务
+     * @param invoiceService    发票服务
      * @param docNoService      单据号服务
      * @param warehouseMapper   仓库 Mapper
      */
     public SalesReturnServiceImpl(SalesReturnMapper returnDocMapper,
             SalesReturnItemMapper returnItemMapper, SalesOrderService salesOrderService,
             SalesOrderItemMapper orderItemMapper, SalesOrderMapper orderMapper,
-            InboundService inboundService, DocNoService docNoService,
+            InboundService inboundService, InvoiceService invoiceService,
+            DocNoService docNoService,
             WarehouseMapper warehouseMapper) {
         this.returnDocMapper = returnDocMapper;
         this.returnItemMapper = returnItemMapper;
@@ -107,6 +112,7 @@ public class SalesReturnServiceImpl implements SalesReturnService {
         this.orderItemMapper = orderItemMapper;
         this.orderMapper = orderMapper;
         this.inboundService = inboundService;
+        this.invoiceService = invoiceService;
         this.docNoService = docNoService;
         this.warehouseMapper = warehouseMapper;
     }
@@ -224,6 +230,8 @@ public class SalesReturnServiceImpl implements SalesReturnService {
             refLine.setReturnedQty(returned.add(line.quantity()));
             orderItemMapper.updateById(refLine);
         }
+        // 6. 同事务自动生成负数草稿发票(贷项凭单,确认后核减应收)
+        invoiceService.generateForSalesReturn(doc, username);
         LOGGER.info("新建销售退货单: docNo={}, salesOrderId={}, warehouseId={}, 行数={}, operator={}",
                 docNo, dto.salesOrderId(), dto.warehouseId(), dto.items().size(), username);
         return new SalesReturnCreatedVO(doc.getId(), docNo, doc.getWarehouseId(),

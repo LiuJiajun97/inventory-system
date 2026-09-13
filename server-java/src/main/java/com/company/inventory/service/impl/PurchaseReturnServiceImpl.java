@@ -24,6 +24,7 @@ import com.company.inventory.model.entity.returns.PurchaseReturnItemDO;
 import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.model.query.PurchaseReturnQuery;
 import com.company.inventory.service.DocNoService;
+import com.company.inventory.service.InvoiceService;
 import com.company.inventory.service.OutboundService;
 import com.company.inventory.service.PurchaseOrderService;
 import com.company.inventory.service.PurchaseReturnService;
@@ -79,6 +80,8 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
     private final PurchaseOrderMapper orderMapper;
     /** 出库单服务(过账链路)。 */
     private final OutboundService outboundService;
+    /** 发票服务(退货自动生成红字凭单)。 */
+    private final InvoiceService invoiceService;
     /** 单据号服务。 */
     private final DocNoService docNoService;
     /** 仓库 Mapper(列表展示仓库)。 */
@@ -93,13 +96,14 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
      * @param orderItemMapper       采购订单行 Mapper
      * @param orderMapper           采购订单 Mapper
      * @param outboundService       出库单服务
+     * @param invoiceService        发票服务
      * @param docNoService          单据号服务
      * @param warehouseMapper       仓库 Mapper
      */
     public PurchaseReturnServiceImpl(PurchaseReturnMapper returnDocMapper,
             PurchaseReturnItemMapper returnItemMapper, PurchaseOrderService purchaseOrderService,
             PurchaseOrderItemMapper orderItemMapper, PurchaseOrderMapper orderMapper,
-            OutboundService outboundService, DocNoService docNoService,
+            OutboundService outboundService, InvoiceService invoiceService, DocNoService docNoService,
             WarehouseMapper warehouseMapper) {
         this.returnDocMapper = returnDocMapper;
         this.returnItemMapper = returnItemMapper;
@@ -107,6 +111,7 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
         this.orderItemMapper = orderItemMapper;
         this.orderMapper = orderMapper;
         this.outboundService = outboundService;
+        this.invoiceService = invoiceService;
         this.docNoService = docNoService;
         this.warehouseMapper = warehouseMapper;
     }
@@ -223,6 +228,8 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
             refLine.setReturnedQty(returned.add(line.quantity()));
             orderItemMapper.updateById(refLine);
         }
+        // 6. 同事务自动生成负数草稿发票(红字凭单,对齐 U8 红字发票/金蝶红字应付单,确认后核减应付)
+        invoiceService.generateForPurchaseReturn(doc, username);
         LOGGER.info("新建采购退货单: docNo={}, purchaseOrderId={}, warehouseId={}, 行数={}, operator={}",
                 docNo, dto.purchaseOrderId(), dto.warehouseId(), dto.items().size(), username);
         return new PurchaseReturnCreatedVO(doc.getId(), docNo, doc.getWarehouseId(),

@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- V18 结算域只读聚合:可挂票行/防超开源行聚合/应付应收台账/订单执行跟踪/仪表盘余额。
+     台账零建表:全部为发票 + 核销行 + 入库/出库关联单据的实时聚合,显式列(禁 select *)。 -->
+<mapper namespace="com.company.inventory.mapper.InvoiceMapper">
+
+    <!-- 累计已开票子查询:未作废发票按源单据行聚合(正负号随行) -->
+    <sql id="invoicedBySrc">
+        (
+            SELECT ii.src_doc_type, ii.src_doc_id, ii.src_doc_item_id,
+                   SUM(ii.invoiced_amount) invoiced
+            FROM invoice_item ii
+            JOIN invoice iv ON iv.id = ii.invoice_id
+            WHERE iv.status &lt;&gt; 'voided'
+            GROUP BY ii.src_doc_type, ii.src_doc_id, ii.src_doc_item_id
+        )
+    </sql>
+
+    <!-- 某发票累计已核销子查询:未作废付款/收款单按发票聚合 -->
+    <sql id="settledByInvoice">
+        (
+            SELECT pl.invoice_id, SUM(pl.amount) settled_amount
+            FROM payment_line pl
+            JOIN payment_doc pd ON pd.id = pl.payment_id
+            WHERE pd.status = 'confirmed'
+            GROUP BY pl.invoice_id
+        )
+    </sql>
+
+    <!-- 可挂票源单据行(未开票/部分开票):purchase=采购关联入库行,sales=销售关联出库行 -->
+    <select id="selectInvoiceableLines" resultType="com.company.inventory.model.vo.settlement.InvoiceableLineVO">
+        <choose>
+            <when test="type == 'purchase'">
+                SELECT 'inbound' src_doc_type, d.id src_doc_id, i.id src_doc_item_id,
+                       d.doc_no src_doc_no, d.doc_date, i.item_id,
+                       it.item_code, it.item_name, it.spec, it.unit, i.quantity,
+                       COALESCE(i.tax_inclusive_total, 0) src_amount,
+                       COALESCE(inv.invoiced, 0) invoiced_so_far,
+                       COALESCE(i.tax_inclusive_total, 0) - COALESCE(inv.invoiced, 0) remaining
+                FROM inbound_doc d
+                JOIN inbound_doc_item i ON i.doc_id = d.id
+                JOIN purchase_order po ON po.id = d.ref_doc_id
+                JOIN item it ON it.id = i.item_id
+                LEFT JOIN <include refid="invoicedBySrc"/> inv
+                    ON inv.src_doc_type = 'inbound' AND inv.src_doc_id = d.id
+                    AND inv.src_doc_item_id = i.id
+                WHERE d.ref_type = 'purchase' AND d.ref_doc_id IS NOT NULL
+                  AND po.supplier_id = #{partyId}
+                  AND COALESCE(i.tax_inclusive_total, 0) - COALESCE(inv.invoiced, 0) &gt; 0
+                ORDER BY d.doc_date, d.doc_no, i.line_no
+            </when>
+            <otherwise>
+                SELECT 'outbound' src_doc_type, d.id src_doc_id, i.id src_doc_item_id,
+                       d.doc_no src_doc_no, d.doc_date, i.item_id,
+                       it.item_code, it.item_name, it.spec, it.unit, i.quantity,
+                       COALESCE(i.tax_inclusive_total, 0) src_amount,
+                       COALESCE(inv.invoiced, 0) invoiced_so_far,
+                       COALESCE(i.tax_inclusive_total, 0) - COALESCE(inv.invoiced, 0) remaining
+                FROM outbound_doc d
+                JOIN outbound_doc_item i ON i.doc_id = d.id
+                JOIN sales_order so ON so.id = d.ref_doc_id
+                JOIN item it ON it.id = i.item_id
+                LEFT JOIN <include refid="invoicedBySrc"/> inv
+                    ON inv.src_doc_type = 'outbound' AND inv.src_doc_id = d.id
+                    AND inv.src_doc_item_id = i.id
+                WHERE d.ref_type = 'sales' AND d.ref_doc_id IS NOT NULL
+                  AND so.customer_id = #{partyId}
+                  AND COALESCE(i.tax_inclusive_total, 0) - COALESCE(inv.invoiced, 0) &gt; 0
+                ORDER BY d.doc_date, d.doc_no, i.line_no
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 防超开硬校验:全库源单据行累计已开票额(未作废发票全部行) -->
+    <select id="selectInvoicedSumBySrc" resultType="com.company.inventory.model.vo.settlement.InvoicedSrcVO">
+        SELECT ii.src_doc_type, ii.src_doc_id, ii.src_doc_item_id,
+               SUM(ii.invoiced_amount) invoiced
+        FROM invoice_item ii
+        JOIN invoice iv ON iv.id = ii.invoice_id
+        WHERE iv.status &lt;&gt; 'voided'
+        GROUP BY ii.src_doc_type, ii.src_doc_id, ii.src_doc_item_id
+    </select>
+
+    <!-- 台账主行:按对方聚合 入库(出库)关联额/已开票净额/已付(收)额;无数据对方三额为 0 -->
+    <select id="selectPartyLedger" resultType="com.company.inventory.model.vo.settlement.PartyLedgerVO">
+        <choose>
+            <when test="type == 'purchase'">
+                SELECT s.id party_id, s.supplier_name party_name,
+                       COALESCE(r.received_amount, 0) received_amount,
+                       COALESCE(iv.invoiced_amount, 0) invoiced_amount,
+                       COALESCE(p.settled_amount, 0) settled_amount
+                FROM supplier s
+                LEFT JOIN (
+                    SELECT po.supplier_id, SUM(COALESCE(iti.tax_inclusive_total, 0)) received_amount
+                    FROM inbound_doc d
+                    JOIN inbound_doc_item iti ON iti.doc_id = d.id
+                    JOIN purchase_order po ON po.id = d.ref_doc_id
+                    WHERE d.ref_type = 'purchase'
+                    GROUP BY po.supplier_id
+                ) r ON r.supplier_id = s.id
+                LEFT JOIN (
+                    SELECT party_id, SUM(total_amount) invoiced_amount
+                    FROM invoice
+                    WHERE invoice_type = 'purchase' AND status = 'confirmed'
+                    GROUP BY party_id
+                ) iv ON iv.party_id = s.id
+                LEFT JOIN (
+                    SELECT pd.party_id, SUM(pl.amount) settled_amount
+                    FROM payment_line pl
+                    JOIN payment_doc pd ON pd.id = pl.payment_id
+                    WHERE pd.status = 'confirmed' AND pd.pay_type = 'payment'
+                    GROUP BY pd.party_id
+                ) p ON p.party_id = s.id
+                ORDER BY s.id
+            </when>
+            <otherwise>
+                SELECT c.id party_id, c.customer_name party_name,
+                       COALESCE(r.received_amount, 0) received_amount,
+                       COALESCE(iv.invoiced_amount, 0) invoiced_amount,
+                       COALESCE(p.settled_amount, 0) settled_amount
+                FROM customer c
+                LEFT JOIN (
+                    SELECT so.customer_id, SUM(COALESCE(oti.tax_inclusive_total, 0)) received_amount
+                    FROM outbound_doc d
+                    JOIN outbound_doc_item oti ON oti.doc_id = d.id
+                    JOIN sales_order so ON so.id = d.ref_doc_id
+                    WHERE d.ref_type = 'sales'
+                    GROUP BY so.customer_id
+                ) r ON r.customer_id = c.id
+                LEFT JOIN (
+                    SELECT party_id, SUM(total_amount) invoiced_amount
+                    FROM invoice
+                    WHERE invoice_type = 'sales' AND status = 'confirmed'
+                    GROUP BY party_id
+                ) iv ON iv.party_id = c.id
+                LEFT JOIN (
+                    SELECT pd.party_id, SUM(pl.amount) settled_amount
+                    FROM payment_line pl
+                    JOIN payment_doc pd ON pd.id = pl.payment_id
+                    WHERE pd.status = 'confirmed' AND pd.pay_type = 'receipt'
+                    GROUP BY pd.party_id
+                ) p ON p.party_id = c.id
+                ORDER BY c.id
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 台账行展开:某对方 confirmed 发票列表(含累计已核销) -->
+    <select id="selectPartyInvoices" resultType="com.company.inventory.model.vo.settlement.LedgerInvoiceVO">
+        SELECT iv.id invoice_id, iv.doc_no, iv.invoice_date, iv.total_amount,
+               iv.sign, iv.source_type, COALESCE(p.settled_amount, 0) settled_amount
+        FROM invoice iv
+        LEFT JOIN <include refid="settledByInvoice"/> p ON p.invoice_id = iv.id
+        WHERE iv.invoice_type = #{type} AND iv.party_id = #{partyId} AND iv.status = 'confirmed'
+        ORDER BY iv.id
+    </select>
+
+    <!-- 订单执行跟踪:某对方订单展开 下单/入库(出库)/开票/付款 四列(核销额按开票占比分摊) -->
+    <select id="selectOrderProgress" resultType="com.company.inventory.model.vo.settlement.OrderProgressVO">
+        <choose>
+            <when test="type == 'purchase'">
+                SELECT po.id order_id, po.doc_no, po.doc_date,
+                       COALESCE(po.total_tax_inclusive, 0) order_amount,
+                       COALESCE(r.received_amount, 0) received_amount,
+                       COALESCE(iv.invoiced_amount, 0) invoiced_amount,
+                       COALESCE(iv.settled_amount, 0) settled_amount
+                FROM purchase_order po
+                LEFT JOIN (
+                    SELECT d.ref_doc_id, SUM(COALESCE(iti.tax_inclusive_total, 0)) received_amount
+                    FROM inbound_doc d
+                    JOIN inbound_doc_item iti ON iti.doc_id = d.id
+                    WHERE d.ref_type = 'purchase'
+                    GROUP BY d.ref_doc_id
+                ) r ON r.ref_doc_id = po.id
+                LEFT JOIN (
+                    SELECT d2.ref_doc_id,
+                           SUM(COALESCE(ii2.invoiced_amount, 0)) invoiced_amount,
+                           SUM(COALESCE(ii2.invoiced_amount, 0)
+                               * COALESCE(s2.settled_amount, 0) / NULLIF(iv2.total_amount, 0)) settled_amount
+                    FROM invoice_item ii2
+                    JOIN invoice iv2 ON iv2.id = ii2.invoice_id
+                        AND iv2.invoice_type = 'purchase' AND iv2.status = 'confirmed'
+                    JOIN inbound_doc d2 ON d2.id = ii2.src_doc_id AND d2.ref_type = 'purchase'
+                    LEFT JOIN <include refid="settledByInvoice"/> s2 ON s2.invoice_id = iv2.id
+                    GROUP BY d2.ref_doc_id
+                ) iv ON iv.ref_doc_id = po.id
+                WHERE po.supplier_id = #{partyId}
+                ORDER BY po.id
+            </when>
+            <otherwise>
+                SELECT so.id order_id, so.doc_no, so.doc_date,
+                       COALESCE(so.total_tax_inclusive, 0) order_amount,
+                       COALESCE(r.received_amount, 0) received_amount,
+                       COALESCE(iv.invoiced_amount, 0) invoiced_amount,
+                       COALESCE(iv.settled_amount, 0) settled_amount
+                FROM sales_order so
+                LEFT JOIN (
+                    SELECT d.ref_doc_id, SUM(COALESCE(oti.tax_inclusive_total, 0)) received_amount
+                    FROM outbound_doc d
+                    JOIN outbound_doc_item oti ON oti.doc_id = d.id
+                    WHERE d.ref_type = 'sales'
+                    GROUP BY d.ref_doc_id
+                ) r ON r.ref_doc_id = so.id
+                LEFT JOIN (
+                    SELECT d2.ref_doc_id,
+                           SUM(COALESCE(ii2.invoiced_amount, 0)) invoiced_amount,
+                           SUM(COALESCE(ii2.invoiced_amount, 0)
+                               * COALESCE(s2.settled_amount, 0) / NULLIF(iv2.total_amount, 0)) settled_amount
+                    FROM invoice_item ii2
+                    JOIN invoice iv2 ON iv2.id = ii2.invoice_id
+                        AND iv2.invoice_type = 'sales' AND iv2.status = 'confirmed'
+                    JOIN outbound_doc d2 ON d2.id = ii2.src_doc_id AND d2.ref_type = 'sales'
+                    LEFT JOIN <include refid="settledByInvoice"/> s2 ON s2.invoice_id = iv2.id
+                    GROUP BY d2.ref_doc_id
+                ) iv ON iv.ref_doc_id = so.id
+                WHERE so.customer_id = #{partyId}
+                ORDER BY so.id
+            </otherwise>
+        </choose>
+    </select>
+
+    <!-- 仪表盘余额:应付=确认采购票净额-确认付款额;应收=确认销售票净额-确认收款额 -->
+    <select id="selectDashboardBalance" resultType="com.company.inventory.model.vo.settlement.SettlementDashboardVO">
+        SELECT (SELECT COALESCE(SUM(total_amount), 0) FROM invoice
+                WHERE invoice_type = 'purchase' AND status = 'confirmed')
+               - (SELECT COALESCE(SUM(pl.amount), 0) FROM payment_line pl
+                  JOIN payment_doc pd ON pd.id = pl.payment_id
+                  WHERE pd.status = 'confirmed' AND pd.pay_type = 'payment') ap_balance,
+               (SELECT COALESCE(SUM(total_amount), 0) FROM invoice
+                WHERE invoice_type = 'sales' AND status = 'confirmed')
+               - (SELECT COALESCE(SUM(pl.amount), 0) FROM payment_line pl
+                  JOIN payment_doc pd ON pd.id = pl.payment_id
+                  WHERE pd.status = 'confirmed' AND pd.pay_type = 'receipt') ar_balance
+    </select>
+</mapper>

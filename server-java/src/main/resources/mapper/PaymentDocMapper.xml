@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- V18 结算域付款/收款只读 SQL:可核销票(confirmed 正票剩余可核额)/防超核发票级已核销聚合,显式列(禁 select *)。 -->
+<mapper namespace="com.company.inventory.mapper.PaymentDocMapper">
+
+    <!-- 未核销票:某对方 confirmed 正票,含票额/已核销/剩余可核 -->
+    <select id="selectUnsettledInvoices" resultType="com.company.inventory.model.vo.settlement.UnsettledInvoiceVO">
+        SELECT iv.id invoice_id, iv.doc_no, iv.invoice_date, iv.total_amount,
+               COALESCE(s.settled_amount, 0) settled_amount,
+               iv.total_amount - COALESCE(s.settled_amount, 0) remaining_amount
+        FROM invoice iv
+        LEFT JOIN (
+            SELECT pl.invoice_id, SUM(pl.amount) settled_amount
+            FROM payment_line pl
+            JOIN payment_doc pd ON pd.id = pl.payment_id
+            WHERE pd.status = 'confirmed'
+            GROUP BY pl.invoice_id
+        ) s ON s.invoice_id = iv.id
+        WHERE iv.invoice_type = #{type} AND iv.party_id = #{partyId}
+          AND iv.status = 'confirmed' AND iv.sign = 'positive'
+          AND iv.total_amount - COALESCE(s.settled_amount, 0) &gt; 0
+        ORDER BY iv.id
+    </select>
+
+    <!-- 防超核硬校验:按发票聚合累计已核销额(未作废付款/收款单) -->
+    <select id="selectSettledByInvoices" resultType="com.company.inventory.model.vo.settlement.SettledInvoiceVO">
+        SELECT pl.invoice_id, SUM(pl.amount) settled_amount
+        FROM payment_line pl
+        JOIN payment_doc pd ON pd.id = pl.payment_id
+        WHERE pd.status = 'confirmed'
+          AND pl.invoice_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        GROUP BY pl.invoice_id
+    </select>
+</mapper>

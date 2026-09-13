@@ -434,3 +434,133 @@ export interface DocLine {
   taxInclusiveTotal?: string | null;
   batchNo?: string | null;
 }
+
+// V18 结算域:发票 / 付款收款 / 台账
+
+export interface InvoiceItemRow {
+  id: number;
+  invoiceId: number;
+  lineNo?: number | null;
+  srcDocType: string;
+  srcDocNo?: string | null;
+  srcDocId: number;
+  srcDocItemId: number;
+  itemId: number;
+  itemCode?: string | null;
+  itemName?: string | null;
+  specSnapshot?: string | null;
+  unit?: string | null;
+  quantity?: number | null;
+  invoicedAmount: number;
+  srcAmount?: number | null;
+  variance: number;
+  sign: string;
+  batchNo?: string | null;
+}
+
+export interface Invoice {
+  id: number;
+  docNo: string;
+  invoiceType: "purchase" | "sales";
+  partyId: number;
+  partyName?: string | null;
+  invoiceDate: string;
+  totalAmount: number;
+  status: "draft" | "mismatch" | "confirmed" | "voided";
+  sign: "positive" | "negative";
+  sourceType: "manual" | "return_gen";
+  refReturnId?: number | null;
+  refReturnNo?: string | null;
+  remark?: string | null;
+  creator?: string | null;
+  createdAt?: string | null;
+  updater?: string | null;
+  updatedAt?: string | null;
+  items?: InvoiceItemRow[];
+}
+
+export interface InvoiceableLine {
+  srcDocType: string;
+  srcDocId: number;
+  srcDocItemId: number;
+  srcDocNo: string;
+  docDate?: string | null;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  spec?: string | null;
+  unit?: string | null;
+  quantity?: number | null;
+  srcAmount: number;
+  invoicedSoFar: number;
+  remaining: number;
+}
+
+export interface PaymentLineRow {
+  id: number;
+  paymentId: number;
+  invoiceId: number;
+  invoiceNo?: string | null;
+  amount: number;
+}
+
+export interface PaymentDoc {
+  id: number;
+  docNo: string;
+  payType: "payment" | "receipt";
+  partyId: number;
+  partyName?: string | null;
+  payDate?: string | null;
+  totalAmount: number;
+  status: "confirmed" | "voided";
+  remark?: string | null;
+  creator?: string | null;
+  createdAt?: string | null;
+  lines?: PaymentLineRow[];
+}
+
+export interface UnsettledInvoice {
+  invoiceId: number;
+  docNo: string;
+  invoiceDate: string;
+  totalAmount: number;
+  settledAmount: number;
+  remainingAmount: number;
+}
+
+export interface LedgerInvoiceRow {
+  invoiceId: number;
+  docNo: string;
+  invoiceDate: string;
+  totalAmount: number;
+  sign: string;
+  sourceType: string;
+  settledAmount: number;
+}
+
+export interface OrderProgressRow {
+  orderId: number;
+  orderNo: string;
+  docDate?: string | null;
+  orderAmount: number;
+  receivedAmount: number;
+  invoicedAmount: number;
+  settledAmount: number;
+}
+
+export interface LedgerRow {
+  partyId: number;
+  partyName: string;
+  receivedAmount: number;
+  invoicedAmount: number;
+  estimatedAmount: number;
+  settledAmount: number;
+  balance: number;
+  invoices: LedgerInvoiceRow[];
+  orders: OrderProgressRow[];
+}
+
+export interface SettlementDashboard {
+  apBalance: number;
+  arBalance: number;
+}

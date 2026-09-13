@@ -28,6 +28,8 @@ import {
   MonitorOutlined,
   SettingOutlined,
   BarChartOutlined,
+  AccountBookOutlined,
+  FileDoneOutlined,
 } from "@ant-design/icons";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearAuth, getUser } from "../auth/useAuth";
@@ -48,6 +50,7 @@ const DIR_ICON: Record<string, React.ReactNode> = {
   "base-dir": <AppstoreOutlined />,
   "system-dir": <SettingOutlined />,
   "reports-dir": <BarChartOutlined />,
+  "settlement-dir": <AccountBookOutlined />,
 };
 
 // 二级菜单图标映射(按 menuCode;未知菜单回退 SettingOutlined,不崩)
@@ -74,6 +77,11 @@ const MENU_ICON: Record<string, React.ReactNode> = {
   dicts: <AuditOutlined />,
   monitor: <MonitorOutlined />,
   "operation-logs": <FileSearchOutlined />,
+  invoices: <FileDoneOutlined />,
+  "settlement-ap": <AccountBookOutlined />,
+  "settlement-ar": <AccountBookOutlined />,
+  payments: <AccountBookOutlined />,
+  receipts: <AccountBookOutlined />,
 };
 
 const FALLBACK_ICON = <SettingOutlined />;

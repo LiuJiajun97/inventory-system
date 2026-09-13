@@ -36,6 +36,11 @@ import { StocktakePage } from "./pages/stocktake/StocktakePage";
 import { AdjustPage } from "./pages/adjust/AdjustPage";
 import { AlertPage } from "./pages/alert/AlertPage";
 import { ReportPage } from "./pages/report/ReportPage";
+import { InvoiceListPage } from "./pages/settlement/InvoiceListPage";
+import { InvoiceNewPage } from "./pages/settlement/InvoiceNewPage";
+import { LedgerPage } from "./pages/settlement/LedgerPage";
+import { PaymentListPage } from "./pages/settlement/PaymentListPage";
+import { PaymentNewPage } from "./pages/settlement/PaymentNewPage";
 import { DictPage } from "./pages/dict/DictPage";
 import { MonitorPage } from "./pages/monitor/MonitorPage";
 import { OperationLogPage } from "./pages/operationLog/OperationLogPage";
@@ -133,6 +138,35 @@ export default function App() {
               <Route path="stock-adjusts" element={<AdjustPage />} />
               <Route path="alerts" element={<AlertPage />} />
               <Route path="reports" element={<ReportPage />} />
+              <Route path="invoices" element={<InvoiceListPage />} />
+              <Route
+                path="invoices/new/:id?"
+                element={
+                  <RequireAuth>
+                    <InvoiceNewPage />
+                  </RequireAuth>
+                }
+              />
+              <Route path="settlement/ap" element={<LedgerPage mode="ap" />} />
+              <Route path="settlement/ar" element={<LedgerPage mode="ar" />} />
+              <Route path="payments" element={<PaymentListPage mode="payment" />} />
+              <Route
+                path="payments/new"
+                element={
+                  <RequireAuth>
+                    <PaymentNewPage mode="payment" />
+                  </RequireAuth>
+                }
+              />
+              <Route path="receipts" element={<PaymentListPage mode="receipt" />} />
+              <Route
+                path="receipts/new"
+                element={
+                  <RequireAuth>
+                    <PaymentNewPage mode="receipt" />
+                  </RequireAuth>
+                }
+              />
               <Route path="items" element={<ItemListPage />} />
               <Route
                 path="items/new"

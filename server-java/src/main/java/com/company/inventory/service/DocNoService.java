@@ -1,8 +1,13 @@
 package com.company.inventory.service;
 
+import com.company.inventory.common.constant.SettlementConstants;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
+import com.company.inventory.model.entity.settlement.InvoiceDO;
+import com.company.inventory.model.entity.settlement.PaymentDocDO;
+import com.company.inventory.mapper.InvoiceMapper;
+import com.company.inventory.mapper.PaymentDocMapper;
 import com.company.inventory.model.entity.adjust.StockAdjustDocDO;
 import com.company.inventory.model.entity.inbound.InboundDocDO;
 import com.company.inventory.model.entity.outbound.OutboundDocDO;
@@ -90,6 +95,10 @@ public class DocNoService {
     private final PurchaseReturnMapper purchaseReturnMapper;
     private final SalesReturnMapper salesReturnMapper;
     private final OpeningStockDocMapper openingStockDocMapper;
+    /** 发票 Mapper(发票号 FP-)。 */
+    private final InvoiceMapper invoiceMapper;
+    /** 付款/收款单 Mapper(FK-/SK-)。 */
+    private final PaymentDocMapper paymentDocMapper;
 
     /**
      * 构造服务。
@@ -104,12 +113,15 @@ public class DocNoService {
      * @param purchaseReturnMapper 采购退货单 Mapper
      * @param salesReturnMapper    销售退货单 Mapper
      * @param openingStockDocMapper 期初单 Mapper
+     * @param invoiceMapper    发票 Mapper
+     * @param paymentDocMapper 付款/收款单 Mapper
      */
     public DocNoService(InboundDocMapper inboundDocMapper, OutboundDocMapper outboundDocMapper,
             PurchaseOrderMapper purchaseOrderMapper, SalesOrderMapper salesOrderMapper,
             TransferDocMapper transferDocMapper, StocktakeDocMapper stocktakeDocMapper,
             StockAdjustDocMapper stockAdjustDocMapper, PurchaseReturnMapper purchaseReturnMapper,
-            SalesReturnMapper salesReturnMapper, OpeningStockDocMapper openingStockDocMapper) {
+            SalesReturnMapper salesReturnMapper, OpeningStockDocMapper openingStockDocMapper,
+            InvoiceMapper invoiceMapper, PaymentDocMapper paymentDocMapper) {
         this.inboundDocMapper = inboundDocMapper;
         this.outboundDocMapper = outboundDocMapper;
         this.purchaseOrderMapper = purchaseOrderMapper;
@@ -120,6 +132,8 @@ public class DocNoService {
         this.purchaseReturnMapper = purchaseReturnMapper;
         this.salesReturnMapper = salesReturnMapper;
         this.openingStockDocMapper = openingStockDocMapper;
+        this.invoiceMapper = invoiceMapper;
+        this.paymentDocMapper = paymentDocMapper;
     }
 
     /**
@@ -210,6 +224,33 @@ public class DocNoService {
      */
     public String generateOpeningDocNo() {
         return buildNo(PREFIX_OPENING, openingStockDocMapper, OpeningStockDocDO::getDocNo);
+    }
+
+    /**
+     * 生成发票号(FP-YYYYMMDD-NNNN,采购票/销售票/红字凭单共用)。
+     *
+     * @return 发票号
+     */
+    public String generateInvoiceNo() {
+        return buildNo(SettlementConstants.PREFIX_INVOICE, invoiceMapper, InvoiceDO::getDocNo);
+    }
+
+    /**
+     * 生成付款单号(FK-YYYYMMDD-NNNN)。
+     *
+     * @return 单号
+     */
+    public String generatePaymentDocNo() {
+        return buildNo(SettlementConstants.PREFIX_PAYMENT, paymentDocMapper, PaymentDocDO::getDocNo);
+    }
+
+    /**
+     * 生成收款单号(SK-YYYYMMDD-NNNN)。
+     *
+     * @return 单号
+     */
+    public String generateReceiptDocNo() {
+        return buildNo(SettlementConstants.PREFIX_RECEIPT, paymentDocMapper, PaymentDocDO::getDocNo);
     }
 
     /**

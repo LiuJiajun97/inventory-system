@@ -32,6 +32,12 @@ import type {
   DictItem,
   DictTypeItem,
   DocLine,
+  Invoice,
+  InvoiceableLine,
+  PaymentDoc,
+  UnsettledInvoice,
+  LedgerRow,
+  SettlementDashboard,
 } from "../types/phase1";
 import type {
   StockMonthlyRow,
@@ -799,4 +805,77 @@ export const operationLogApi = {
   }) => http.get<unknown, PagedResponse<OperationLog>>("/operation-logs", { params }),
   // 模块筛选项(后端 LogModule 集中映射)
   modules: () => http.get<unknown, string[]>("/operation-logs/modules"),
+};
+
+// 发票(V18 结算域:手工登记正票 + 退货生成红字凭单)
+export const invoiceApi = {
+  list: (params: {
+    invoiceType?: string;
+    partyId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<Invoice>>("/invoices", { params }),
+  get: (id: number) => http.get<unknown, Invoice>(`/invoices/${id}`),
+  create: (data: {
+    invoiceType: string;
+    partyId: number;
+    invoiceDate: string;
+    remark?: string;
+    items: { srcDocType: string; srcDocId: number; srcDocItemId: number; invoicedAmount: number }[];
+  }) => http.post<unknown, Invoice>("/invoices", data),
+  update: (
+    id: number,
+    data: {
+      partyId?: number;
+      invoiceDate?: string;
+      remark?: string;
+      items: { srcDocType: string; srcDocId: number; srcDocItemId: number; invoicedAmount: number }[];
+    },
+  ) => http.put<unknown, Invoice>(`/invoices/${id}`, data),
+  confirm: (id: number) => http.post<unknown, Invoice>(`/invoices/${id}/confirm`),
+  void: (id: number) => http.post<unknown, Invoice>(`/invoices/${id}/void`),
+  // 可挂票源单据行(未开票/部分开票)
+  invoiceableLines: (invoiceType: string, partyId: number) =>
+    http.get<unknown, InvoiceableLine[]>(`/invoices/invoiceable-lines`, {
+      params: { invoiceType, partyId },
+    }),
+};
+
+// 付款/收款单(V18 结算域:一表一 type,核销行挂 confirmed 正票)
+export const paymentApi = {
+  list: (params: {
+    payType?: string;
+    partyId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<PaymentDoc>>("/payments", { params }),
+  get: (id: number) => http.get<unknown, PaymentDoc>(`/payments/${id}`),
+  create: (data: {
+    payType: string;
+    partyId: number;
+    payDate: string;
+    remark?: string;
+    lines: { invoiceId: number; amount: number }[];
+  }) => http.post<unknown, PaymentDoc>("/payments", data),
+  void: (id: number) => http.post<unknown, PaymentDoc>(`/payments/${id}/void`),
+  // 可核销票(confirmed 正票剩余可核额)
+  unsettledInvoices: (payType: string, partyId: number) =>
+    http.get<unknown, UnsettledInvoice[]>("/payments/unsettled-invoices", {
+      params: { payType, partyId },
+    }),
+};
+
+// 结算台账(V18:应付/应收台账 + 仪表盘余额,只读)
+export const settlementApi = {
+  ap: () => http.get<unknown, LedgerRow[]>("/settlement/ap"),
+  ar: () => http.get<unknown, LedgerRow[]>("/settlement/ar"),
+  dashboard: () => http.get<unknown, SettlementDashboard>("/settlement/dashboard"),
 };
