@@ -3,7 +3,7 @@
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable、单据表单页 ProForm 表头)。
 > 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占/退货 + 基础出入库,20 个 Controller,前端 31 个页面(25 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **148 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **154 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -68,7 +68,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 148 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 154 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -101,6 +101,8 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | 入库单 / 出库单 创建 | ✅ | ✅ | ❌ |
 | 采购 / 销售 / 调拨 / 盘点 / 调整 单据创建 | ✅ | ✅ | ❌ |
 | 采购退货单 / 销售退货单 创建(create 即过账,V11) | ✅ | ✅ | ❌ |
+| 物品 / 供应商 / 客户 xlsx 导入(V12,逐行校验,失败行汇总) | ✅ | ❌ | ❌ |
+| 物品 / 供应商 / 客户 / 库存 / 入库 / 出库 / 采购 / 销售 xlsx 导出(V12,与列表读一致) | ✅ | ✅ | ✅ |
 | 草稿 / 已驳回单据编辑(采购、销售、调拨、调整,已驳回编辑后回草稿) | ✅ | ✅ | ❌ |
 | 单据审批 / 驳回(采购、销售、调拨、盘点、调整) | ✅(可自批) | ✅(禁自批) | ❌ |
 | 低库存 / 临期预警 查询 | ✅ | ✅ | ✅ |
@@ -182,6 +184,7 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 16. **预警**:低库存(`minStock` 阈值)与临期(效期 N 天内)只读查询,不自动改库存。
 17. **字典**:配置类枚举(仓库类型/物品分类/结算方式)进字典表,类型可动态管理(DictType 表);状态机枚举(单据状态等)不进字典。停用被业务表引用的字典项被拒(400);停用含启用项的类型被拒(400);引用校验通过 `DictReferenceRegistry` 注册表统一管理。
 18. **退货(V11)**:独立采购退货单(CT)/销售退货单(XT),**create 即过账**(与出入库单一致,无草稿/作废):单事务内校验原单已审批(含自动 completed/手工 closed)→ 逐行校验可退量(上限=原行已到货/已发货 − 已退累计,超量整单回滚)→ 落退货单头/行(单价/税率锁原行快照,服务端取值)→ 生成出库/入库单走现有过账链路(序列号等仓库配置校验复用)→ 回写原单行 `returned_qty`(销售退货不改 `shipped_qty`,净发货=shipped−returned)。联动出入库单 `ref_type` 落 `purchase_return`/`sales_return`,前端流水/列表中文映射同步。
+19. **导入导出(V12)**:EasyExcel 3.3.4(唯一新增依赖)。**导入**(仅 admin):物品/供应商/客户 3 类主数据 xlsx,逐行校验(必填/数值/分类与结算方式中英文映射),成功行走既有 `Service.create`(复用编码/条码查重与审计填充,行级独立事务),失败行汇总进 `{imported, failed:[{row,code,reason}]}`(HTTP 恒 200,非 xlsx/解析失败 400);模板下载 `GET /items|suppliers|customers/template`(表头+1 行示例)。**导出**(与列表读同权限,不分页复用列表 Query DTO + Service 查询):物品/供应商/客户/库存/入库/出库/采购/销售 8 个列表,中文表头,单据一行一单(单号/日期/状态/对方/仓库/金额/备注),库存导出沿用 DataScope 数据权限;响应头 `Content-Disposition: attachment; filename*=UTF-8''<中文名>.xlsx`。按钮码 11 个(V12 迁移:admin 全部/operator 5 个列表导出/viewer 无),前端 `ImportButton`(Upload 自定义请求 + 失败行 Modal)/`ExportButton`(fetch blob 下载)组件。
 
 ---
 
@@ -194,7 +197,7 @@ inventory-system/
 ├── scripts/mvn.sh             Maven 包装脚本(本机 bash 路径兼容)
 ├── docs/迭代日志.md            迭代流水账(每次实质变更追加一条)
 ├── server-java/               Spring Boot 后端(阿里规范)
-│   ├── pom.xml                Boot 3.5.x / MyBatis-Plus 3.5.x / jjwt / springdoc / Lombok / checkstyle
+│   ├── pom.xml                Boot 3.5.x / MyBatis-Plus 3.5.x / jjwt / springdoc / EasyExcel 3.3.4(V12) / Lombok / checkstyle
 │   ├── checkstyle.xml         阿里规范规则集(中文 Javadoc 适配)
 │   ├── src/main/java/com/company/inventory/
 │   │   ├── InventoryApplication.java  入口(@MapperScan mapper 包;JVM 时区锁 Asia/Shanghai)
@@ -207,8 +210,8 @@ inventory-system/
 │   │   └── support/           DictReferenceRegistry(字典引用校验注册表)
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
-│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,V11__return,seed}.sql
-│   └── src/test/java/         22 个测试类,148 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货)
+│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,V11__return,V12__import_export,seed}.sql
+│   └── src/test/java/         23 个测试类,154 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/
