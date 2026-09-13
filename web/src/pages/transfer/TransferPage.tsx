@@ -462,13 +462,13 @@ export function TransferPage() {
         if (s === "pending") {
           if (canApprove) {
             btns.push(
-              <Popconfirm
+              <a
                 key="approve"
-                title="审批即执行调拨:源仓扣减并入库目的仓,源仓库存不足将整单回滚。确认?"
-                onConfirm={() => doAction(() => transferApi.approve(row.id), "调拨已执行完成")}
+                className="action-approve"
+                onClick={() => doAction(() => transferApi.approve(row.id), "调拨已执行完成")}
               >
-                <a className="action-approve">审批执行</a>
-              </Popconfirm>,
+                审批执行
+              </a>,
             );
           }
           if (canReject) {

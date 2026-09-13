@@ -15,7 +15,6 @@ import {
   App,
   Drawer,
   Tag,
-  Popconfirm,
   Typography,
   Row,
   Col,
@@ -253,23 +252,19 @@ export function DictPage() {
                   <EditOutlined /> 编辑
                 </a>
                 {record.status === 1 ? (
-                  <Popconfirm
-                    title="确认停用该类型?"
-                    onConfirm={() => onToggleTypeStatus(record.typeCode, record.status)}
-                    okText="停用"
-                    cancelText="取消"
+                  <a
+                    className="action-edit danger"
+                    onClick={() => onToggleTypeStatus(record.typeCode, record.status)}
                   >
-                    <a className="action-edit danger">停用</a>
-                  </Popconfirm>
+                    停用
+                  </a>
                 ) : (
-                  <Popconfirm
-                    title="确认启用该类型?"
-                    onConfirm={() => onToggleTypeStatus(record.typeCode, record.status)}
-                    okText="启用"
-                    cancelText="取消"
+                  <a
+                    className="action-edit"
+                    onClick={() => onToggleTypeStatus(record.typeCode, record.status)}
                   >
-                    <a className="action-edit">启用</a>
-                  </Popconfirm>
+                    启用
+                  </a>
                 )}
               </div>
             ),

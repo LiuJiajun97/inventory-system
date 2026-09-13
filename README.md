@@ -210,6 +210,7 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 26. **SPA 共享组件路由复用修复(付款/收款/台账)**:同一组件以不同 `mode` 挂两条路由(`PaymentListPage` payment/receipt、`LedgerPage` ap/ar、`PaymentNewPage` payment/receipt)时,React Router 复用同一组件实例,侧栏切换只更新 props 不重挂载,列表不刷新、下拉数据滞留上一模式(收款页曾按付款口径请求 500)。修复:6 条路由元素加 `key`(payment/receipt、ap/ar、payment-new/receipt-new),模式切换强制重挂载,ProTable 重新请求、筛选区与下拉按当前模式重建。
 27. **盘点单防重复生成调整单(库存完整性)**:已审批盘点单可无限点击"生成调整单",调整单每执行一次动一次库存,重复生成 = 盘盈/盘亏被重复计入。三层防护:① 服务层 `generateAdjust` 前置校验——该盘点单(`refDocNo` 匹配)已有未作废调整单 → 400"已生成过调整单",全部作废后方可重新生成;② 部分唯一索引 `uk_adjust_ref_doc_type (ref_doc_no, adjust_type) WHERE ref_doc_no IS NOT NULL AND status <> 'voided'` 并发竞态兜底(同盘点单盘盈/盘亏各一张,手工调整单 ref 为 null 不受限),全局异常处理器对 `DataIntegrityViolationException` 统一转 400"操作冲突,请刷新后重试";③ 前端列表/详情 VO 带 `adjustGenerated` 标记(批量一次查询非 N+1),已生成单"生成调整单"按钮替换为"已生成"Tag。来源单号仅由服务端写入:手工建/改调整单 API 忽略客户端传入的 refDocNo(防手工单占用盘点单索引位),盘点生成走独立方法 `createWithRef`。
 28. **序列号仓库盘点差异调整(V19b,过账补序列号)**:盘点录入只录数量不录序列号,而启用序列号的仓库(如成品仓)过账要求逐号,导致盘点生成的调整单审批必 400("入库行必须填写序列号")。修复在调整执行层(`StockAdjustServiceImpl.doExecute`,不碰 StockCoreService 红线):盘盈(gain)自动生成台账序列号,格式 `物品编码-ADJ-调整单号-3位序号`(如 RAW-RESIN-ADJ-TZ-20260913-0007-001,生成前查重,冲突 400 可作废重试);盘亏(loss/scrap)按本仓本物品 in_stock 台账按入库序取前 N 个,台账不足 → 400"实盘数量与台账不符,请作废后重新盘点"(不静默扣,台账不足本身说明盘点数据有误)。非序列号仓行为零变化。
+29. **交互减确认(去掉冗余确认弹层)**:确认弹层只保留在不可逆/动库存操作(作废、关闭、调整单审批执行、菜单/角色删除),可回退或失败自动回滚的操作去掉弹层直接执行:盘点"生成调整单"(纯草稿,V19 已有防重复)、销售"审批"(纯预占,库存不足自动回退草稿)、调拨"审批执行"(事务回滚)、字典类型"停用/启用"(可再切换)。采购"审批"本就直接执行。判定标准:点错能否无副作用恢复——能则免确认。
 
 ---
 

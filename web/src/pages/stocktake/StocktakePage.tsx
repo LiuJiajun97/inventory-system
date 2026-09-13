@@ -317,13 +317,13 @@ export function StocktakePage() {
             );
           } else {
             btns.push(
-              <Popconfirm
+              <a
                 key="adjust"
-                title="将按差异生成盘盈/盘亏调整单(草稿),确认?"
-                onConfirm={() => doAction(() => stocktakeApi.generateAdjust(row.id), "调整单已生成,请到库存调整页审批执行")}
+                className="action-approve"
+                onClick={() => doAction(() => stocktakeApi.generateAdjust(row.id), "调整单已生成,请到库存调整页审批执行")}
               >
-                <a className="action-approve">生成调整单</a>
-              </Popconfirm>,
+                生成调整单
+              </a>,
             );
           }
         }

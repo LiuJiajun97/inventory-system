@@ -358,13 +358,13 @@ const request = async (params: {
         if (s === "pending") {
           if (canApprove) {
             btns.push(
-              <Popconfirm
+              <a
                 key="approve"
-                title="审批通过后将按 FEFO 预占库存,库存不足将回退草稿。确认审批?"
-                onConfirm={() => doAction(() => salesApi.approve(row.id), "已审批并通过预占")}
+                className="action-approve"
+                onClick={() => doAction(() => salesApi.approve(row.id), "已审批并通过预占")}
               >
-                <a className="action-approve">审批</a>
-              </Popconfirm>,
+                审批
+              </a>,
             );
           }
           if (canReject) {
