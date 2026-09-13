@@ -3,7 +3,7 @@
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable、单据表单页 ProForm 表头)。
 > 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占/退货/期初/报表 + 基础出入库,22 个 Controller,前端 34 个页面(27 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **163 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初 + 4 V15 报表中心),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **166 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初 + 4 V15 报表中心 + 3 V16 操作日志),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -68,7 +68,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 163 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 166 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -112,6 +112,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | 用户管理 | ✅ | ❌ | ❌ |
 | 数据权限(14 个列表行级过滤:批 2 7 列表 + V11 退货 2 + V13 期初 + V15 报表 4) | 豁免全量 | 仅授权仓 | 仅授权仓(未授权查空) |
 | 系统监控 | ✅ | ❌ | ❌ |
+| 操作日志(V16,写操作审计流水查询) | ✅ | ❌ | ❌ |
 | 角色管理(RBAC:角色 CRUD + 角色-菜单分配) | ✅ | ❌ | ❌ |
 | 菜单管理(RBAC:菜单树查看/增删改) | ✅ | ❌ | ❌ |
 
@@ -159,6 +160,8 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 | GET | `/monitor/overview` | 系统监控(本机 CPU/内存/JVM/磁盘快照,5 秒轮询) | admin |
 | GET | `/reports/stock-monthly` `/reports/stock-ageing` `/reports/purchase-recon` `/reports/sales-recon` | 报表中心 4 报表(进销存月报/库龄呆滞/采购对账/销售对账,只读聚合,分页) | 登录(菜单控可见性) |
 | GET | `/reports/{stock-monthly,stock-ageing,purchase-recon,sales-recon}/export` | 报表 xlsx 导出(与列表读一致,不分页) | 登录(菜单控可见性) |
+| GET | `/operation-logs` | 操作日志列表(写操作执行流水,username/module/结果/日期区间筛选,时间倒序,分页) | admin |
+| GET | `/operation-logs/modules` | 操作日志模块筛选项(LogModule 集中映射) | admin |
 
 完整契约以 Swagger 为准:`http://127.0.0.1:8081/docs`。
 
@@ -191,6 +194,7 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 20. **期初库存(V13)**:系统启用时批量录入现有库存。独立期初单(QC 前缀)create 即过账(无草稿流):单事务内校验仓库存在/序列号仓拒收(“期初不支持序列号物品,请走入库单”)/批次·保质期仓必填批次号/物品存在/同单不重复/每物品×仓库限一次期初(命中“已有期初”整单回滚)→ 落期初单头/行(含单价/批次/效期/库位快照,head `total_qty`=Σ行)→ 服务端构造 `InboundCreateDTO`(refType=opening,refDocId=期初单 ID,docType="期初")调 `InboundService.create` 走现有入库链路(StockCoreService 零改动,库存/流水可追溯,任一行失败整单回滚)。列表/详情带 DataScope 数据权限;refType 中文映射加“期初”。
 21. **单据打印(V14,纯前端,后端零改动)**:10 类单据(采购订单/销售订单/入库单/出库单/调拨单/采购退货单/销售退货单/盘点单/库存调整/期初库存)可打印纸质归档。各页详情弹窗底部新增「打印」按钮 → 通用组件 `components/PrintDocModal.tsx` 渲染 A4 黑白朴素版式(标题+单号居中、头部 label/value 网格空值自动过滤、原生 `<table>` 明细表 1px 黑边框带合计行、底部状态/备注/制单审批签字区),点「打印」调浏览器原生 `window.print()`;打印 `@media print` 规则在 `styles/global.css`(隐藏主应用与其它弹窗,仅保留 `.print-doc-sheet`,`@page` A4 边距 12mm)。每页用自己的 `buildPrintData(detail)` 转打印数据(金额 toFixed(2)、日期 yyyy-MM-dd、退货带原单号、出入库带仓库/承运/车牌);权限与导出一致(列表能看即可打印),零新增依赖。
 22. **报表中心(V15,只读聚合,StockCoreService/既有 mapper XML 零改动)**:单页 4 Tab(`ReportController` `/api/v1/reports` + `ReportMapper.xml` 报表专用 SQL 放 `mapper/report/` 子包):① **进销存月报**(item 维度跨仓汇总,筛仓库/物品/日期区间):期初量 = 期初前最后一次流水的 `after_qty`、期末量 = 期末后最后一次流水的 `after_qty`,均按库存粒度 (item,warehouse,batch,location) 窗口函数 `row_number() over (partition by 4 列 order by created_at desc)` 取 `rn=1` 后 Σ(某粒度组合区间前无流水贡献 0,不整行丢弃);入 = Σ change_qty (inbound/transfer_in/adjust_in)、出 = -Σ change_qty (outbound/transfer_out/adjust_out),`pre_alloc` 不计;期初+入-出=期末(测试断言);金额 = 区间内 inbound/outbound_doc(doc_date 在区间,finished)行表 Σ tax_inclusive_total,经流水 doc_no 关联存在性过滤(无快照为空);行展开各仓期末明细 ② **库龄/呆滞**(批次维度;无批次仓按 item+仓库 汇总,生产时间取该仓最早入方向流水日期):库龄区间 0-30/31-90/91-180/>180 文字不带颜色,呆滞 = 该物品+仓库 N 天(默认 90)内无出方向流水且当前量 > 0,文字「呆滞」 ③ **采购对账**(供应商维度:期间内采购单数/量/价税合计 + 退货量/金额 + 净采购,行展开期间内采购单+退货单明细;采购单无仓字段,数据权限经其关联入库单仓库过滤) ④ **销售对账**(客户维度,销售单/退货单按自有仓库过滤)。4 报表各带 xlsx 导出(复用 `ExcelSupport`/`ExportButton` 机制,与列表读一致不加权限码,菜单权限控页面可见性);数据权限与 7 列表同口径(admin 豁免/未授权查空/授权仓过滤);Service 层纯 SELECT(只读),列表分页全在 SQL 层(count + LIMIT/OFFSET)。
+23. **操作日志(V16,写操作审计流水)**:记录全部写操作(POST/PUT/DELETE)的执行流水,供 admin 审计“谁在何时对什么做了什么、成败与否”。`OperationLogAspect` 环绕切面(pom 新增 spring-boot-starter-aop):切点为 Controller 包下带 POST/PUT/DELETE 映射注解的方法(GET 不记),登录/登出排除(登录失败风暴灌爆日志);落 `operation_log` 表(主键 BIGSERIAL,纯日志表;索引 username/created_at/(module,created_at))字段:username(取 `UserContext.get()`,空兜底 anonymous)/ip(X-Forwarded-For 首段或 remoteAddr)/module(由 `common/constant/LogModule` 集中映射 Controller 类简名→中文,未映射原样落)/action(POST/PUT/DELETE)/path/target_id(PathPattern 匹配 @RequestMapping 模板从路径变量取数字 ID,对象类型落模块名,**切面零业务查库**——对象单号拿不到就不落,严禁反查)/success(1/0)/error_msg(BizException 取其 message 截断 500,其他异常记“系统异常”)/cost_ms(nanoTime 计时)。**落库失败绝不抛出**:insert 包 try-catch 只 log.warn,日志功能故障不影响业务主流程。查询:`OperationLogController` `/api/v1/operation-logs` 仅 GET(列表 username 模糊/module 精确/结果/日期区间(DateRangeSupport)筛选 + 分页时间倒序;`/modules` 返回模块筛选项),类级 `@RequireRole("admin")`;菜单 seed 系统分组下 operation-logs 仅绑 admin。定时清理:`@EnableScheduling` + `@Scheduled(cron = "0 0 3 * * ?")` 每天 3 点删 `operation-log.retention-days`(application.yml 默认 180)前的记录,清理失败只 log.warn。前端:OperationLogPage(ProTable 规范:无横幅/span6;列 时间/用户/模块/操作 Tag/请求路径/对象/结果/耗时/IP,失败行可展开看异常消息,筛选 用户/模块/结果/日期区间)。注意:403 越权与参数绑定 400 在拦截器/参数解析阶段发生,未进入 Controller 方法,切面不记(业务校验失败 BizException 记 success=0)。
 
 ---
 
@@ -209,24 +213,24 @@ inventory-system/
 │   │   ├── InventoryApplication.java  入口(@MapperScan mapper 包;JVM 时区锁 Asia/Shanghai)
 │   │   ├── common/            错误码 / BizException / 全局异常 / 分页 / ApprovalGuard
 │   │   ├── config/            MybatisPlus / Jwt / @RequireRole / Swagger / Jackson(东八区+格式)
-│   │   ├── controller/        20 个 Controller
+│   │   ├── controller/        21 个 Controller
 │   │   ├── model/             数据层:entity(DO)/dto/vo/query 四包,按功能再分包
-│   │   ├── mapper/            31 个 Mapper + resources/mapper/*.xml
+│   │   ├── mapper/            32 个 Mapper + resources/mapper/*.xml
 │   │   ├── service/ (+impl/)  业务层;StockCoreService = 库存核心
 │   │   └── support/           DictReferenceRegistry(字典引用校验注册表)
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
-│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,V11__return,V12__import_export,V13__opening_stock,seed}.sql
-│   └── src/test/java/         25 个测试类,163 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心)
+│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,V11__return,V12__import_export,V13__opening_stock,V15__report_menu,V16__operation_log,seed}.sql
+│   └── src/test/java/         26 个测试类,166 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心/V16 操作日志)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/
-        ├── pages/             31 个页面(25 个业务模块):login / dashboard / inbound(list+form) /
+        ├── pages/             32 个页面(26 个业务模块):login / dashboard / inbound(list+form) /
         │                      outbound(list+form) / stock / transaction / item(list+form) /
         │                      warehouse / location / user / role / menu / purchase(list+new) /
         │                      sales(list+new) / purchase-return(list+new) / sales-return(list+new) /
         │                      transfer / stocktake / adjust / alert /
-        │                      supplier / customer / dict / monitor
+        │                      supplier / customer / dict / monitor / operation-log(V16)
         ├── main.tsx           入口:dayjs.locale("zh-cn")(日历中文)
         └── styles/  theme.ts  浅色底 + 深蓝主色
 ```
