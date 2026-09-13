@@ -203,8 +203,17 @@ export function OpeningStockNewPage() {
           : undefined,
       });
     }
+    // 显式操作列:EditableProTable 自动 option 列在 scroll 布局下不渲染 td,与入库/销售页同款显式删除
+    cols.push({
+      title: "操作",
+      width: 80,
+      editable: false,
+      render: (_v: unknown, r: LineRow) => (
+        <a onClick={() => removeLine(r.key)}>删除</a>
+      ),
+    });
     return cols;
-  }, [items, itemOptions, batchRequired, locationRequired, currentWh, locations]);
+  }, [items, itemOptions, batchRequired, locationRequired, currentWh, locations, removeLine]);
 
   const onSubmit = async () => {
     let values: Record<string, unknown>;
@@ -324,9 +333,7 @@ export function OpeningStockNewPage() {
               form: lineForm,
               editableKeys,
               onChange: (keys) => setEditableKeys(keys),
-              onDelete: async (key) => removeLine(Number(key)),
-              // 无逐行"保存"按钮:值即时生效,保留行删除
-              actionRender: (_row, _config, dom) => [dom.delete],
+              // 行删除走显式操作列(removeLine),自动 option 列在 scroll 布局下不渲染 body 已弃用
             }}
           />
           {/* 添加行按钮:明细表正下方,左对齐 */}
