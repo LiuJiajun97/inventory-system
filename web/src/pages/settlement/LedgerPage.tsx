@@ -3,15 +3,16 @@
 // 行展开两层:① 发票列表(号/日期/额/已核销/未核销/来源) ② 订单执行子表(下单/入库/开票/付款)
 
 import { useEffect, useState } from "react";
-import { Table, Tag, Empty, Spin } from "antd";
+import { Table, Tag, Spin } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { settlementApi } from "../../api";
 import type { LedgerRow, LedgerInvoiceRow, OrderProgressRow } from "../../types/phase1";
-import { fmtDate } from "../../utils/format";
+import { fmtDate, fmtMoney } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 
 const money = (v: number, strong = false) => (
   <span style={{ color: v < 0 ? "#dc2626" : undefined, fontWeight: strong ? 600 : undefined }}>
-    {Number(v).toFixed(2)}
+    {fmtMoney(v)}
   </span>
 );
 
@@ -109,7 +110,7 @@ export function LedgerPage({ mode }: { mode: "ap" | "ar" }) {
       className: "num-cell",
       render: (v) => (
         <b style={v > 0 ? { color: isAp ? "#dc2626" : "#16a34a" } : v < 0 ? { color: "#dc2626" } : undefined}>
-          {Number(v).toFixed(2)}
+          {fmtMoney(v)}
         </b>
       ),
     },
@@ -127,7 +128,7 @@ export function LedgerPage({ mode }: { mode: "ap" | "ar" }) {
           dataSource={rows}
           pagination={false}
           size="middle"
-          locale={{ emptyText: <Empty description="暂无数据" /> }}
+          locale={{ emptyText: <EmptyHint text={isAp ? "当前暂无应付台账数据" : "当前暂无应收台账数据"} /> }}
           expandable={{
             expandedRowRender: (row) => (
               <div style={{ padding: "4px 8px" }}>

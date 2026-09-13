@@ -14,7 +14,7 @@ import {
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import { alertApi, dashboardApi, settlementApi, stockApi, transactionApi } from "../../api";
-import { fmtDateTime } from "../../utils/format";
+import { fmtDateTime, fmtMoney, fmtQty } from "../../utils/format";
 import type {
   DashboardSummary,
   StockRow,
@@ -156,7 +156,7 @@ export function DashboardPage() {
               <div>
                 <div className="stat-card-label">今日入库</div>
                 <div className="stat-card-value">
-                  {Number(summary?.todayInboundQty ?? 0).toFixed(2)}
+                  {fmtQty(summary?.todayInboundQty ?? 0)}
                 </div>
                 <div style={{ fontSize: 12, color: "#9ca3af" }}>
                   {summary?.todayInboundCount ?? 0} 单
@@ -176,7 +176,7 @@ export function DashboardPage() {
               <div>
                 <div className="stat-card-label">今日出库</div>
                 <div className="stat-card-value">
-                  {Number(summary?.todayOutboundQty ?? 0).toFixed(2)}
+                  {fmtQty(summary?.todayOutboundQty ?? 0)}
                 </div>
                 <div style={{ fontSize: 12, color: "#9ca3af" }}>
                   {summary?.todayOutboundCount ?? 0} 单
@@ -196,7 +196,7 @@ export function DashboardPage() {
               <div>
                 <div className="stat-card-label">应付余额</div>
                 <div className="stat-card-value" style={Number(settlement?.apBalance ?? 0) < 0 ? { color: "#16a34a" } : { color: "#dc2626" }}>
-                  {Number(settlement?.apBalance ?? 0).toFixed(2)}
+                  {fmtMoney(settlement?.apBalance ?? 0)}
                 </div>
                 <div style={{ fontSize: 12, color: "#9ca3af" }}>确认采购票净额 - 已付</div>
               </div>
@@ -214,7 +214,7 @@ export function DashboardPage() {
               <div>
                 <div className="stat-card-label">应收余额</div>
                 <div className="stat-card-value" style={Number(settlement?.arBalance ?? 0) < 0 ? { color: "#dc2626" } : { color: "#16a34a" }}>
-                  {Number(settlement?.arBalance ?? 0).toFixed(2)}
+                  {fmtMoney(settlement?.arBalance ?? 0)}
                 </div>
                 <div style={{ fontSize: 12, color: "#9ca3af" }}>确认销售票净额 - 已收</div>
               </div>
@@ -313,7 +313,7 @@ export function DashboardPage() {
                     return (
                       <div>
                         <div style={{ marginBottom: 4, fontSize: 13 }}>
-                          {num.toFixed(4)}
+                          {fmtQty(num)}
                         </div>
                         <div className="data-bar">
                           <div
@@ -378,7 +378,7 @@ export function DashboardPage() {
                         className={n >= 0 ? "qty-positive" : "qty-negative"}
                       >
                         {n >= 0 ? "+" : ""}
-                        {n.toFixed(4)}
+                        {fmtQty(n)}
                       </span>
                     );
                   },

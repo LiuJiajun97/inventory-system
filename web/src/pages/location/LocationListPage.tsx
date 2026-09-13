@@ -18,6 +18,7 @@ import {
 import { PlusOutlined } from "@ant-design/icons";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
+import { EmptyHint } from "../../components/EmptyHint";
 import { warehouseApi } from "../../api";
 import type { Location, Warehouse } from "../../types";
 import { usePermission } from "../../auth/usePermission";
@@ -153,6 +154,7 @@ export function LocationListPage() {
     <>
       <ProTable<Location>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库位" /> }}
         actionRef={actionRef}
         columns={columns}
         request={request}

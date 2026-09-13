@@ -11,6 +11,8 @@ import type { Item, Warehouse } from "../../types";
 import type { CostReportRow } from "../../types/report";
 import { ExportButton } from "../../components/ExportButton";
 import { QtyCell } from "./common";
+import { EmptyHint } from "../../components/EmptyHint";
+import { fmtMoney } from "../../utils/format";
 
 export function CostReportTab() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -121,7 +123,7 @@ export function CostReportTab() {
       align: "right",
       search: false,
       render: (_v, r) => (
-        <span className="num-cell">{r.avgPrice == null || r.avgPrice === "" ? "-" : Number(r.avgPrice).toFixed(4)}</span>
+        <span className="num-cell">{fmtMoney(r.avgPrice)}</span>
       ),
     },
     {
@@ -131,7 +133,7 @@ export function CostReportTab() {
       align: "right",
       search: false,
       render: (_v, r) => (
-        <span className="num-cell">{r.amount == null || r.amount === "" ? "-" : Number(r.amount).toFixed(2)}</span>
+        <span className="num-cell">{fmtMoney(r.amount)}</span>
       ),
     },
   ];
@@ -139,6 +141,7 @@ export function CostReportTab() {
   return (
     <ProTable<CostReportRow>
       rowKey={(r) => `${r.warehouseId}-${r.itemId}-${r.batchId}`}
+      locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无成本数据" /> }}
       columns={columns}
       request={request}
       headerTitle={false}

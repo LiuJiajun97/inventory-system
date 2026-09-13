@@ -8,7 +8,8 @@ import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
-import { fmtDate } from "../../utils/format";
+import { fmtDate, fmtMoney, fmtQty } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 import { itemApi, transferApi, warehouseApi } from "../../api";
 import type { Item, Location, Warehouse } from "../../types";
 import type { TransferDoc, DocLine } from "../../types/phase1";
@@ -198,8 +199,8 @@ export function TransferPage() {
     { title: "物品", width: 190, search: false, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
     { title: "规格", dataIndex: "spec", width: 90, search: false, ellipsis: true },
     { title: "单位", dataIndex: "unit", width: 60, search: false },
-    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.quantity == null ? "-" : Number(r.quantity).toFixed(2)) },
-    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.unitPrice == null ? "-" : Number(r.unitPrice).toFixed(2)) },
+    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.quantity) },
+    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.unitPrice) },
     { title: "状态", dataIndex: "status", width: 90, valueEnum: STATUS_ENUM, render: (_v, r) => <DocStatusTag status={r.status} /> },
     {
       title: "日期",
@@ -248,11 +249,11 @@ export function TransferPage() {
     rows: (d.items ?? []).map((l) => [
       String(l.lineNo),
       `${l.itemCode} ${l.itemName}`,
-      Number(l.qty).toFixed(4),
-      Number(l.unitPrice).toFixed(2),
+      fmtQty(l.qty),
+      fmtMoney(l.unitPrice),
       l.lineRemark ?? "",
     ]),
-    totals: ["", "", "参考金额合计", Number(d.totalAmount).toFixed(2), ""],
+    totals: ["", "", "参考金额合计", fmtMoney(d.totalAmount), ""],
     status: docStatusLabel(d.status),
     remark: d.remark,
   });
@@ -427,7 +428,7 @@ export function TransferPage() {
       align: "right",
       className: "num-cell",
       search: false,
-      render: (_v, r) => Number(r.totalAmount).toFixed(2),
+      render: (_v, r) => fmtMoney(r.totalAmount),
     },
     { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true, search: false },
     {
@@ -490,6 +491,7 @@ export function TransferPage() {
     <>
       <ProTable<TransferDoc>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无调拨单" /> }}
         actionRef={actionRef}
         columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<TransferDoc>[]) : columns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}

@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { type Dayjs } from "dayjs";
 import { invoiceApi, supplierApi, customerApi } from "../../api";
+import { fmtMoney, fmtQty } from "../../utils/format";
 import type { Invoice, InvoiceableLine } from "../../types/phase1";
 
 interface LineRow {
@@ -215,10 +216,10 @@ export function InvoiceNewPage() {
     { title: "日期", dataIndex: "docDate", width: 100, render: (v) => (v ? dayjs(v).format("YYYY-MM-DD") : "-") },
     { title: "物品", width: 180, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
     { title: "规格", dataIndex: "spec", width: 90, ellipsis: true, render: (v) => v ?? "-" },
-    { title: "数量", dataIndex: "quantity", width: 80, align: "right", className: "num-cell", render: (v) => (v == null ? "-" : Number(v).toFixed(2)) },
-    { title: "含税额", dataIndex: "srcAmount", width: 100, align: "right", className: "num-cell", render: (v) => Number(v).toFixed(2) },
-    { title: "已开票", dataIndex: "invoicedSoFar", width: 100, align: "right", className: "num-cell", render: (v) => Number(v).toFixed(2) },
-    { title: "剩余可开", dataIndex: "remaining", width: 100, align: "right", className: "num-cell", render: (v) => <b>{Number(v).toFixed(2)}</b> },
+    { title: "数量", dataIndex: "quantity", width: 80, align: "right", className: "num-cell", render: (v) => fmtQty(v) },
+    { title: "含税额", dataIndex: "srcAmount", width: 100, align: "right", className: "num-cell", render: (v) => fmtMoney(v) },
+    { title: "已开票", dataIndex: "invoicedSoFar", width: 100, align: "right", className: "num-cell", render: (v) => fmtMoney(v) },
+    { title: "剩余可开", dataIndex: "remaining", width: 100, align: "right", className: "num-cell", render: (v) => <b>{fmtMoney(v)}</b> },
   ];
 
   const lineColumns: ColumnsType<LineRow> = [
@@ -226,8 +227,8 @@ export function InvoiceNewPage() {
     { title: "源单号", dataIndex: "srcDocNo", width: 150, render: (v) => (v ? <span style={{ fontFamily: "monospace", fontSize: 12 }}>{v}</span> : "-") },
     { title: "物品", width: 180, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}`.trim() || "-" },
     { title: "规格", dataIndex: "spec", width: 90, ellipsis: true, render: (v) => v ?? "-" },
-    { title: "数量", dataIndex: "quantity", width: 80, align: "right", className: "num-cell", render: (v) => (v == null ? "-" : Number(v).toFixed(2)) },
-    { title: "源行含税额", dataIndex: "srcAmount", width: 110, align: "right", className: "num-cell", render: (v) => Number(v).toFixed(2) },
+    { title: "数量", dataIndex: "quantity", width: 80, align: "right", className: "num-cell", render: (v) => fmtQty(v) },
+    { title: "源行含税额", dataIndex: "srcAmount", width: 110, align: "right", className: "num-cell", render: (v) => fmtMoney(v) },
     {
       title: "开票额",
       dataIndex: "invoicedAmount",
@@ -243,7 +244,7 @@ export function InvoiceNewPage() {
             onChange={(v) => updateRow(r.key, { invoicedAmount: v == null ? undefined : Number(v) })}
           />
           {r.invoicedAmount != null && Math.abs(Number(r.invoicedAmount) - r.srcAmount) > 0.01 && (
-            <div className="serial-error-text">差异 {Number(r.invoicedAmount - r.srcAmount).toFixed(2)}(将挂差异)</div>
+            <div className="serial-error-text">差异 {fmtMoney(Number(r.invoicedAmount) - Number(r.srcAmount))}(将挂差异)</div>
           )}
         </div>
       ),
@@ -358,7 +359,7 @@ export function InvoiceNewPage() {
               共 {rows.length} 行
               {rows.length > 0 && (
                 <span className="doc-form-footer-muted">
-                  合计 {total.toFixed(2)}(以服务端重算为准)
+                  合计 {fmtMoney(total)}(以服务端重算为准)
                 </span>
               )}
             </div>

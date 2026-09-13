@@ -8,7 +8,8 @@ import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popc
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
-import { fmtDate } from "../../utils/format";
+import { fmtDate, fmtQty } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 import { itemApi, stocktakeApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
 import type { StocktakeDoc, StocktakeLine, DocLine } from "../../types/phase1";
@@ -146,9 +147,9 @@ export function StocktakePage() {
     { title: "物品", width: 190, search: false, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
     { title: "规格", dataIndex: "spec", width: 90, search: false, ellipsis: true },
     { title: "单位", dataIndex: "unit", width: 60, search: false },
-    { title: "账面量", dataIndex: "bookQty", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.bookQty == null ? "-" : Number(r.bookQty).toFixed(2)) },
-    { title: "实盘量", dataIndex: "actualQty", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.actualQty == null ? "-" : Number(r.actualQty).toFixed(2)) },
-    { title: "差异", dataIndex: "diffQty", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.diffQty == null ? "-" : Number(r.diffQty).toFixed(2)) },
+    { title: "账面量", dataIndex: "bookQty", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.bookQty) },
+    { title: "实盘量", dataIndex: "actualQty", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.actualQty) },
+    { title: "差异", dataIndex: "diffQty", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.diffQty) },
     { title: "状态", dataIndex: "status", width: 90, valueEnum: STATUS_ENUM, render: (_v, r) => <DocStatusTag status={r.status} /> },
     { title: "物品", dataIndex: "itemKeyword", hideInTable: true, fieldProps: { placeholder: "编码或名称关键字" } },
   ];
@@ -186,9 +187,9 @@ export function StocktakePage() {
       String(l.lineNo),
       `${l.itemCode} ${l.itemName}`,
       locText(l.locationId),
-      Number(l.bookQty).toFixed(4),
-      l.actualQty == null ? "" : Number(l.actualQty).toFixed(4),
-      l.diffQty == null ? "" : Number(l.diffQty).toFixed(4),
+      fmtQty(l.bookQty),
+      l.actualQty == null ? "" : fmtQty(l.actualQty),
+      l.diffQty == null ? "" : fmtQty(l.diffQty),
     ]),
     status: docStatusLabel(d.status),
     remark: d.remark,
@@ -418,6 +419,7 @@ export function StocktakePage() {
     <>
       <ProTable<StocktakeDoc>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无盘点单" /> }}
         actionRef={actionRef}
         columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<StocktakeDoc>[]) : columns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}

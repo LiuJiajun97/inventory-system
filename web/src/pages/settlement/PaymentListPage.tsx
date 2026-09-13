@@ -11,7 +11,8 @@ import dayjs from "dayjs";
 import { paymentApi, supplierApi, customerApi } from "../../api";
 import type { PaymentDoc } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
-import { fmtDate, fmtDateTime } from "../../utils/format";
+import { fmtDate, fmtDateTime, fmtMoney } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 
 function toDay(v: unknown): string | undefined {
   if (v == null) return undefined;
@@ -151,7 +152,7 @@ export function PaymentListPage({ mode }: { mode: "payment" | "receipt" }) {
       align: "right",
       className: "num-cell",
       search: false,
-      render: (_v, r) => <b>{Number(r.totalAmount).toFixed(2)}</b>,
+      render: (_v, r) => <b>{fmtMoney(r.totalAmount)}</b>,
     },
     {
       title: "备注",
@@ -191,6 +192,7 @@ export function PaymentListPage({ mode }: { mode: "payment" | "receipt" }) {
     <>
       <ProTable<PaymentDoc>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text={isPayment ? "当前筛选条件下暂无付款单" : "当前筛选条件下暂无收款单"} /> }}
         actionRef={actionRef}
         columns={columns}
         request={request}
@@ -230,7 +232,7 @@ export function PaymentListPage({ mode }: { mode: "payment" | "receipt" }) {
               <Descriptions.Item label="对方">{detail.partyName ?? "-"}</Descriptions.Item>
               <Descriptions.Item label="日期">{fmtDate(detail.payDate ?? undefined)}</Descriptions.Item>
               <Descriptions.Item label="金额">
-                <b>{Number(detail.totalAmount).toFixed(2)}</b>
+                <b>{fmtMoney(detail.totalAmount)}</b>
               </Descriptions.Item>
               <Descriptions.Item label="状态">
                 {detail.status === "confirmed" ? "已确认" : "已作废"}
@@ -261,7 +263,7 @@ export function PaymentListPage({ mode }: { mode: "payment" | "receipt" }) {
                   dataIndex: "amount",
                   align: "right",
                   className: "num-cell",
-                  render: (v: number) => <b>{Number(v).toFixed(2)}</b>,
+                  render: (v: number) => <b>{fmtMoney(v)}</b>,
                 },
               ]}
             />

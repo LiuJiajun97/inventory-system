@@ -10,6 +10,7 @@ import type { Item, Warehouse } from "../../types";
 import type { StockAgeingRow } from "../../types/report";
 import { ExportButton } from "../../components/ExportButton";
 import { QtyCell } from "./common";
+import { EmptyHint } from "../../components/EmptyHint";
 
 export function AgeingReportTab() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -168,6 +169,7 @@ export function AgeingReportTab() {
   return (
     <ProTable<StockAgeingRow>
       rowKey={(r) => `${r.warehouseId}-${r.itemId}-${r.batchId}`}
+      locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库龄数据" /> }}
       columns={columns}
       request={request}
       headerTitle={false}

@@ -9,6 +9,7 @@ import type { Supplier } from "../../types/phase1";
 import type { PurchaseReconRow } from "../../types/report";
 import { ExportButton } from "../../components/ExportButton";
 import { AmountCell, QtyCell, ReconDetailTable, dayPart } from "./common";
+import { EmptyHint } from "../../components/EmptyHint";
 
 export function PurchaseReconTab() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -140,6 +141,7 @@ export function PurchaseReconTab() {
   return (
     <ProTable<PurchaseReconRow>
       rowKey="supplierId"
+      locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无采购对账数据" /> }}
       columns={columns}
       request={request}
       headerTitle={false}

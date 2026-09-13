@@ -14,7 +14,8 @@ import type { OpeningStockDoc, OpeningStockDocItem, Warehouse } from "../../type
 import type { DocLine } from "../../types/phase1";
 import { PrintDocModal, printHeader, type PrintDocData } from "../../components/PrintDocModal";
 import { usePermission } from "../../auth/usePermission";
-import { fmtDate, fmtDateTime } from "../../utils/format";
+import { fmtDate, fmtDateTime, fmtMoney, fmtQty } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 import { StatusTag } from "../../components/StatusTag";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
@@ -136,8 +137,8 @@ export function OpeningStockListPage() {
     { title: "物品", width: 190, search: false, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
     { title: "规格", dataIndex: "spec", width: 90, search: false, ellipsis: true },
     { title: "单位", dataIndex: "unit", width: 60, search: false },
-    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.quantity == null ? "-" : Number(r.quantity).toFixed(2)) },
-    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.unitPrice == null ? "-" : Number(r.unitPrice).toFixed(2)) },
+    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.quantity) },
+    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.unitPrice) },
     { title: "批次号", dataIndex: "batchNo", width: 110, search: false, render: (_v, r) => r.batchNo ?? "-" },
     { title: "状态", dataIndex: "status", width: 90, valueEnum: { finished: { text: "已完成" } }, render: (_v, r) => (r.status === "finished" ? <StatusTag status="inbound" label="已完成" /> : <Tag bordered>{r.status}</Tag>) },
     {
@@ -163,7 +164,7 @@ export function OpeningStockListPage() {
     header: printHeader([
       ["单据日期", fmtDate(d.docDate)],
       ["仓库", d.warehouse?.warehouseName],
-      ["总数量", Number(d.totalQty).toFixed(2)],
+      ["总数量", fmtQty(d.totalQty)],
       ["创建人", d.creator],
     ]),
     columns: [
@@ -180,13 +181,13 @@ export function OpeningStockListPage() {
       String(l.lineNo),
       l.itemName ? `${l.itemCode ?? ""} ${l.itemName}`.trim() : String(l.itemId),
       l.batchNo ?? "",
-      Number(l.quantity).toFixed(4),
-      l.unitPrice == null ? "" : Number(l.unitPrice).toFixed(4),
+      fmtQty(l.quantity),
+      l.unitPrice == null ? "" : fmtMoney(l.unitPrice),
       l.productionDate ? fmtDate(l.productionDate) : "",
       l.expiryDate ? fmtDate(l.expiryDate) : "",
       l.locationId == null ? "" : String(l.locationId),
     ]),
-    totals: ["", "", "合计", Number(d.totalQty).toFixed(4), "", "", "", ""],
+    totals: ["", "", "合计", fmtQty(d.totalQty), "", "", "", ""],
     status: d.status === "finished" ? "已完成" : d.status,
     remark: d.remark,
   });
@@ -265,7 +266,7 @@ export function OpeningStockListPage() {
       align: "right",
       className: "num-cell",
       search: false,
-      render: (v: unknown) => Number(v ?? 0).toFixed(4),
+      render: (v: unknown) => fmtQty(Number(v ?? 0)),
     },
     {
       title: "备注",
@@ -296,6 +297,7 @@ export function OpeningStockListPage() {
     <>
       <ProTable<OpeningStockDoc>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无期初库存单" /> }}
         actionRef={actionRef}
         columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<OpeningStockDoc>[]) : columns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
@@ -354,7 +356,7 @@ export function OpeningStockListPage() {
               </Descriptions.Item>
               <Descriptions.Item label="单据日期">{fmtDate(detail.docDate)}</Descriptions.Item>
               <Descriptions.Item label="总数量">
-                {Number(detail.totalQty).toFixed(4)}
+                {fmtQty(detail.totalQty)}
               </Descriptions.Item>
               <Descriptions.Item label="创建人">
                 {detail.creator ?? "-"}
@@ -388,7 +390,7 @@ export function OpeningStockListPage() {
                   width: 100,
                   align: "right" as const,
                   className: "num-cell",
-                  render: (v: unknown) => Number(v ?? 0).toFixed(4),
+                  render: (v: unknown) => fmtQty(Number(v ?? 0)),
                 },
                 {
                   title: "期初单价",
@@ -396,8 +398,7 @@ export function OpeningStockListPage() {
                   width: 100,
                   align: "right" as const,
                   className: "num-cell",
-                  render: (v: string | number | null) =>
-                    v == null ? "-" : Number(v).toFixed(4),
+                  render: (v: string | number | null) => fmtMoney(v),
                 },
                 {
                   title: "批次号",

@@ -1,6 +1,6 @@
 // 报表中心 Tab 1:进销存月报
 // item 维度跨仓汇总;筛选 仓库/物品/日期区间;行展开看各仓期末明细
-// 金额右对齐 toFixed(2),无快照显示 "-"
+// 金额右对齐千分位(AmountCell),无快照显示 "-"
 
 import { useEffect, useMemo, useState } from "react";
 import { ProTable } from "@ant-design/pro-components";
@@ -12,6 +12,7 @@ import type { Item, Warehouse } from "../../types";
 import type { StockMonthlyDetail, StockMonthlyRow } from "../../types/report";
 import { ExportButton } from "../../components/ExportButton";
 import { AmountCell, QtyCell, dayPart } from "./common";
+import { EmptyHint } from "../../components/EmptyHint";
 
 export function MonthlyReportTab() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -173,6 +174,7 @@ export function MonthlyReportTab() {
   return (
     <ProTable<StockMonthlyRow>
       rowKey="itemId"
+      locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无月度库存数据" /> }}
       columns={columns}
       request={request}
       headerTitle={false}

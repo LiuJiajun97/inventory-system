@@ -6,6 +6,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { Button, Modal, Space } from "antd";
 import { itemApi, warehouseApi } from "../api";
+import { fmtMoney } from "../utils/format";
 
 /** 打印明细列定义(标题 + 对齐方式) */
 export interface PrintDocColumn {
@@ -45,10 +46,10 @@ export function printHeader(
 }
 
 /**
- * 金额格式化为两位小数;null/空返回 null(便于调用方判空)。
+ * 金额格式化:千分位 + 固定 2 位小数;null/空返回 null(便于调用方判空)。
  */
 export const printMoney = (v: string | number | null | undefined): string | null =>
-  v == null || v === "" ? null : Number(v).toFixed(2);
+  v == null || v === "" ? null : fmtMoney(v);
 
 /**
  * 打印用名称映射:ID → 可读文本(物品编码+名称 / 库位码)。

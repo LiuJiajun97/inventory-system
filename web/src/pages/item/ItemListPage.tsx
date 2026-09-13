@@ -25,6 +25,7 @@ import type { Item } from "../../types";
 import { usePermission } from "../../auth/usePermission";
 import { ImportButton } from "../../components/ImportButton";
 import { ExportButton } from "../../components/ExportButton";
+import { EmptyHint } from "../../components/EmptyHint";
 
 interface AttrRow {
   key: string;
@@ -284,6 +285,7 @@ export function ItemListPage() {
     <>
       <ProTable<Item>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无物品" /> }}
         actionRef={actionRef}
         columns={[
           {

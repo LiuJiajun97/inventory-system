@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import { operationLogApi } from "../../api";
 import type { OperationLog } from "../../types/phase1";
 import { fmtDateTime } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 
 // 操作(HTTP 方法)朴素 Tag 配色
 const ACTION_COLOR: Record<string, string> = {
@@ -166,6 +167,7 @@ export function OperationLogPage() {
   return (
     <ProTable<OperationLog>
       rowKey="id"
+      locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无操作日志" /> }}
       columns={columns}
       request={request}
       headerTitle={false}

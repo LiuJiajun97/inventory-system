@@ -14,7 +14,6 @@ import {
   Badge,
   App,
   Drawer,
-  Tag,
   Typography,
   Row,
   Col,
@@ -26,6 +25,8 @@ import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { dictApi } from "../../api";
 import type { DictItem, DictTypeItem } from "../../types/phase1";
+import { StatusTag } from "../../components/StatusTag";
+import { EmptyHint } from "../../components/EmptyHint";
 
 export function DictPage() {
   const { message } = App.useApp();
@@ -230,11 +231,7 @@ export function DictPage() {
       width: 80,
       search: false,
       render: (_v, record) =>
-        record.status === 1 ? (
-          <Tag color="success">启用</Tag>
-        ) : (
-          <Tag color="default">停用</Tag>
-        ),
+        record.status === 1 ? <StatusTag status="enabled" /> : <StatusTag status="disabled" />,
     },
     ...(isAdmin
       ? [
@@ -277,6 +274,7 @@ export function DictPage() {
     <>
       <ProTable<DictTypeItem>
         rowKey="typeCode"
+        locale={{ emptyText: <EmptyHint text="当前条件下暂无字典类型" /> }}
         actionRef={actionRef}
         columns={typeColumns}
         request={request}

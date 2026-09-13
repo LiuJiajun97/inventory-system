@@ -16,6 +16,7 @@ import {
   App,
 } from "antd";
 import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import { fmtMoney } from "../../utils/format";
 import { ProCard } from "@ant-design/pro-components";
 import { Link, useNavigate } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
@@ -282,7 +283,7 @@ export function OutboundFormPage() {
       render: (_v, r) => {
         const qty = r.line.qty ?? 0;
         const price = r.line.unitPrice ?? 0;
-        return qty > 0 && price > 0 ? (qty * price).toFixed(2) : "-";
+        return qty > 0 && price > 0 ? fmtMoney(qty * price) : "-";
       },
     },
     {

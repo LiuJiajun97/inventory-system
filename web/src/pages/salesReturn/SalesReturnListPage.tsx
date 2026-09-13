@@ -13,7 +13,8 @@ import type { Warehouse } from "../../types";
 import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 import type { SalesReturn, DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
-import { fmtDate, fmtDateTime } from "../../utils/format";
+import { fmtDate, fmtDateTime, fmtMoney, fmtQty } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 import { StatusTag } from "../../components/StatusTag";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
@@ -132,12 +133,12 @@ export function SalesReturnListPage() {
     { title: "物品", width: 190, search: false, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
     { title: "规格", dataIndex: "spec", width: 90, search: false, ellipsis: true },
     { title: "单位", dataIndex: "unit", width: 60, search: false },
-    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.quantity == null ? "-" : Number(r.quantity).toFixed(2)) },
-    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.unitPrice == null ? "-" : Number(r.unitPrice).toFixed(2)) },
+    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.quantity) },
+    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.unitPrice) },
     { title: "税率(%)", dataIndex: "taxRate", width: 80, align: "right", className: "num-cell", search: false },
-    { title: "金额", dataIndex: "amount", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.amount == null ? "-" : Number(r.amount).toFixed(2)) },
-    { title: "税额", dataIndex: "taxAmount", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.taxAmount == null ? "-" : Number(r.taxAmount).toFixed(2)) },
-    { title: "价税合计", dataIndex: "taxInclusiveTotal", width: 110, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.taxInclusiveTotal == null ? "-" : <b>{Number(r.taxInclusiveTotal).toFixed(2)}</b>) },
+    { title: "金额", dataIndex: "amount", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.amount) },
+    { title: "税额", dataIndex: "taxAmount", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.taxAmount) },
+    { title: "价税合计", dataIndex: "taxInclusiveTotal", width: 110, align: "right", className: "num-cell", search: false, render: (_v, r) => <b>{fmtMoney(r.taxInclusiveTotal)}</b> },
     { title: "状态", dataIndex: "status", width: 90, search: false, render: (_v, r) => (r.status === "finished" ? <StatusTag status="inbound" label="已完成" /> : <Tag bordered>{r.status}</Tag>) },
     {
       title: "日期",
@@ -179,12 +180,12 @@ export function SalesReturnListPage() {
       String(l.lineNo),
       itemText(l.itemId),
       l.specSnapshot ?? "",
-      Number(l.quantity).toFixed(4),
-      Number(l.unitPrice).toFixed(4),
+      fmtQty(l.quantity),
+      fmtMoney(l.unitPrice),
       Number(l.taxRate).toFixed(2),
-      Number(l.amount).toFixed(2),
-      Number(l.taxAmount).toFixed(2),
-      Number(l.taxInclusiveTotal).toFixed(2),
+      fmtMoney(l.amount),
+      fmtMoney(l.taxAmount),
+      fmtMoney(l.taxInclusiveTotal),
     ]),
     totals: [
       "",
@@ -195,7 +196,7 @@ export function SalesReturnListPage() {
       "合计",
       "",
       "",
-      d.totalAmount == null ? "" : Number(d.totalAmount).toFixed(2),
+      fmtMoney(d.totalAmount),
     ],
     status: d.status === "finished" ? "已完成" : d.status,
     remark: d.remark,
@@ -273,7 +274,7 @@ export function SalesReturnListPage() {
       align: "right",
       className: "num-cell",
       search: false,
-      render: (_v, r) => (r.totalAmount == null ? "-" : Number(r.totalAmount).toFixed(2)),
+      render: (_v, r) => fmtMoney(r.totalAmount),
     },
     {
       title: "状态",
@@ -308,6 +309,7 @@ export function SalesReturnListPage() {
     <>
       <ProTable<SalesReturn>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无销售退货单" /> }}
         actionRef={actionRef}
         columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<SalesReturn>[]) : columns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
@@ -374,7 +376,7 @@ export function SalesReturnListPage() {
               <Descriptions.Item label="总金额">
                 {detail.totalAmount == null
                   ? "-"
-                  : Number(detail.totalAmount).toFixed(2)}
+                  : fmtMoney(detail.totalAmount)}
               </Descriptions.Item>
               <Descriptions.Item label="创建人">
                 {detail.creator ?? "-"}
@@ -410,7 +412,7 @@ export function SalesReturnListPage() {
                   width: 100,
                   align: "right",
                   className: "num-cell",
-                  render: (v: string) => Number(v).toFixed(4),
+                  render: (v: string) => fmtQty(v),
                 },
                 {
                   title: "单价",
@@ -418,7 +420,7 @@ export function SalesReturnListPage() {
                   width: 100,
                   align: "right",
                   className: "num-cell",
-                  render: (v: string) => Number(v).toFixed(4),
+                  render: (v: string) => fmtMoney(v),
                 },
                 {
                   title: "税率(%)",
@@ -434,7 +436,7 @@ export function SalesReturnListPage() {
                   width: 100,
                   align: "right",
                   className: "num-cell",
-                  render: (v: string) => Number(v).toFixed(2),
+                  render: (v: string) => fmtMoney(v),
                 },
                 {
                   title: "税额",
@@ -442,7 +444,7 @@ export function SalesReturnListPage() {
                   width: 100,
                   align: "right",
                   className: "num-cell",
-                  render: (v: string) => Number(v).toFixed(2),
+                  render: (v: string) => fmtMoney(v),
                 },
                 {
                   title: "价税合计",
@@ -450,7 +452,7 @@ export function SalesReturnListPage() {
                   width: 110,
                   align: "right",
                   className: "num-cell",
-                  render: (v: string) => Number(v).toFixed(2),
+                  render: (v: string) => fmtMoney(v),
                 },
               ]}
             />

@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { Form, Row, Col, Select, Input, InputNumber, Button, Table, Tag, DatePicker, App } from "antd";
 import { PlusOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import { fmtMoney, fmtQty } from "../../utils/format";
 import { ProCard } from "@ant-design/pro-components";
 import { Link, useNavigate } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
@@ -182,7 +183,7 @@ export function PurchaseReturnNewPage() {
       title: "单价",
       width: 100,
       align: "right",
-      render: (_v, r) => r.unitPrice.toFixed(4),
+      render: (_v, r) => fmtMoney(r.unitPrice),
     },
     {
       title: "税率(%)",
@@ -194,19 +195,19 @@ export function PurchaseReturnNewPage() {
       title: "已到货",
       width: 90,
       align: "right",
-      render: (_v, r) => r.arrivedQty.toFixed(4),
+      render: (_v, r) => fmtQty(r.arrivedQty),
     },
     {
       title: "已退",
       width: 90,
       align: "right",
-      render: (_v, r) => r.returnedQty.toFixed(4),
+      render: (_v, r) => fmtQty(r.returnedQty),
     },
     {
       title: "可退量",
       width: 90,
       align: "right",
-      render: (_v, r) => r.returnableQty.toFixed(4),
+      render: (_v, r) => fmtQty(r.returnableQty),
     },
     {
       title: "退货数量",
@@ -355,7 +356,7 @@ export function PurchaseReturnNewPage() {
               共 {validRows.length} 行退货
               {validRows.length > 0 && (
                 <span className="doc-form-footer-muted">
-                  金额约 {totalAmount.toFixed(2)}(以服务端重算为准)
+                  金额约 {fmtMoney(totalAmount)}(以服务端重算为准)
                 </span>
               )}
             </div>

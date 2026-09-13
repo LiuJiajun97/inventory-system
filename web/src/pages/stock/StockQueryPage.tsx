@@ -9,7 +9,8 @@ import { stockApi, warehouseApi } from "../../api";
 import { ExportButton } from "../../components/ExportButton";
 import { usePermission } from "../../auth/usePermission";
 import type { StockRow, Warehouse } from "../../types";
-import { fmtDate } from "../../utils/format";
+import { fmtDate, fmtQty } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 
 export function StockQueryPage() {
   const { hasPerm } = usePermission();
@@ -124,7 +125,7 @@ const request = async (params: {
       search: false,
       render: (_v, r) => (
         <span className="num-cell">
-          {Number(r.quantity).toFixed(4)}
+          {fmtQty(r.quantity)}
           <span style={{ color: "#9ca3af", marginLeft: 4, fontSize: 12 }}>
             {r.item?.unit ?? ""}
           </span>
@@ -139,7 +140,7 @@ const request = async (params: {
       search: false,
       render: (_v, r) => (
         <span className="num-cell">
-          {r.preAllocatedQty == null ? "-" : Number(r.preAllocatedQty).toFixed(4)}
+          {fmtQty(r.preAllocatedQty)}
         </span>
       ),
     },
@@ -157,7 +158,7 @@ const request = async (params: {
             className="num-cell"
             style={{ color: Number(r.availableQty) < 0 ? "#cf1322" : undefined }}
           >
-            {Number(r.availableQty).toFixed(4)}
+            {fmtQty(r.availableQty)}
           </span>
         ),
     },
@@ -173,6 +174,7 @@ const request = async (params: {
   return (
     <ProTable<StockRow>
       rowKey="id"
+      locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库存" /> }}
       columns={columns}
       request={request}
       headerTitle={false}

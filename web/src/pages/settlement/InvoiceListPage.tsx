@@ -11,7 +11,8 @@ import dayjs from "dayjs";
 import { invoiceApi, supplierApi, customerApi } from "../../api";
 import type { Invoice } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
-import { fmtDate, fmtDateTime } from "../../utils/format";
+import { fmtDate, fmtDateTime, fmtMoney, fmtQty } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 
 function toDay(v: unknown): string | undefined {
   if (v == null) return undefined;
@@ -205,7 +206,7 @@ export function InvoiceListPage() {
       search: false,
       render: (_v, r) => (
         <b style={r.totalAmount < 0 ? { color: "#dc2626" } : undefined}>
-          {Number(r.totalAmount).toFixed(2)}
+          {fmtMoney(r.totalAmount)}
         </b>
       ),
     },
@@ -249,6 +250,7 @@ export function InvoiceListPage() {
     <>
       <ProTable<Invoice>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无发票" /> }}
         actionRef={actionRef}
         columns={columns}
         request={request}
@@ -293,7 +295,7 @@ export function InvoiceListPage() {
                 label="金额"
               >
                 <span style={detail.totalAmount < 0 ? { color: "#dc2626", fontWeight: 600 } : { fontWeight: 600 }}>
-                  {Number(detail.totalAmount).toFixed(2)}
+                  {fmtMoney(detail.totalAmount)}
                 </span>
                 {detail.sign === "negative" && (
                   <Tag bordered color="orange" style={{ marginLeft: 8 }}>负票(红字)</Tag>
@@ -349,7 +351,7 @@ export function InvoiceListPage() {
                   width: 80,
                   align: "right",
                   className: "num-cell",
-                  render: (v?: number | null) => (v == null ? "-" : Number(v).toFixed(2)),
+                  render: (v?: number | null) => fmtQty(v),
                 },
                 {
                   title: "开票额",
@@ -358,7 +360,7 @@ export function InvoiceListPage() {
                   align: "right",
                   className: "num-cell",
                   render: (v: number) => (
-                    <b style={v < 0 ? { color: "#dc2626" } : undefined}>{Number(v).toFixed(2)}</b>
+                    <b style={v < 0 ? { color: "#dc2626" } : undefined}>{fmtMoney(v)}</b>
                   ),
                 },
                 {
@@ -367,7 +369,7 @@ export function InvoiceListPage() {
                   width: 100,
                   align: "right",
                   className: "num-cell",
-                  render: (v?: number | null) => (v == null ? "-" : Number(v).toFixed(2)),
+                  render: (v?: number | null) => fmtMoney(v),
                 },
                 {
                   title: "差异",
@@ -377,9 +379,9 @@ export function InvoiceListPage() {
                   className: "num-cell",
                   render: (v: number) =>
                     Math.abs(Number(v)) > 0.01 ? (
-                      <b style={{ color: "#dc2626" }}>{Number(v).toFixed(2)}</b>
+                      <b style={{ color: "#dc2626" }}>{fmtMoney(v)}</b>
                     ) : (
-                      Number(v).toFixed(2)
+                      fmtMoney(v)
                     ),
                 },
               ]}

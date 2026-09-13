@@ -9,6 +9,7 @@ import type { Customer } from "../../types/phase1";
 import type { SalesReconRow } from "../../types/report";
 import { ExportButton } from "../../components/ExportButton";
 import { AmountCell, QtyCell, ReconDetailTable, dayPart } from "./common";
+import { EmptyHint } from "../../components/EmptyHint";
 
 export function SalesReconTab() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -140,6 +141,7 @@ export function SalesReconTab() {
   return (
     <ProTable<SalesReconRow>
       rowKey="customerId"
+      locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无销售对账数据" /> }}
       columns={columns}
       request={request}
       headerTitle={false}

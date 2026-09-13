@@ -12,6 +12,7 @@ import { usePermission } from "../../auth/usePermission";
 import { ImportButton } from "../../components/ImportButton";
 import { ExportButton } from "../../components/ExportButton";
 import { StatusTag } from "../../components/StatusTag";
+import { EmptyHint } from "../../components/EmptyHint";
 
 interface FormValues {
   supplierCode: string;
@@ -178,6 +179,7 @@ export function SupplierPage() {
     <>
       <ProTable<Supplier>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无供应商" /> }}
         actionRef={actionRef}
         columns={[
           {

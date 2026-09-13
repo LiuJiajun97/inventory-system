@@ -15,7 +15,8 @@ import { PrintDocModal, printHeader, printMoney, usePrintNameMaps, type PrintDoc
 import type { InboundDoc, Warehouse } from "../../types";
 import type { DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
-import { fmtDateTime, REF_TYPE_LABEL } from "../../utils/format";
+import { fmtDateTime, REF_TYPE_LABEL, fmtMoney, fmtQty } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 import { StatusTag } from "../../components/StatusTag";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
@@ -159,12 +160,12 @@ const request = async (params: {
     { title: "物品", width: 190, search: false, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
     { title: "规格", dataIndex: "spec", width: 90, search: false, ellipsis: true },
     { title: "单位", dataIndex: "unit", width: 60, search: false },
-    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.quantity == null ? "-" : Number(r.quantity).toFixed(2)) },
-    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.unitPrice == null ? "-" : Number(r.unitPrice).toFixed(2)) },
+    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.quantity) },
+    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.unitPrice) },
     { title: "税率(%)", dataIndex: "taxRate", width: 80, align: "right", className: "num-cell", search: false },
-    { title: "金额", dataIndex: "amount", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.amount == null ? "-" : Number(r.amount).toFixed(2)) },
-    { title: "税额", dataIndex: "taxAmount", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.taxAmount == null ? "-" : Number(r.taxAmount).toFixed(2)) },
-    { title: "价税合计", dataIndex: "taxInclusiveTotal", width: 110, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.taxInclusiveTotal == null ? "-" : <b>{Number(r.taxInclusiveTotal).toFixed(2)}</b>) },
+    { title: "金额", dataIndex: "amount", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.amount) },
+    { title: "税额", dataIndex: "taxAmount", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.taxAmount) },
+    { title: "价税合计", dataIndex: "taxInclusiveTotal", width: 110, align: "right", className: "num-cell", search: false, render: (_v, r) => <b>{fmtMoney(r.taxInclusiveTotal)}</b> },
     { title: "批次号", dataIndex: "batchNo", width: 110, search: false, render: (_v, r) => r.batchNo ?? "-" },
     { title: "状态", dataIndex: "status", width: 90, valueEnum: { finished: { text: "已完成" } }, render: (_v, r) => (r.status === "finished" ? <StatusTag status="inbound" label="已完成" /> : <Tag bordered>{r.status}</Tag>) },
     {
@@ -198,7 +199,7 @@ const request = async (params: {
         ["承运商", d.carrier],
         ["车牌", d.vehicleNo],
         ["运费", printMoney(d.freight)],
-        ["总数量", totalQty.toFixed(2)],
+        ["总数量", fmtQty(totalQty)],
         ["创建人", d.creator],
       ]),
       columns: [
@@ -214,10 +215,10 @@ const request = async (params: {
         itemText(l.itemId),
         l.batchNo ?? "",
         locText(l.locationId),
-        Number(l.quantity).toFixed(4),
+        fmtQty(l.quantity),
         parseSerials(l.serialNos),
       ]),
-      totals: ["", "", "", "合计", totalQty.toFixed(4), ""],
+      totals: ["", "", "", "合计", fmtQty(totalQty), ""],
       status: d.status === "finished" ? "已完成" : d.status,
       remark: d.remark,
     };
@@ -315,9 +316,7 @@ const request = async (params: {
         return (
           <span>
             {items.length} 行明细 · 数量合计{" "}
-            {items
-              .reduce((s, it) => s + Number(it.quantity), 0)
-              .toFixed(2)}
+            {fmtQty(items.reduce((s, it) => s + Number(it.quantity), 0))}
           </span>
         );
       },
@@ -328,10 +327,7 @@ const request = async (params: {
       align: "right",
       className: "num-cell",
       search: false,
-      render: (_v, r) =>
-        (r.items ?? [])
-          .reduce((s, it) => s + Number(it.quantity), 0)
-          .toFixed(4),
+      render: (_v, r) => fmtQty((r.items ?? []).reduce((s, it) => s + Number(it.quantity), 0)),
     },
     { title: "创建人", dataIndex: "creator", width: 100, ellipsis: true, search: false },
     {
@@ -354,6 +350,7 @@ const request = async (params: {
     <>
       <ProTable<InboundDoc>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无入库单" /> }}
         actionRef={actionRef}
         columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<InboundDoc>[]) : columns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
@@ -423,7 +420,7 @@ const request = async (params: {
               <Descriptions.Item label="承运商">{detail.carrier ?? "-"}</Descriptions.Item>
               <Descriptions.Item label="车牌">{detail.vehicleNo ?? "-"}</Descriptions.Item>
               <Descriptions.Item label="运费">
-                {detail.freight == null ? "-" : Number(detail.freight).toFixed(2)}
+                {fmtMoney(detail.freight)}
               </Descriptions.Item>
               <Descriptions.Item label="备注" span={2}>
                 {detail.remark ?? "-"}
@@ -448,7 +445,7 @@ const request = async (params: {
                   width: 100,
                   align: "right",
                   className: "num-cell",
-                  render: (v: string | number) => Number(v).toFixed(4),
+                  render: (v: string | number) => fmtQty(v),
                 },
                 {
                   title: "批次ID",

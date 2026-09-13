@@ -9,7 +9,8 @@ import type { ProColumns } from "@ant-design/pro-components";
 import dayjs from "dayjs";
 import { itemApi, transactionApi, warehouseApi } from "../../api";
 import type { Item, StockTransaction, Warehouse } from "../../types";
-import { fmtDateTime } from "../../utils/format";
+import { fmtDateTime, fmtQty } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 import { BizTag, BIZ_OPTIONS } from "../../components/StatusTag";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
@@ -174,7 +175,7 @@ export function TransactionQueryPage() {
         return (
           <span className={n >= 0 ? "qty-positive" : "qty-negative"}>
             {n >= 0 ? "+" : ""}
-            {n.toFixed(4)}
+            {fmtQty(n)}
           </span>
         );
       },
@@ -186,7 +187,7 @@ export function TransactionQueryPage() {
       align: "right",
       className: "num-cell",
       search: false,
-      render: (_v, r) => Number(r.afterQty).toFixed(4),
+      render: (_v, r) => fmtQty(r.afterQty),
     },
     { title: "操作人", dataIndex: "operator", width: 100, ellipsis: true, search: false },
   ];
@@ -194,6 +195,7 @@ export function TransactionQueryPage() {
   return (
     <ProTable<StockTransaction>
       rowKey="id"
+      locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库存流水" /> }}
       columns={columns}
       request={request}
       headerTitle={false}

@@ -32,6 +32,7 @@ import type { RoleRow } from "../../api";
 import type { UserInfo, UserRoleItem } from "../../types";
 import { fmtDateTime } from "../../utils/format";
 import { StatusTag } from "../../components/StatusTag";
+import { EmptyHint } from "../../components/EmptyHint";
 
 // 内置角色 Tag 样式(自定义角色用默认灰 Tag)
 const BUILTIN_ROLE_CLASS: Record<string, string> = {
@@ -262,6 +263,7 @@ export function UserListPage() {
     <>
       <ProTable<UserInfo>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无用户" /> }}
         actionRef={actionRef}
         columns={[
           {

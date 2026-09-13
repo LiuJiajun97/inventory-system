@@ -9,6 +9,7 @@ import { Link, useNavigate } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { type Dayjs } from "dayjs";
 import { paymentApi, supplierApi, customerApi } from "../../api";
+import { fmtMoney } from "../../utils/format";
 import type { UnsettledInvoice } from "../../types/phase1";
 
 interface LineRow {
@@ -123,14 +124,14 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
   const candidateColumns: ColumnsType<UnsettledInvoice> = [
     { title: "发票号", dataIndex: "docNo", width: 170, render: (v) => <span style={{ fontFamily: "monospace", fontSize: 12 }}>{v}</span> },
     { title: "日期", dataIndex: "invoiceDate", width: 100, render: (v) => (v ? dayjs(v).format("YYYY-MM-DD") : "-") },
-    { title: "票额", dataIndex: "totalAmount", width: 100, align: "right", className: "num-cell", render: (v) => Number(v).toFixed(2) },
-    { title: "已核销", dataIndex: "settledAmount", width: 100, align: "right", className: "num-cell", render: (v) => Number(v).toFixed(2) },
-    { title: "剩余可核", dataIndex: "remainingAmount", width: 100, align: "right", className: "num-cell", render: (v) => <b>{Number(v).toFixed(2)}</b> },
+    { title: "票额", dataIndex: "totalAmount", width: 100, align: "right", className: "num-cell", render: (v) => fmtMoney(v) },
+    { title: "已核销", dataIndex: "settledAmount", width: 100, align: "right", className: "num-cell", render: (v) => fmtMoney(v) },
+    { title: "剩余可核", dataIndex: "remainingAmount", width: 100, align: "right", className: "num-cell", render: (v) => <b>{fmtMoney(v)}</b> },
   ];
 
   const lineColumns: ColumnsType<LineRow> = [
     { title: "发票号", dataIndex: "docNo", width: 170, render: (v) => <span style={{ fontFamily: "monospace", fontSize: 12 }}>{v}</span> },
-    { title: "剩余可核", dataIndex: "remaining", width: 110, align: "right", className: "num-cell", render: (v) => Number(v).toFixed(2) },
+    { title: "剩余可核", dataIndex: "remaining", width: 110, align: "right", className: "num-cell", render: (v) => fmtMoney(v) },
     {
       title: "核销额",
       dataIndex: "amount",
@@ -241,7 +242,7 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
             <div className="doc-form-footer-summary">
               共 {rows.length} 张发票
               {rows.length > 0 && (
-                <span className="doc-form-footer-muted">合计核销 {total.toFixed(2)}</span>
+                <span className="doc-form-footer-muted">合计核销 {fmtMoney(total)}</span>
               )}
             </div>
             <Button onClick={() => navigate(isPayment ? "/payments" : "/receipts")}>取消</Button>

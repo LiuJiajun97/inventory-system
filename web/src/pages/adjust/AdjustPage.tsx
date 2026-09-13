@@ -13,7 +13,8 @@ import type { StockAdjustDoc, DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
 import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
-import { fmtDate } from "../../utils/format";
+import { fmtDate, fmtMoney, fmtQty } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 
 const TYPE_LABEL: Record<string, string> = { gain: "盘盈(入库)", loss: "盘亏(出库)", scrap: "报损(出库)" };
 
@@ -149,8 +150,8 @@ export function AdjustPage() {
     { title: "物品", width: 190, search: false, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
     { title: "规格", dataIndex: "spec", width: 90, search: false, ellipsis: true },
     { title: "单位", dataIndex: "unit", width: 60, search: false },
-    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.quantity == null ? "-" : Number(r.quantity).toFixed(2)) },
-    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.unitPrice == null ? "-" : Number(r.unitPrice).toFixed(2)) },
+    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.quantity) },
+    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.unitPrice) },
     { title: "状态", dataIndex: "status", width: 90, valueEnum: STATUS_ENUM, render: (_v, r) => <DocStatusTag status={r.status} /> },
     { title: "物品", dataIndex: "itemKeyword", hideInTable: true, fieldProps: { placeholder: "编码或名称关键字" } },
   ];
@@ -189,8 +190,8 @@ export function AdjustPage() {
       String(l.lineNo),
       `${l.itemCode} ${l.itemName}`,
       locText(l.locationId),
-      Number(l.qty).toFixed(4),
-      l.unitPrice == null ? "" : Number(l.unitPrice).toFixed(2),
+      fmtQty(l.qty),
+      l.unitPrice == null ? "" : fmtMoney(l.unitPrice),
       l.reason ?? "",
     ]),
     status: docStatusLabel(d.status),
@@ -401,6 +402,7 @@ export function AdjustPage() {
     <>
       <ProTable<StockAdjustDoc>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库存调整单" /> }}
         actionRef={actionRef}
         columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<StockAdjustDoc>[]) : columns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
@@ -619,7 +621,7 @@ export function AdjustPage() {
                   width: 100,
                   align: "right",
                   className: "num-cell",
-                  render: (v) => (v == null ? "-" : Number(v).toFixed(2)),
+                  render: (v) => fmtMoney(v),
                 },
                 { title: "原因", dataIndex: "reason", render: (v) => v ?? "-" },
               ]}

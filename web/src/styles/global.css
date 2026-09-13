@@ -64,6 +64,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* 表格数字等宽对齐,便于纵向扫视对比(数字列统一 tabular-nums) */
+.ant-table td,
+.ant-statistic-content {
+  font-variant-numeric: tabular-nums;
+}
+
 /* ====== 数字右对齐 + 等宽数字 ====== */
 .num,
 .num-cell {

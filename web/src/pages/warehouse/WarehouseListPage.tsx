@@ -25,6 +25,7 @@ import { warehouseApi, dictApi } from "../../api";
 import type { Warehouse } from "../../types";
 import { usePermission } from "../../auth/usePermission";
 import { StatusTag } from "../../components/StatusTag";
+import { EmptyHint } from "../../components/EmptyHint";
 
 export function WarehouseListPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -209,6 +210,7 @@ export function WarehouseListPage() {
     <>
       <ProTable<Warehouse>
         rowKey="id"
+        locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无仓库" /> }}
         actionRef={actionRef}
         columns={[
           {

@@ -10,6 +10,8 @@ import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { alertApi, warehouseApi } from "../../api";
 import type { Warehouse } from "../../types";
 import type { ExpiryAlertRow, LowStockRow } from "../../types/phase1";
+import { fmtQty } from "../../utils/format";
+import { EmptyHint } from "../../components/EmptyHint";
 
 export function AlertPage() {
   const [tab, setTab] = useState("expiry");
@@ -106,7 +108,7 @@ export function AlertPage() {
       align: "right",
       className: "num-cell",
       search: false,
-      render: (v) => (v == null ? "-" : Number(v).toFixed(2)),
+      render: (v) => fmtQty(Number(v)),
     },
     { title: "全仓总量", dataIndex: "totalQty", width: 110, align: "right", className: "num-cell", search: false },
     {
@@ -117,7 +119,7 @@ export function AlertPage() {
       className: "num-cell",
       search: false,
       render: (_v, r) => (
-        <span style={{ color: "#cf1322", fontWeight: 600 }}>{Number(r.availableQty).toFixed(2)}</span>
+        <span style={{ color: "#cf1322", fontWeight: 600 }}>{fmtQty(r.availableQty)}</span>
       ),
     },
     { title: "单位", dataIndex: "unit", width: 80, search: false },
@@ -135,6 +137,7 @@ export function AlertPage() {
             children: (
               <ProTable<ExpiryAlertRow>
                 rowKey={(r) => `${r.batchNo}-${r.warehouseId}`}
+                locale={{ emptyText: <EmptyHint text="当前条件下暂无临期预警" /> }}
                 actionRef={expiryRef}
                 size="small"
                 columns={expiryColumns}
@@ -174,6 +177,7 @@ export function AlertPage() {
             children: (
               <ProTable<LowStockRow>
                 rowKey="itemId"
+                locale={{ emptyText: <EmptyHint text="当前条件下暂无低库存预警" /> }}
                 actionRef={lowRef}
                 size="small"
                 columns={lowColumns}
