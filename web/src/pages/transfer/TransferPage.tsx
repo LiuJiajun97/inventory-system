@@ -13,7 +13,8 @@ import { itemApi, transferApi, warehouseApi } from "../../api";
 import type { Item, Location, Warehouse } from "../../types";
 import type { TransferDoc } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
-import { DocStatusTag } from "../../components/DocStatusTag";
+import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
+import { PrintDocModal, printHeader, type PrintDocData } from "../../components/PrintDocModal";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
 // 部分路径(弹层选择)可能传 dayjs,两种都兼容
@@ -42,6 +43,7 @@ export function TransferPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [detail, setDetail] = useState<TransferDoc | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   // 非空为编辑模式(草稿/已驳回单),Drawer 复用新建表单
   const [editId, setEditId] = useState<number | null>(null);
@@ -126,6 +128,37 @@ export function TransferPage() {
       // 拦截器已提示
     }
   };
+
+  // V14 打印:调拨单详情 VO 转 A4 打印版数据(承运商等空值字段自动过滤)
+  const buildPrintData = (d: TransferDoc): PrintDocData => ({
+    title: "调拨单",
+    docNo: d.docNo,
+    header: printHeader([
+      ["调拨日期", fmtDate(d.docDate)],
+      ["源仓", whName(d.fromWarehouseId)],
+      ["目的仓", whName(d.toWarehouseId)],
+      ["承运商", d.carrier],
+      ["创建人", d.creator],
+      ["审批人", d.approver],
+    ]),
+    columns: [
+      { title: "行号", align: "center" },
+      { title: "物品" },
+      { title: "数量", align: "right" },
+      { title: "参考单价", align: "right" },
+      { title: "行备注" },
+    ],
+    rows: (d.items ?? []).map((l) => [
+      String(l.lineNo),
+      `${l.itemCode} ${l.itemName}`,
+      Number(l.qty).toFixed(4),
+      Number(l.unitPrice).toFixed(2),
+      l.lineRemark ?? "",
+    ]),
+    totals: ["", "", "参考金额合计", Number(d.totalAmount).toFixed(2), ""],
+    status: docStatusLabel(d.status),
+    remark: d.remark,
+  });
 
   const openCreate = () => {
     createForm.resetFields();
@@ -573,7 +606,7 @@ export function TransferPage() {
         title={`调拨单详情 - ${detail?.docNo ?? ""}`}
         open={!!detail}
         onCancel={() => setDetail(null)}
-        footer={null}
+        footer={<Button onClick={() => setPrintOpen(true)}>打印</Button>}
         width={960}
         className="doc-detail-modal"
       >
@@ -615,6 +648,13 @@ export function TransferPage() {
           if (rejectTarget) doAction(() => transferApi.reject(rejectTarget.id, reason), "已驳回");
           setRejectTarget(null);
         }}
+      />
+
+      {/* V14 打印 Modal:详情数据已在 detail state,直接转换渲染 */}
+      <PrintDocModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        data={detail ? buildPrintData(detail) : null}
       />
     </>
   );

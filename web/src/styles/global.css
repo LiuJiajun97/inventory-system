@@ -809,3 +809,142 @@ a.action-edit .anticon {
   justify-content: flex-end;
   row-gap: 8px;
 }
+
+/* ====== 单据打印(V14) ====== */
+/* 屏显:打印 Modal 内的 A4 单据纸样(白底黑字,灰边模拟纸张,打印时去掉) */
+.print-doc-sheet {
+  background: #fff;
+  color: #000;
+  border: 1px solid #d9d9d9;
+  padding: 16px 20px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.print-doc-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.print-doc-no {
+  text-align: center;
+  font-size: 14px;
+  margin: 4px 0 14px;
+}
+
+/* 头部键值对:纯表格两组 label/value,label 列固定 18% */
+.print-doc-header {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.print-doc-header td {
+  border: 1px solid #000;
+  padding: 4px 8px;
+}
+
+.print-doc-hlabel {
+  width: 18%;
+  font-weight: 600;
+}
+
+/* 明细表:纯表格 1px 黑边框 */
+.print-doc-lines {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.print-doc-lines th,
+.print-doc-lines td {
+  border: 1px solid #000;
+  padding: 4px 8px;
+}
+
+.print-doc-lines thead th {
+  font-weight: 600;
+}
+
+/* 底部:状态/备注 + 签字区 */
+.print-doc-foot {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.print-doc-sign {
+  display: flex;
+  gap: 60px;
+  margin-top: 28px;
+}
+
+/* 打印:隐藏主应用与其它弹窗,只保留 .print-doc-sheet(antd Modal portal 到 body) */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  #root {
+    display: none !important;
+  }
+
+  /* 不含打印单据的弹窗根节点(详情弹窗等)全部隐藏 */
+  .ant-modal-root:not(:has(.print-doc-sheet)) {
+    display: none !important;
+  }
+
+  .ant-modal-mask {
+    display: none !important;
+  }
+
+  .ant-modal-wrap {
+    position: static !important;
+    inset: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  .ant-modal {
+    position: static !important;
+    top: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    box-shadow: none !important;
+  }
+
+  .ant-modal-body {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .ant-modal-content {
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .ant-modal-header,
+  .ant-modal-close,
+  .ant-modal-footer {
+    display: none !important;
+  }
+
+  .print-doc-sheet {
+    border: none;
+    padding: 0;
+    width: 100%;
+  }
+}

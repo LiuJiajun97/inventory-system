@@ -11,6 +11,7 @@ import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import { openingApi, warehouseApi } from "../../api";
 import type { OpeningStockDoc, OpeningStockDocItem, Warehouse } from "../../types";
+import { PrintDocModal, printHeader, type PrintDocData } from "../../components/PrintDocModal";
 import { usePermission } from "../../auth/usePermission";
 import { fmtDate, fmtDateTime } from "../../utils/format";
 import { StatusTag } from "../../components/StatusTag";
@@ -25,6 +26,7 @@ function toDay(v: unknown): string | undefined {
 export function OpeningStockListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<OpeningStockDoc | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
   const actionRef = useRef<ActionType>();
   const { hasPerm } = usePermission();
   const location = useLocation();
@@ -64,6 +66,42 @@ export function OpeningStockListPage() {
     // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
     return { data: res.rows, success: true, total: res.total };
   };
+
+  // V14 打印:期初单详情 VO 转 A4 打印版数据(空值字段自动过滤)
+  const buildPrintData = (d: OpeningStockDoc): PrintDocData => ({
+    title: "期初库存单",
+    docNo: d.docNo,
+    header: printHeader([
+      ["单据日期", fmtDate(d.docDate)],
+      ["仓库", d.warehouse?.warehouseName],
+      ["总数量", Number(d.totalQty).toFixed(2)],
+      ["创建人", d.creator],
+    ]),
+    columns: [
+      { title: "行号", align: "center" },
+      { title: "物品" },
+      { title: "批次号" },
+      { title: "数量", align: "right" },
+      { title: "期初单价", align: "right" },
+      { title: "生产日期", align: "center" },
+      { title: "到期日", align: "center" },
+      { title: "库位", align: "center" },
+    ],
+    rows: (d.items ?? []).map((l) => [
+      String(l.lineNo),
+      l.itemName ? `${l.itemCode ?? ""} ${l.itemName}`.trim() : String(l.itemId),
+      l.batchNo ?? "",
+      Number(l.quantity).toFixed(4),
+      l.unitPrice == null ? "" : Number(l.unitPrice).toFixed(4),
+      l.productionDate ? fmtDate(l.productionDate) : "",
+      l.expiryDate ? fmtDate(l.expiryDate) : "",
+      l.locationId == null ? "" : String(l.locationId),
+    ]),
+    totals: ["", "", "合计", Number(d.totalQty).toFixed(4), "", "", "", ""],
+    status: d.status === "finished" ? "已完成" : d.status,
+    remark: d.remark,
+  });
+
 
   const columns: ProColumns<OpeningStockDoc>[] = [
     {
@@ -200,7 +238,7 @@ export function OpeningStockListPage() {
         title={`期初单详情 - ${detail?.docNo ?? ""}`}
         open={!!detail}
         onCancel={() => setDetail(null)}
-        footer={null}
+        footer={<Button onClick={() => setPrintOpen(true)}>打印</Button>}
         width={960}
         className="doc-detail-modal"
       >
@@ -289,6 +327,13 @@ export function OpeningStockListPage() {
           </>
         )}
       </Modal>
+
+      {/* V14 打印 Modal:详情数据已在 detail state,直接转换渲染 */}
+      <PrintDocModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        data={detail ? buildPrintData(detail) : null}
+      />
     </>
   );
 }

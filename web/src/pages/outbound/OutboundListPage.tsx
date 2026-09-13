@@ -9,6 +9,7 @@ import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import { outboundApi, warehouseApi } from "../../api";
 import { ExportButton } from "../../components/ExportButton";
+import { PrintDocModal, printHeader, printMoney, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 import type { OutboundDoc, Warehouse } from "../../types";
 import { usePermission } from "../../auth/usePermission";
 import { fmtDateTime, REF_TYPE_LABEL } from "../../utils/format";
@@ -21,9 +22,22 @@ function toDay(v: unknown): string | undefined {
   return typeof v === "string" ? v : (v as dayjs.Dayjs).format("YYYY-MM-DD");
 }
 
+// V14 打印:序列号字段后端存 JSON 数组字符串,打印拼接为逗号分隔文本
+function parseSerials(v?: string | null): string {
+  if (!v) return "";
+  try {
+    const arr: unknown = JSON.parse(v);
+    return Array.isArray(arr) ? arr.join(",") : String(v);
+  } catch {
+    return String(v);
+  }
+}
+
 export function OutboundListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<OutboundDoc | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
+  const { itemText, locText } = usePrintNameMaps(); // V14 打印:ID→可读文本映射
   const actionRef = useRef<ActionType>();
   const { hasPerm } = usePermission();  const canExport = hasPerm("outbound:export");
   const location = useLocation();
@@ -72,6 +86,44 @@ const request = async (params: {
     });
     // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
     return { data: res.rows, success: true, total: res.total };
+  };
+  // V14 打印:出库单详情 VO 转 A4 打印版数据(运输信息有值才显示,空值自动过滤)
+  const buildPrintData = (d: OutboundDoc): PrintDocData => {
+    const totalQty = (d.items ?? []).reduce((s, it) => s + Number(it.quantity), 0);
+    const refText = d.refDocNo
+      ? `${d.refType ? REF_TYPE_LABEL[d.refType] ?? d.refType : ""} ${d.refDocNo}`.trim()
+      : null;
+    return {
+      title: "出库单",
+      docNo: d.docNo,
+      header: printHeader([
+        ["仓库", d.warehouse?.warehouseName],
+        ["关联单据", refText],
+        ["客户", d.customerName],
+        ["承运商", d.carrier],
+        ["车牌", d.vehicleNo],
+        ["运费", printMoney(d.freight)],
+        ["总数量", totalQty.toFixed(2)],
+        ["创建人", d.creator],
+      ]),
+      columns: [
+        { title: "行号", align: "center" },
+        { title: "物品" },
+        { title: "库位" },
+        { title: "数量", align: "right" },
+        { title: "序列号" },
+      ],
+      rows: (d.items ?? []).map((l, i) => [
+        String(l.lineNo ?? i + 1),
+        itemText(l.itemId),
+        locText(l.locationId),
+        Number(l.quantity).toFixed(4),
+        parseSerials(l.serialNos),
+      ]),
+      totals: ["", "合计", "", totalQty.toFixed(4), ""],
+      status: d.status === "finished" ? "已完成" : d.status,
+      remark: d.remark,
+    };
   };
   // 导出 URL:带当前筛选条件(导出不分页)
   const exportUrl = useMemo(() => {
@@ -240,7 +292,7 @@ const request = async (params: {
         title={`出库单详情 - ${detail?.docNo ?? ""}`}
         open={!!detail}
         onCancel={() => setDetail(null)}
-        footer={null}
+        footer={<Button onClick={() => setPrintOpen(true)}>打印</Button>}
         width={960}
         className="doc-detail-modal"
       >
@@ -314,6 +366,13 @@ const request = async (params: {
           </>
         )}
       </Modal>
+
+      {/* V14 打印 Modal:详情数据已在 detail state,直接转换渲染 */}
+      <PrintDocModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        data={detail ? buildPrintData(detail) : null}
+      />
     </>
   );
 }

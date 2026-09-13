@@ -13,7 +13,8 @@ import { itemApi, stocktakeApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
 import type { StocktakeDoc, StocktakeLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
-import { DocStatusTag } from "../../components/DocStatusTag";
+import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
+import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 
 // 状态机枚举:筛选下拉用 valueEnum,表格单元格仍用 DocStatusTag 自定义渲染(样式不变)
 const STATUS_ENUM = {
@@ -36,6 +37,8 @@ export function StocktakePage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [detail, setDetail] = useState<StocktakeDoc | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
+  const { locText } = usePrintNameMaps(); // V14 打印:库位 ID→库位码映射
   const [createOpen, setCreateOpen] = useState(false);
   const [actualDoc, setActualDoc] = useState<StocktakeDoc | null>(null);
   const [actuals, setActuals] = useState<Record<number, number | null>>({});
@@ -90,6 +93,37 @@ export function StocktakePage() {
       // 拦截器已提示
     }
   };
+
+  // V14 打印:盘点单详情 VO 转 A4 打印版数据(未盘/无差异行显示空)
+  const buildPrintData = (d: StocktakeDoc): PrintDocData => ({
+    title: "盘点单",
+    docNo: d.docNo,
+    header: printHeader([
+      ["盘点日期", fmtDate(d.docDate)],
+      ["仓库", whName(d.warehouseId)],
+      ["范围", d.scopeType === "all" ? "整仓" : "指定物品"],
+      ["创建人", d.creator],
+      ["审批人", d.approver],
+    ]),
+    columns: [
+      { title: "行号", align: "center" },
+      { title: "物品" },
+      { title: "库位" },
+      { title: "账面量", align: "right" },
+      { title: "实盘量", align: "right" },
+      { title: "差异(实-账)", align: "right" },
+    ],
+    rows: (d.items ?? []).map((l) => [
+      String(l.lineNo),
+      `${l.itemCode} ${l.itemName}`,
+      locText(l.locationId),
+      Number(l.bookQty).toFixed(4),
+      l.actualQty == null ? "" : Number(l.actualQty).toFixed(4),
+      l.diffQty == null ? "" : Number(l.diffQty).toFixed(4),
+    ]),
+    status: docStatusLabel(d.status),
+    remark: d.remark,
+  });
 
   const onCreate = async () => {
     const v = await createForm.validateFields();
@@ -470,7 +504,7 @@ export function StocktakePage() {
         title={`盘点单详情 - ${detail?.docNo ?? ""}`}
         open={!!detail}
         onCancel={() => setDetail(null)}
-        footer={null}
+        footer={<Button onClick={() => setPrintOpen(true)}>打印</Button>}
         width={960}
         className="doc-detail-modal"
       >
@@ -499,6 +533,13 @@ export function StocktakePage() {
           if (rejectTarget) doAction(() => stocktakeApi.reject(rejectTarget.id, reason), "已驳回");
           setRejectTarget(null);
         }}
+      />
+
+      {/* V14 打印 Modal:详情数据已在 detail state,直接转换渲染 */}
+      <PrintDocModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        data={detail ? buildPrintData(detail) : null}
       />
     </>
   );

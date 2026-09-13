@@ -12,11 +12,12 @@ import dayjs from "dayjs";
 import { fmtDate, fmtDateTime } from "../../utils/format";
 import { salesApi, customerApi, warehouseApi } from "../../api";
 import { ExportButton } from "../../components/ExportButton";
+import { PrintDocModal, printHeader, type PrintDocData } from "../../components/PrintDocModal";
 import type { Warehouse } from "../../types";
 import type { SalesOrder } from "../../types/phase1";
 import type { Customer } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
-import { DocStatusTag } from "../../components/DocStatusTag";
+import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
 // 部分路径(弹层选择)可能传 dayjs,两种都兼容
@@ -48,6 +49,7 @@ export function SalesOrderListPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<SalesOrder | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<SalesOrder | null>(null);
   const actionRef = useRef<ActionType>();
 
@@ -115,6 +117,56 @@ const request = async (params: {
       // 拦截器已提示
     }
   };
+
+  // V14 打印:销售订单详情 VO 转 A4 打印版数据(金额两位小数,空值字段自动过滤)
+  const buildPrintData = (d: SalesOrder): PrintDocData => ({
+    title: "销售订单",
+    docNo: d.docNo,
+    header: printHeader([
+      ["开单日期", fmtDate(d.docDate)],
+      ["客户", customers.find((c) => c.id === d.customerId)?.customerName],
+      ["发货仓库", warehouses.find((w) => w.id === d.warehouseId)?.warehouseName],
+      ["合同号", d.contractNo],
+      ["交货地址", d.shippingAddress],
+      ["创建人", d.creator],
+      ["审批人", d.approver],
+    ]),
+    columns: [
+      { title: "行号", align: "center" },
+      { title: "物品" },
+      { title: "订购量", align: "right" },
+      { title: "已发货", align: "right" },
+      { title: "单价", align: "right" },
+      { title: "税率(%)", align: "right" },
+      { title: "金额", align: "right" },
+      { title: "税额", align: "right" },
+      { title: "价税合计", align: "right" },
+    ],
+    rows: (d.items ?? []).map((l) => [
+      String(l.lineNo),
+      `${l.itemCode} ${l.itemName}`,
+      Number(l.orderedQty).toFixed(2),
+      Number(l.shippedQty).toFixed(2),
+      Number(l.unitPrice).toFixed(2),
+      String(l.taxRate),
+      Number(l.amount).toFixed(2),
+      Number(l.taxAmount).toFixed(2),
+      Number(l.taxInclusiveTotal).toFixed(2),
+    ]),
+    totals: [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "合计",
+      Number(d.totalAmount).toFixed(2),
+      Number(d.totalTaxAmount).toFixed(2),
+      Number(d.totalTaxInclusive).toFixed(2),
+    ],
+    status: docStatusLabel(d.status),
+    remark: d.remark,
+  });
 
   const columns: ProColumns<SalesOrder>[] = [
     {
@@ -294,7 +346,7 @@ const request = async (params: {
         title={`销售订单详情 - ${detail?.docNo ?? ""}`}
         open={!!detail}
         onCancel={() => setDetail(null)}
-        footer={null}
+        footer={<Button onClick={() => setPrintOpen(true)}>打印</Button>}
         width={960}
         className="doc-detail-modal"
       >
@@ -364,6 +416,13 @@ const request = async (params: {
           if (rejectTarget) doAction(() => salesApi.reject(rejectTarget.id, reason), "已驳回");
           setRejectTarget(null);
         }}
+      />
+
+      {/* V14 打印 Modal:详情数据已在 detail state,直接转换渲染 */}
+      <PrintDocModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        data={detail ? buildPrintData(detail) : null}
       />
     </>
   );

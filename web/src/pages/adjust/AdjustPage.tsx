@@ -11,7 +11,8 @@ import { adjustApi, itemApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
 import type { StockAdjustDoc } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
-import { DocStatusTag } from "../../components/DocStatusTag";
+import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
+import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 import { fmtDate } from "../../utils/format";
 
 const TYPE_LABEL: Record<string, string> = { gain: "盘盈(入库)", loss: "盘亏(出库)", scrap: "报损(出库)" };
@@ -36,6 +37,8 @@ export function AdjustPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [detail, setDetail] = useState<StockAdjustDoc | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
+  const { locText } = usePrintNameMaps(); // V14 打印:库位 ID→库位码映射
   const [createOpen, setCreateOpen] = useState(false);
   // 非空为编辑模式(草稿/已驳回单),Drawer 复用新建表单
   const [editId, setEditId] = useState<number | null>(null);
@@ -91,6 +94,38 @@ export function AdjustPage() {
       // 拦截器已提示
     }
   };
+
+  // V14 打印:调整单详情 VO 转 A4 打印版数据(来源单/参考单价等空值自动过滤)
+  const buildPrintData = (d: StockAdjustDoc): PrintDocData => ({
+    title: "库存调整单",
+    docNo: d.docNo,
+    header: printHeader([
+      ["调整日期", fmtDate(d.docDate)],
+      ["仓库", whName(d.warehouseId)],
+      ["类型", TYPE_LABEL[d.adjustType] ?? d.adjustType],
+      ["来源单", d.refDocNo],
+      ["创建人", d.creator],
+      ["审批人", d.approver],
+    ]),
+    columns: [
+      { title: "行号", align: "center" },
+      { title: "物品" },
+      { title: "库位" },
+      { title: "数量", align: "right" },
+      { title: "参考单价", align: "right" },
+      { title: "原因" },
+    ],
+    rows: (d.items ?? []).map((l) => [
+      String(l.lineNo),
+      `${l.itemCode} ${l.itemName}`,
+      locText(l.locationId),
+      Number(l.qty).toFixed(4),
+      l.unitPrice == null ? "" : Number(l.unitPrice).toFixed(2),
+      l.reason ?? "",
+    ]),
+    status: docStatusLabel(d.status),
+    remark: d.remark,
+  });
 
   const openCreate = () => {
     createForm.resetFields();
@@ -469,7 +504,7 @@ export function AdjustPage() {
         title={`调整单详情 - ${detail?.docNo ?? ""}`}
         open={!!detail}
         onCancel={() => setDetail(null)}
-        footer={null}
+        footer={<Button onClick={() => setPrintOpen(true)}>打印</Button>}
         width={960}
         className="doc-detail-modal"
       >
@@ -518,6 +553,13 @@ export function AdjustPage() {
           if (rejectTarget) doAction(() => adjustApi.reject(rejectTarget.id, reason), "已驳回");
           setRejectTarget(null);
         }}
+      />
+
+      {/* V14 打印 Modal:详情数据已在 detail state,直接转换渲染 */}
+      <PrintDocModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        data={detail ? buildPrintData(detail) : null}
       />
     </>
   );

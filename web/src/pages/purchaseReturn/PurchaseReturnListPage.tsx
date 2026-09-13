@@ -10,6 +10,7 @@ import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import { purchaseReturnApi, warehouseApi } from "../../api";
 import type { Warehouse } from "../../types";
+import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 import type { PurchaseReturn } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { fmtDate, fmtDateTime } from "../../utils/format";
@@ -25,6 +26,8 @@ function toDay(v: unknown): string | undefined {
 export function PurchaseReturnListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<PurchaseReturn | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
+  const { itemText, locText } = usePrintNameMaps(); // V14 打印:ID→可读文本映射
   const actionRef = useRef<ActionType>();
   const { hasPerm } = usePermission();
   const location = useLocation();
@@ -62,6 +65,53 @@ export function PurchaseReturnListPage() {
     });
     return { data: res.rows, success: true, total: res.total };
   };
+
+  // V14 打印:采购退货单详情 VO 转 A4 打印版数据(带原采购单号,空值自动过滤)
+  const buildPrintData = (d: PurchaseReturn): PrintDocData => ({
+    title: "采购退货单",
+    docNo: d.docNo,
+    header: printHeader([
+      ["退货日期", fmtDate(d.docDate)],
+      ["原采购单号", d.purchaseOrderNo],
+      ["仓库", d.warehouse?.warehouseName],
+      ["创建人", d.creator],
+    ]),
+    columns: [
+      { title: "行号", align: "center" },
+      { title: "物品" },
+      { title: "规格" },
+      { title: "数量", align: "right" },
+      { title: "单价", align: "right" },
+      { title: "税率(%)", align: "right" },
+      { title: "金额", align: "right" },
+      { title: "税额", align: "right" },
+      { title: "价税合计", align: "right" },
+      ],
+      rows: (d.items ?? []).map((l) => [
+      String(l.lineNo),
+      itemText(l.itemId),
+      l.specSnapshot ?? "",
+      Number(l.quantity).toFixed(4),
+      Number(l.unitPrice).toFixed(4),
+      Number(l.taxRate).toFixed(2),
+      Number(l.amount).toFixed(2),
+      Number(l.taxAmount).toFixed(2),
+      Number(l.taxInclusiveTotal).toFixed(2),
+    ]),
+    totals: [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "合计",
+      "",
+      "",
+      d.totalAmount == null ? "" : Number(d.totalAmount).toFixed(2),
+    ],
+    status: d.status === "finished" ? "已完成" : d.status,
+    remark: d.remark,
+  });
 
   const columns: ProColumns<PurchaseReturn>[] = [
     {
@@ -200,7 +250,7 @@ export function PurchaseReturnListPage() {
         title={`采购退货单详情 - ${detail?.docNo ?? ""}`}
         open={!!detail}
         onCancel={() => setDetail(null)}
-        footer={null}
+        footer={<Button onClick={() => setPrintOpen(true)}>打印</Button>}
         width={960}
         className="doc-detail-modal"
       >
@@ -307,6 +357,13 @@ export function PurchaseReturnListPage() {
           </>
         )}
       </Modal>
+
+      {/* V14 打印 Modal:详情数据已在 detail state,直接转换渲染 */}
+      <PrintDocModal
+        open={printOpen}
+        onClose={() => setPrintOpen(false)}
+        data={detail ? buildPrintData(detail) : null}
+      />
     </>
   );
 }
