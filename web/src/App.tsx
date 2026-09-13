@@ -147,23 +147,23 @@ export default function App() {
                   </RequireAuth>
                 }
               />
-              <Route path="settlement/ap" element={<LedgerPage mode="ap" />} />
-              <Route path="settlement/ar" element={<LedgerPage mode="ar" />} />
-              <Route path="payments" element={<PaymentListPage mode="payment" />} />
+              <Route path="settlement/ap" element={<LedgerPage key="ap" mode="ap" />} />
+              <Route path="settlement/ar" element={<LedgerPage key="ar" mode="ar" />} />
+              <Route path="payments" element={<PaymentListPage key="payment" mode="payment" />} />
               <Route
                 path="payments/new"
                 element={
                   <RequireAuth>
-                    <PaymentNewPage mode="payment" />
+                    <PaymentNewPage key="payment-new" mode="payment" />
                   </RequireAuth>
                 }
               />
-              <Route path="receipts" element={<PaymentListPage mode="receipt" />} />
+              <Route path="receipts" element={<PaymentListPage key="receipt" mode="receipt" />} />
               <Route
                 path="receipts/new"
                 element={
                   <RequireAuth>
-                    <PaymentNewPage mode="receipt" />
+                    <PaymentNewPage key="receipt-new" mode="receipt" />
                   </RequireAuth>
                 }
               />
