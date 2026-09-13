@@ -6,9 +6,12 @@ import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.purchase.PurchaseActionDTO;
 import com.company.inventory.model.dto.purchase.PurchaseOrderCreateDTO;
 import com.company.inventory.model.query.PurchaseOrderQuery;
+import com.company.inventory.model.query.PurchaseOrderLinesQuery;
 import com.company.inventory.service.PurchaseOrderService;
+import com.company.inventory.service.DocLineService;
 import com.company.inventory.service.ExportService;
 import com.company.inventory.model.vo.purchase.PurchaseOrderVO;
+import com.company.inventory.model.vo.purchase.PurchaseOrderLinesVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +39,9 @@ public class PurchaseOrderController {
     /** 采购订单服务。 */
     private final PurchaseOrderService purchaseOrderService;
 
+    /** 明细行查询服务(V17 主表/明细切换)。 */
+    private final DocLineService docLineService;
+
     /** 导出服务。 */
     private final ExportService exportService;
 
@@ -43,10 +49,13 @@ public class PurchaseOrderController {
      * 构造控制器。
      *
      * @param purchaseOrderService 采购订单服务
+     * @param docLineService 明细行查询服务
      * @param exportService 导出服务
      */
-    public PurchaseOrderController(PurchaseOrderService purchaseOrderService, ExportService exportService) {
+    public PurchaseOrderController(PurchaseOrderService purchaseOrderService,
+            ExportService exportService, DocLineService docLineService) {
         this.purchaseOrderService = purchaseOrderService;
+        this.docLineService = docLineService;
         this.exportService = exportService;
     }
 
@@ -196,4 +205,16 @@ public class PurchaseOrderController {
     public void export(@Valid PurchaseOrderQuery query, HttpServletResponse resp) {
         exportService.exportPurchaseOrders(query, resp);
     }
+    /**
+     * 采购订单明细行列表(V17 主表/明细切换,纯只读)。
+     *
+     * @param query 明细行查询条件
+     * @return 分页结果
+     */
+    @Operation(summary = "采购订单明细行列表")
+    @GetMapping("/lines")
+    public PageResult<PurchaseOrderLinesVO> lines(@Valid PurchaseOrderLinesQuery query) {
+        return docLineService.listPurchaseOrderLines(query);
+    }
+
 }

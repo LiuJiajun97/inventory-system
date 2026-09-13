@@ -5,8 +5,11 @@ import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.adjust.StockAdjustCreateDTO;
 import com.company.inventory.model.query.StockAdjustQuery;
+import com.company.inventory.model.query.StockAdjustDocLineQuery;
 import com.company.inventory.service.StockAdjustService;
+import com.company.inventory.service.DocLineService;
 import com.company.inventory.model.vo.adjust.StockAdjustDocVO;
+import com.company.inventory.model.vo.adjust.StockAdjustDocLineVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,13 +38,18 @@ public class StockAdjustController {
     /** 库存调整单服务。 */
     private final StockAdjustService stockAdjustService;
 
+    /** 明细行查询服务(V17 主表/明细切换)。 */
+    private final DocLineService docLineService;
+
     /**
      * 构造控制器。
      *
      * @param stockAdjustService 库存调整单服务
+     * @param docLineService 明细行查询服务
      */
-    public StockAdjustController(StockAdjustService stockAdjustService) {
+    public StockAdjustController(StockAdjustService stockAdjustService, DocLineService docLineService) {
         this.stockAdjustService = stockAdjustService;
+        this.docLineService = docLineService;
     }
 
     /**
@@ -162,4 +170,16 @@ public class StockAdjustController {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stockAdjustService.voidDoc(id, username);
     }
+    /**
+     * 调整单明细行列表(V17 主表/明细切换,纯只读)。
+     *
+     * @param query 明细行查询条件
+     * @return 分页结果
+     */
+    @Operation(summary = "调整单明细行列表")
+    @GetMapping("/lines")
+    public PageResult<StockAdjustDocLineVO> lines(@Valid StockAdjustDocLineQuery query) {
+        return docLineService.listAdjustLines(query);
+    }
+
 }

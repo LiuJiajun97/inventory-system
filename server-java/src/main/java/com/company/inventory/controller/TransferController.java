@@ -6,8 +6,11 @@ import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.transfer.TransferActionDTO;
 import com.company.inventory.model.dto.transfer.TransferCreateDTO;
 import com.company.inventory.model.query.TransferDocQuery;
+import com.company.inventory.model.query.TransferDocLineQuery;
 import com.company.inventory.service.TransferService;
+import com.company.inventory.service.DocLineService;
 import com.company.inventory.model.vo.transfer.TransferDocVO;
+import com.company.inventory.model.vo.transfer.TransferDocLineVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,13 +37,18 @@ public class TransferController {
     /** 调拨单服务。 */
     private final TransferService transferService;
 
+    /** 明细行查询服务(V17 主表/明细切换)。 */
+    private final DocLineService docLineService;
+
     /**
      * 构造控制器。
      *
      * @param transferService 调拨单服务
+     * @param docLineService 明细行查询服务
      */
-    public TransferController(TransferService transferService) {
+    public TransferController(TransferService transferService, DocLineService docLineService) {
         this.transferService = transferService;
+        this.docLineService = docLineService;
     }
 
     /**
@@ -162,5 +170,17 @@ public class TransferController {
         return transferService.voidDoc(id, username);
     }
 
+
+    /**
+     * 调拨单明细行列表(V17 主表/明细切换,纯只读)。
+     *
+     * @param query 明细行查询条件
+     * @return 分页结果
+     */
+    @Operation(summary = "调拨单明细行列表")
+    @GetMapping("/lines")
+    public PageResult<TransferDocLineVO> lines(@Valid TransferDocLineQuery query) {
+        return docLineService.listTransferLines(query);
+    }
 
 }

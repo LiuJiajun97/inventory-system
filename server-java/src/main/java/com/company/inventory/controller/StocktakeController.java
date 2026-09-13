@@ -6,9 +6,12 @@ import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.stocktake.StocktakeActualDTO;
 import com.company.inventory.model.dto.stocktake.StocktakeCreateDTO;
 import com.company.inventory.model.query.StocktakeDocQuery;
+import com.company.inventory.model.query.StocktakeDocLineQuery;
 import com.company.inventory.service.StocktakeService;
+import com.company.inventory.service.DocLineService;
 import com.company.inventory.model.vo.adjust.StockAdjustDocVO;
 import com.company.inventory.model.vo.stocktake.StocktakeDocVO;
+import com.company.inventory.model.vo.stocktake.StocktakeDocLineVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,13 +41,18 @@ public class StocktakeController {
     /** 盘点单服务。 */
     private final StocktakeService stocktakeService;
 
+    /** 明细行查询服务(V17 主表/明细切换)。 */
+    private final DocLineService docLineService;
+
     /**
      * 构造控制器。
      *
      * @param stocktakeService 盘点单服务
+     * @param docLineService 明细行查询服务
      */
-    public StocktakeController(StocktakeService stocktakeService) {
+    public StocktakeController(StocktakeService stocktakeService, DocLineService docLineService) {
         this.stocktakeService = stocktakeService;
+        this.docLineService = docLineService;
     }
 
     /**
@@ -195,4 +203,16 @@ public class StocktakeController {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stocktakeService.voidDoc(id, username);
     }
+    /**
+     * 盘点单明细行列表(V17 主表/明细切换,纯只读)。
+     *
+     * @param query 明细行查询条件
+     * @return 分页结果
+     */
+    @Operation(summary = "盘点单明细行列表")
+    @GetMapping("/lines")
+    public PageResult<StocktakeDocLineVO> lines(@Valid StocktakeDocLineQuery query) {
+        return docLineService.listStocktakeLines(query);
+    }
+
 }

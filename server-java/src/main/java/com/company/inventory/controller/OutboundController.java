@@ -5,10 +5,13 @@ import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.outbound.OutboundCreateDTO;
 import com.company.inventory.model.query.OutboundDocQuery;
+import com.company.inventory.model.query.OutboundDocLineQuery;
 import com.company.inventory.service.OutboundService;
+import com.company.inventory.service.DocLineService;
 import com.company.inventory.service.ExportService;
 import com.company.inventory.model.vo.outbound.OutboundDocCreatedVO;
 import com.company.inventory.model.vo.outbound.OutboundDocVO;
+import com.company.inventory.model.vo.outbound.OutboundDocLineVO;
 
 
 
@@ -51,6 +54,9 @@ public class OutboundController {
     /** 出库单服务。 */
     private final OutboundService outboundService;
 
+    /** 明细行查询服务(V17 主表/明细切换)。 */
+    private final DocLineService docLineService;
+
     /** 导出服务。 */
     private final ExportService exportService;
 
@@ -58,10 +64,13 @@ public class OutboundController {
      * 构造控制器。
      *
      * @param outboundService 出库单服务
+     * @param docLineService 明细行查询服务
      * @param exportService 导出服务
      */
-    public OutboundController(OutboundService outboundService, ExportService exportService) {
+    public OutboundController(OutboundService outboundService,
+            ExportService exportService, DocLineService docLineService) {
         this.outboundService = outboundService;
+        this.docLineService = docLineService;
         this.exportService = exportService;
     }
 
@@ -117,4 +126,16 @@ public class OutboundController {
     public void export(@Valid OutboundDocQuery query, HttpServletResponse resp) {
         exportService.exportOutbound(query, resp);
     }
+    /**
+     * 出库单明细行列表(V17 主表/明细切换,纯只读)。
+     *
+     * @param query 明细行查询条件
+     * @return 分页结果
+     */
+    @Operation(summary = "出库单明细行列表")
+    @GetMapping("/lines")
+    public PageResult<OutboundDocLineVO> lines(@Valid OutboundDocLineQuery query) {
+        return docLineService.listOutboundLines(query);
+    }
+
 }

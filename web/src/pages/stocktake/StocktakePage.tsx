@@ -4,14 +4,14 @@
 // + 差异生成调整单(盘盈/盘亏各一张)+ 状态机操作
 
 import { useEffect, useRef, useState } from "react";
-import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, theme } from "antd";
+import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
 import { fmtDate } from "../../utils/format";
 import { itemApi, stocktakeApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
-import type { StocktakeDoc, StocktakeLine } from "../../types/phase1";
+import type { StocktakeDoc, StocktakeLine, DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
 import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
@@ -46,6 +46,8 @@ export function StocktakePage() {
   const [checkerName, setCheckerName] = useState<string>("");
   const [checkDate, setCheckDate] = useState<Dayjs | null>(dayjs());
   const [rejectTarget, setRejectTarget] = useState<StocktakeDoc | null>(null);
+  // V17 主表/明细视图切换(组件内状态,默认主表)
+  const [viewMode, setViewMode] = useState<"main" | "line">("main");
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
@@ -83,6 +85,73 @@ export function StocktakePage() {
     });
     return { data: res.rows, success: true, total: res.total };
   };
+
+  // V17 明细行视图:请求 /lines(共享筛选 + 物品关键字)
+  const lineRequest = async (params: {
+    current?: number;
+    pageSize?: number;
+    docNo?: string;
+    warehouseId?: number;
+    status?: string;
+    itemKeyword?: string;
+  }) => {
+    const res = await stocktakeApi.lines({
+      docNo: params.docNo,
+      warehouseId: params.warehouseId,
+      status: params.status,
+      itemKeyword: params.itemKeyword,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    return { data: res.rows, success: true, total: res.total };
+  };
+
+  // V17 明细行点击单据号:拉取整单详情复用现有详情弹窗
+  const openLineDetail = async (r: DocLine) => {
+    try {
+      setDetail(await stocktakeApi.get(r.docId));
+    } catch {
+      // 拦截器已提示
+    }
+  };
+
+  // V17 明细视图列(共享筛选字段 + 拍平行字段;物品关键字仅明细视图渲染)
+  const lineColumns: ProColumns<DocLine>[] = [
+    {
+      title: "单号",
+      dataIndex: "docNo",
+      width: 160,
+      fieldProps: { placeholder: "单号", allowClear: true },
+      render: (_v, r) => (
+        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => openLineDetail(r)}>
+          {r.docNo}
+        </a>
+      ),
+    },
+    { title: "日期", dataIndex: "docDate", width: 110, search: false, render: (_v, r) => fmtDate(r.docDate ?? undefined) },
+    {
+      title: "仓库",
+      dataIndex: "warehouseId",
+      valueType: "select",
+      width: 140,
+      ellipsis: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+      render: (_v, r) => r.warehouseName ?? "-",
+    },
+    { title: "行号", dataIndex: "lineNo", width: 60, align: "center", search: false, render: (_v, r) => (r.lineNo == null ? "-" : r.lineNo) },
+    { title: "物品", width: 190, search: false, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
+    { title: "规格", dataIndex: "spec", width: 90, search: false, ellipsis: true },
+    { title: "单位", dataIndex: "unit", width: 60, search: false },
+    { title: "账面量", dataIndex: "bookQty", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.bookQty == null ? "-" : Number(r.bookQty).toFixed(2)) },
+    { title: "实盘量", dataIndex: "actualQty", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.actualQty == null ? "-" : Number(r.actualQty).toFixed(2)) },
+    { title: "差异", dataIndex: "diffQty", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.diffQty == null ? "-" : Number(r.diffQty).toFixed(2)) },
+    { title: "状态", dataIndex: "status", width: 90, valueEnum: STATUS_ENUM, render: (_v, r) => <DocStatusTag status={r.status} /> },
+    { title: "物品", dataIndex: "itemKeyword", hideInTable: true, fieldProps: { placeholder: "编码或名称关键字" } },
+  ];
 
   const doAction = async (fn: () => Promise<unknown>, msg: string) => {
     try {
@@ -344,9 +413,21 @@ export function StocktakePage() {
       <ProTable<StocktakeDoc>
         rowKey="id"
         actionRef={actionRef}
-        columns={columns}
-        request={request}
-        headerTitle={false}
+        columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<StocktakeDoc>[]) : columns}
+        request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
+        headerTitle={
+          <Segmented
+            options={[
+              { label: "主表", value: "main" },
+              { label: "明细", value: "line" },
+            ]}
+            value={viewMode}
+            onChange={(v) => {
+              setViewMode(v as "main" | "line");
+              actionRef.current?.reload();
+            }}
+          />
+        }
         options={false}
         scroll={{ x: 1100 }}
         search={{

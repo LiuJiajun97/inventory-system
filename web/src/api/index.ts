@@ -31,6 +31,7 @@ import type {
   LowStockRow,
   DictItem,
   DictTypeItem,
+  DocLine,
 } from "../types/phase1";
 import type {
   StockMonthlyRow,
@@ -286,6 +287,18 @@ export const purchaseApi = {
     http.post(`/purchase-orders/${id}/reject`, { rejectReason }),
   voidDoc: (id: number) => http.post(`/purchase-orders/${id}/void`),
   close: (id: number) => http.post(`/purchase-orders/${id}/close`),
+  // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
+  lines: (params?: {
+    supplierId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<DocLine>>("/purchase-orders/lines", { params }),
 };
 
 export const salesApi = {
@@ -309,6 +322,18 @@ export const salesApi = {
     http.post(`/sales-orders/${id}/reject`, { rejectReason }),
   voidDoc: (id: number) => http.post(`/sales-orders/${id}/void`),
   close: (id: number) => http.post(`/sales-orders/${id}/close`),
+  // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
+  lines: (params?: {
+    customerId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<DocLine>>("/sales-orders/lines", { params }),
 };
 
 export const transferApi = {
@@ -332,6 +357,19 @@ export const transferApi = {
   reject: (id: number, rejectReason: string) =>
     http.post(`/transfers/${id}/reject`, { rejectReason }),
   voidDoc: (id: number) => http.post(`/transfers/${id}/void`),
+  // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
+  lines: (params?: {
+    fromWarehouseId?: number;
+    toWarehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<DocLine>>("/transfers/lines", { params }),
 };
 
 export const stocktakeApi = {
@@ -363,6 +401,16 @@ export const stocktakeApi = {
   reject: (id: number, rejectReason: string) =>
     http.post(`/stocktakes/${id}/reject`, { rejectReason }),
   voidDoc: (id: number) => http.post(`/stocktakes/${id}/void`),
+  // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
+  lines: (params?: {
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<DocLine>>("/stocktakes/lines", { params }),
 };
 
 export const adjustApi = {
@@ -384,6 +432,17 @@ export const adjustApi = {
   reject: (id: number, rejectReason: string) =>
     http.post(`/stock-adjusts/${id}/reject`, { rejectReason }),
   voidDoc: (id: number) => http.post(`/stock-adjusts/${id}/void`),
+  // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
+  lines: (params?: {
+    warehouseId?: number;
+    adjustType?: string;
+    docNo?: string;
+    status?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<DocLine>>("/stock-adjusts/lines", { params }),
 };
 
 export const alertApi = {
@@ -472,6 +531,18 @@ export const inboundApi = {
     to?: string;
   }) => http.get<unknown, PagedResponse<InboundDoc>>("/inbound", { params }),
   get: (id: number) => http.get<unknown, InboundDoc>(`/inbound/${id}`),
+  // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
+  lines: (params?: {
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<DocLine>>("/inbound/lines", { params }),
 };
 
 // V13 期初库存(创建即过账,单事务,每物品×仓库限一次)
@@ -500,6 +571,18 @@ export const openingApi = {
     to?: string;
   }) => http.get<unknown, PagedResponse<OpeningStockDoc>>("/opening", { params }),
   get: (id: number) => http.get<unknown, OpeningStockDoc>(`/opening/${id}`),
+  // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
+  lines: (params?: {
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<DocLine>>("/opening/lines", { params }),
 };
 
 export const outboundApi = {
@@ -538,6 +621,18 @@ export const outboundApi = {
     to?: string;
   }) => http.get<unknown, PagedResponse<OutboundDoc>>("/outbound", { params }),
   get: (id: number) => http.get<unknown, OutboundDoc>(`/outbound/${id}`),
+  // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
+  lines: (params?: {
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<DocLine>>("/outbound/lines", { params }),
 };
 
 export const userApi = {
@@ -609,6 +704,18 @@ export const purchaseReturnApi = {
   get: (id: number) => http.get<unknown, PurchaseReturn>(`/purchase-returns/${id}`),
   create: (data: PurchaseReturnCreatePayload) =>
     http.post<unknown, { id: number; docNo: string; outDocNo: string }>("/purchase-returns", data),
+  // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
+  lines: (params?: {
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<DocLine>>("/purchase-returns/lines", { params }),
 };
 
 export const salesReturnApi = {
@@ -624,6 +731,18 @@ export const salesReturnApi = {
   get: (id: number) => http.get<unknown, SalesReturn>(`/sales-returns/${id}`),
   create: (data: SalesReturnCreatePayload) =>
     http.post<unknown, { id: number; docNo: string; inDocNo: string }>("/sales-returns", data),
+  // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
+  lines: (params?: {
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<DocLine>>("/sales-returns/lines", { params }),
 };
 
 // 报表中心(V15):4 个报表 + 各自 xlsx 导出(导出走 ExportButton,不另设权限码)

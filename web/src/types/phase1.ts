@@ -404,3 +404,33 @@ export interface OperationLog {
   costMs?: number | null;
   createdAt: string;
 }
+
+// V17 单据明细行(10 类单据主表/明细切换的拍平视图,各类缺少的字段可为空)
+export interface DocLine {
+  id: number;
+  docId: number;
+  docNo: string;
+  docDate?: string | null;
+  status: string;
+  supplierName?: string | null;
+  customerName?: string | null;
+  warehouseName?: string | null;
+  fromWarehouseName?: string | null;
+  toWarehouseName?: string | null;
+  lineNo?: number | null;
+  itemId: number;
+  itemCode: string;
+  itemName: string;
+  spec?: string | null;
+  unit?: string | null;
+  quantity?: string | null;
+  bookQty?: string | null;
+  actualQty?: string | null;
+  diffQty?: string | null;
+  unitPrice?: string | null;
+  taxRate?: string | null;
+  amount?: string | null;
+  taxAmount?: string | null;
+  taxInclusiveTotal?: string | null;
+  batchNo?: string | null;
+}

@@ -6,9 +6,12 @@ import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.sales.SalesActionDTO;
 import com.company.inventory.model.dto.sales.SalesOrderCreateDTO;
 import com.company.inventory.model.query.SalesOrderQuery;
+import com.company.inventory.model.query.SalesOrderLinesQuery;
 import com.company.inventory.service.SalesOrderService;
+import com.company.inventory.service.DocLineService;
 import com.company.inventory.service.ExportService;
 import com.company.inventory.model.vo.sales.SalesOrderVO;
+import com.company.inventory.model.vo.sales.SalesOrderLinesVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,6 +39,9 @@ public class SalesOrderController {
     /** 销售订单服务。 */
     private final SalesOrderService salesOrderService;
 
+    /** 明细行查询服务(V17 主表/明细切换)。 */
+    private final DocLineService docLineService;
+
     /** 导出服务。 */
     private final ExportService exportService;
 
@@ -43,10 +49,13 @@ public class SalesOrderController {
      * 构造控制器。
      *
      * @param salesOrderService 销售订单服务
+     * @param docLineService 明细行查询服务
      * @param exportService 导出服务
      */
-    public SalesOrderController(SalesOrderService salesOrderService, ExportService exportService) {
+    public SalesOrderController(SalesOrderService salesOrderService,
+            ExportService exportService, DocLineService docLineService) {
         this.salesOrderService = salesOrderService;
+        this.docLineService = docLineService;
         this.exportService = exportService;
     }
 
@@ -196,4 +205,16 @@ public class SalesOrderController {
     public void export(@Valid SalesOrderQuery query, HttpServletResponse resp) {
         exportService.exportSalesOrders(query, resp);
     }
+    /**
+     * 销售订单明细行列表(V17 主表/明细切换,纯只读)。
+     *
+     * @param query 明细行查询条件
+     * @return 分页结果
+     */
+    @Operation(summary = "销售订单明细行列表")
+    @GetMapping("/lines")
+    public PageResult<SalesOrderLinesVO> lines(@Valid SalesOrderLinesQuery query) {
+        return docLineService.listSalesOrderLines(query);
+    }
+
 }

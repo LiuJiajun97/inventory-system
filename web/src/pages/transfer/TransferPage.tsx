@@ -4,14 +4,14 @@
 // 审批即执行:同一事务源仓扣减 + 目的仓入库
 
 import { useEffect, useRef, useState } from "react";
-import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, theme } from "antd";
+import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Segmented, Select, Space, Table, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
 import { fmtDate } from "../../utils/format";
 import { itemApi, transferApi, warehouseApi } from "../../api";
 import type { Item, Location, Warehouse } from "../../types";
-import type { TransferDoc } from "../../types/phase1";
+import type { TransferDoc, DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
 import { PrintDocModal, printHeader, type PrintDocData } from "../../components/PrintDocModal";
@@ -48,6 +48,8 @@ export function TransferPage() {
   // 非空为编辑模式(草稿/已驳回单),Drawer 复用新建表单
   const [editId, setEditId] = useState<number | null>(null);
   const [rejectTarget, setRejectTarget] = useState<TransferDoc | null>(null);
+  // V17 主表/明细视图切换(组件内状态,默认主表)
+  const [viewMode, setViewMode] = useState<"main" | "line">("main");
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
@@ -118,6 +120,101 @@ export function TransferPage() {
     });
     return { data: res.rows, success: true, total: res.total };
   };
+
+  // V17 明细行视图:请求 /lines(共享筛选 + 物品关键字)
+  const lineRequest = async (params: {
+    current?: number;
+    pageSize?: number;
+    docNo?: string;
+    fromWarehouseId?: number;
+    toWarehouseId?: number;
+    status?: string;
+    from?: string;
+    to?: string;
+    itemKeyword?: string;
+  }) => {
+    const res = await transferApi.lines({
+      docNo: params.docNo,
+      fromWarehouseId: params.fromWarehouseId,
+      toWarehouseId: params.toWarehouseId,
+      status: params.status,
+      from: params.from,
+      to: params.to,
+      itemKeyword: params.itemKeyword,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    return { data: res.rows, success: true, total: res.total };
+  };
+
+  // V17 明细行点击单据号:拉取整单详情复用现有详情弹窗
+  const openLineDetail = async (r: DocLine) => {
+    try {
+      setDetail(await transferApi.get(r.docId));
+    } catch {
+      // 拦截器已提示
+    }
+  };
+
+  // V17 明细视图列(共享筛选字段 + 拍平行字段;物品关键字仅明细视图渲染)
+  const lineColumns: ProColumns<DocLine>[] = [
+    {
+      title: "单号",
+      dataIndex: "docNo",
+      width: 160,
+      fieldProps: { placeholder: "单号", allowClear: true },
+      render: (_v, r) => (
+        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => openLineDetail(r)}>
+          {r.docNo}
+        </a>
+      ),
+    },
+    { title: "日期", dataIndex: "docDate", width: 110, search: false, render: (_v, r) => fmtDate(r.docDate ?? undefined) },
+    {
+      title: "源仓",
+      dataIndex: "fromWarehouseId",
+      valueType: "select",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+    },
+    {
+      title: "目的仓",
+      dataIndex: "toWarehouseId",
+      valueType: "select",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+    },
+    { title: "源仓名称", dataIndex: "fromWarehouseName", width: 130, search: false, ellipsis: true },
+    { title: "目的仓名称", dataIndex: "toWarehouseName", width: 130, search: false, ellipsis: true },
+    { title: "行号", dataIndex: "lineNo", width: 60, align: "center", search: false, render: (_v, r) => (r.lineNo == null ? "-" : r.lineNo) },
+    { title: "物品", width: 190, search: false, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
+    { title: "规格", dataIndex: "spec", width: 90, search: false, ellipsis: true },
+    { title: "单位", dataIndex: "unit", width: 60, search: false },
+    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.quantity == null ? "-" : Number(r.quantity).toFixed(2)) },
+    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.unitPrice == null ? "-" : Number(r.unitPrice).toFixed(2)) },
+    { title: "状态", dataIndex: "status", width: 90, valueEnum: STATUS_ENUM, render: (_v, r) => <DocStatusTag status={r.status} /> },
+    {
+      title: "日期",
+      dataIndex: "range",
+      valueType: "dateRange",
+      hideInTable: true,
+      search: {
+        transform: (value: [unknown, unknown]) => ({
+          from: toDay(value[0]),
+          to: toDay(value[1]),
+        }),
+      },
+    },
+    { title: "物品", dataIndex: "itemKeyword", hideInTable: true, fieldProps: { placeholder: "编码或名称关键字" } },
+  ];
 
   const doAction = async (fn: () => Promise<unknown>, msg: string) => {
     try {
@@ -394,9 +491,21 @@ export function TransferPage() {
       <ProTable<TransferDoc>
         rowKey="id"
         actionRef={actionRef}
-        columns={columns}
-        request={request}
-        headerTitle={false}
+        columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<TransferDoc>[]) : columns}
+        request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
+        headerTitle={
+          <Segmented
+            options={[
+              { label: "主表", value: "main" },
+              { label: "明细", value: "line" },
+            ]}
+            value={viewMode}
+            onChange={(v) => {
+              setViewMode(v as "main" | "line");
+              actionRef.current?.reload();
+            }}
+          />
+        }
         options={false}
         scroll={{ x: 1000 }}
         search={{

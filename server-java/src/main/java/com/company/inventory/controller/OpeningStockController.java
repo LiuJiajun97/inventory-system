@@ -5,9 +5,12 @@ import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.opening.OpeningStockCreateDTO;
 import com.company.inventory.model.query.OpeningStockQuery;
+import com.company.inventory.model.query.OpeningStockDocLineQuery;
 import com.company.inventory.model.vo.opening.OpeningStockCreatedVO;
 import com.company.inventory.model.vo.opening.OpeningStockDocVO;
+import com.company.inventory.model.vo.opening.OpeningStockDocLineVO;
 import com.company.inventory.service.OpeningStockService;
+import com.company.inventory.service.DocLineService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,13 +36,18 @@ public class OpeningStockController {
     /** 期初单服务。 */
     private final OpeningStockService openingStockService;
 
+    /** 明细行查询服务(V17 主表/明细切换)。 */
+    private final DocLineService docLineService;
+
     /**
      * 构造控制器。
      *
      * @param openingStockService 期初单服务
+     * @param docLineService 明细行查询服务
      */
-    public OpeningStockController(OpeningStockService openingStockService) {
+    public OpeningStockController(OpeningStockService openingStockService, DocLineService docLineService) {
         this.openingStockService = openingStockService;
+        this.docLineService = docLineService;
     }
 
     /**
@@ -81,4 +89,16 @@ public class OpeningStockController {
     public OpeningStockDocVO get(@PathVariable long id) {
         return openingStockService.get(id);
     }
+    /**
+     * 期初库存单明细行列表(V17 主表/明细切换,纯只读)。
+     *
+     * @param query 明细行查询条件
+     * @return 分页结果
+     */
+    @Operation(summary = "期初库存单明细行列表")
+    @GetMapping("/lines")
+    public PageResult<OpeningStockDocLineVO> lines(@Valid OpeningStockDocLineQuery query) {
+        return docLineService.listOpeningLines(query);
+    }
+
 }

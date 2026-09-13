@@ -5,9 +5,12 @@ import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.returns.SalesReturnCreateDTO;
 import com.company.inventory.model.query.SalesReturnQuery;
+import com.company.inventory.model.query.SalesReturnLinesQuery;
 import com.company.inventory.service.SalesReturnService;
+import com.company.inventory.service.DocLineService;
 import com.company.inventory.model.vo.returns.SalesReturnCreatedVO;
 import com.company.inventory.model.vo.returns.SalesReturnVO;
+import com.company.inventory.model.vo.returns.SalesReturnLinesVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,13 +36,18 @@ public class SalesReturnController {
     /** 销售退货单服务。 */
     private final SalesReturnService salesReturnService;
 
+    /** 明细行查询服务(V17 主表/明细切换)。 */
+    private final DocLineService docLineService;
+
     /**
      * 构造控制器。
      *
      * @param salesReturnService 销售退货单服务
+     * @param docLineService 明细行查询服务
      */
-    public SalesReturnController(SalesReturnService salesReturnService) {
+    public SalesReturnController(SalesReturnService salesReturnService, DocLineService docLineService) {
         this.salesReturnService = salesReturnService;
+        this.docLineService = docLineService;
     }
 
     /**
@@ -81,4 +89,16 @@ public class SalesReturnController {
     public SalesReturnVO get(@PathVariable long id) {
         return salesReturnService.get(id);
     }
+    /**
+     * 销售退货单明细行列表(V17 主表/明细切换,纯只读)。
+     *
+     * @param query 明细行查询条件
+     * @return 分页结果
+     */
+    @Operation(summary = "销售退货单明细行列表")
+    @GetMapping("/lines")
+    public PageResult<SalesReturnLinesVO> lines(@Valid SalesReturnLinesQuery query) {
+        return docLineService.listSalesReturnLines(query);
+    }
+
 }

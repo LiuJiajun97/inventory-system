@@ -5,10 +5,13 @@ import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.inbound.InboundCreateDTO;
 import com.company.inventory.model.query.InboundDocQuery;
+import com.company.inventory.model.query.InboundDocLineQuery;
 import com.company.inventory.service.InboundService;
+import com.company.inventory.service.DocLineService;
 import com.company.inventory.service.ExportService;
 import com.company.inventory.model.vo.inbound.InboundDocCreatedVO;
 import com.company.inventory.model.vo.inbound.InboundDocVO;
+import com.company.inventory.model.vo.inbound.InboundDocLineVO;
 
 
 
@@ -51,6 +54,9 @@ public class InboundController {
     /** 入库单服务。 */
     private final InboundService inboundService;
 
+    /** 明细行查询服务(V17 主表/明细切换)。 */
+    private final DocLineService docLineService;
+
     /** 导出服务。 */
     private final ExportService exportService;
 
@@ -58,10 +64,13 @@ public class InboundController {
      * 构造控制器。
      *
      * @param inboundService 入库单服务
+     * @param docLineService 明细行查询服务
      * @param exportService 导出服务
      */
-    public InboundController(InboundService inboundService, ExportService exportService) {
+    public InboundController(InboundService inboundService,
+            ExportService exportService, DocLineService docLineService) {
         this.inboundService = inboundService;
+        this.docLineService = docLineService;
         this.exportService = exportService;
     }
 
@@ -117,4 +126,16 @@ public class InboundController {
     public void export(@Valid InboundDocQuery query, HttpServletResponse resp) {
         exportService.exportInbound(query, resp);
     }
+    /**
+     * 入库单明细行列表(V17 主表/明细切换,纯只读)。
+     *
+     * @param query 明细行查询条件
+     * @return 分页结果
+     */
+    @Operation(summary = "入库单明细行列表")
+    @GetMapping("/lines")
+    public PageResult<InboundDocLineVO> lines(@Valid InboundDocLineQuery query) {
+        return docLineService.listInboundLines(query);
+    }
+
 }

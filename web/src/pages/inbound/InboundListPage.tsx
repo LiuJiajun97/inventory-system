@@ -4,7 +4,7 @@
 // 查看详情 Modal 展示行明细 + 序列号 Tag
 
 import { useEffect, useRef, useState , useMemo} from "react";
-import { Button, Descriptions, Modal, Space, Table, Tag } from "antd";
+import { Button, Descriptions, Modal, Segmented, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Link, useLocation } from "react-router-dom";
@@ -13,6 +13,7 @@ import { inboundApi, warehouseApi } from "../../api";
 import { ExportButton } from "../../components/ExportButton";
 import { PrintDocModal, printHeader, printMoney, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 import type { InboundDoc, Warehouse } from "../../types";
+import type { DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { fmtDateTime, REF_TYPE_LABEL } from "../../utils/format";
 import { StatusTag } from "../../components/StatusTag";
@@ -38,6 +39,8 @@ function parseSerials(v?: string | null): string {
 export function InboundListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<InboundDoc | null>(null);
+  // V17 主表/明细视图切换(组件内状态,默认主表)
+  const [viewMode, setViewMode] = useState<"main" | "line">("main");
   const [printOpen, setPrintOpen] = useState(false);
   const { itemText, locText } = usePrintNameMaps(); // V14 打印:ID→可读文本映射
   const actionRef = useRef<ActionType>();
@@ -89,6 +92,96 @@ const request = async (params: {
     // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
     return { data: res.rows, success: true, total: res.total };
   };
+
+  // V17 明细行视图:请求 /lines(共享筛选 + 物品关键字/批次号)
+  const lineRequest = async (params: {
+    current?: number;
+    pageSize?: number;
+    docNo?: string;
+    status?: string;
+    warehouseId?: number;
+    from?: string;
+    to?: string;
+    itemKeyword?: string;
+    batchNo?: string;
+  }) => {
+    const res = await inboundApi.lines({
+      docNo: params.docNo,
+      status: params.status,
+      warehouseId: params.warehouseId,
+      from: params.from,
+      to: params.to,
+      itemKeyword: params.itemKeyword,
+      batchNo: params.batchNo,
+      page: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    });
+    return { data: res.rows, success: true, total: res.total };
+  };
+
+  // V17 明细行点击单据号:拉取整单详情复用现有详情弹窗
+  const openLineDetail = async (r: DocLine) => {
+    try {
+      setDetail(await inboundApi.get(r.docId));
+    } catch {
+      // 拦截器已提示
+    }
+  };
+
+  // V17 明细视图列(共享筛选字段 + 拍平行字段;物品关键字/批次号仅明细视图渲染)
+  const lineColumns: ProColumns<DocLine>[] = [
+    {
+      title: "单号",
+      dataIndex: "docNo",
+      width: 160,
+      fieldProps: { placeholder: "单号", allowClear: true },
+      render: (_v, r) => (
+        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => openLineDetail(r)}>
+          {r.docNo}
+        </a>
+      ),
+    },
+    { title: "日期", dataIndex: "docDate", width: 110, search: false, render: (_v, r) => r.docDate ?? "-" },
+    {
+      title: "仓库",
+      dataIndex: "warehouseId",
+      valueType: "select",
+      width: 140,
+      ellipsis: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+      render: (_v, r) => r.warehouseName ?? "-",
+    },
+    { title: "行号", dataIndex: "lineNo", width: 60, align: "center", search: false, render: (_v, r) => (r.lineNo == null ? "-" : r.lineNo) },
+    { title: "物品", width: 190, search: false, ellipsis: true, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
+    { title: "规格", dataIndex: "spec", width: 90, search: false, ellipsis: true },
+    { title: "单位", dataIndex: "unit", width: 60, search: false },
+    { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.quantity == null ? "-" : Number(r.quantity).toFixed(2)) },
+    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.unitPrice == null ? "-" : Number(r.unitPrice).toFixed(2)) },
+    { title: "税率(%)", dataIndex: "taxRate", width: 80, align: "right", className: "num-cell", search: false },
+    { title: "金额", dataIndex: "amount", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.amount == null ? "-" : Number(r.amount).toFixed(2)) },
+    { title: "税额", dataIndex: "taxAmount", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.taxAmount == null ? "-" : Number(r.taxAmount).toFixed(2)) },
+    { title: "价税合计", dataIndex: "taxInclusiveTotal", width: 110, align: "right", className: "num-cell", search: false, render: (_v, r) => (r.taxInclusiveTotal == null ? "-" : <b>{Number(r.taxInclusiveTotal).toFixed(2)}</b>) },
+    { title: "批次号", dataIndex: "batchNo", width: 110, search: false, render: (_v, r) => r.batchNo ?? "-" },
+    { title: "状态", dataIndex: "status", width: 90, valueEnum: { finished: { text: "已完成" } }, render: (_v, r) => (r.status === "finished" ? <StatusTag status="inbound" label="已完成" /> : <Tag bordered>{r.status}</Tag>) },
+    {
+      title: "日期",
+      dataIndex: "range",
+      valueType: "dateRange",
+      hideInTable: true,
+      search: {
+        transform: (value: [unknown, unknown]) => ({
+          from: toDay(value[0]),
+          to: toDay(value[1]),
+        }),
+      },
+    },
+    { title: "物品", dataIndex: "itemKeyword", hideInTable: true, fieldProps: { placeholder: "编码或名称关键字" } },
+    { title: "批次号", dataIndex: "batchNo", hideInTable: true },
+  ];
   // V14 打印:入库单详情 VO 转 A4 打印版数据(运输信息有值才显示,空值自动过滤)
   const buildPrintData = (d: InboundDoc): PrintDocData => {
     const totalQty = (d.items ?? []).reduce((s, it) => s + Number(it.quantity), 0);
@@ -262,9 +355,21 @@ const request = async (params: {
       <ProTable<InboundDoc>
         rowKey="id"
         actionRef={actionRef}
-        columns={columns}
-        request={request}
-        headerTitle={false}
+        columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<InboundDoc>[]) : columns}
+        request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
+        headerTitle={
+          <Segmented
+            options={[
+              { label: "主表", value: "main" },
+              { label: "明细", value: "line" },
+            ]}
+            value={viewMode}
+            onChange={(v) => {
+              setViewMode(v as "main" | "line");
+              actionRef.current?.reload();
+            }}
+          />
+        }
         options={false}
         scroll={{ x: 1480 }}
         search={{
