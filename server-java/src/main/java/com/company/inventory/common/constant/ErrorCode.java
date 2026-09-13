@@ -140,6 +140,9 @@ public final class ErrorCode {
     /** 关联类型:销售退货(入库单 → 销售退货单)。 */
     public static final String REF_TYPE_SALES_RETURN = "sales_return";
 
+    /** 关联类型:期初入库(入库单 → 期初单)。 */
+    public static final String REF_TYPE_OPENING = "opening";
+
     // ===== 调整类型(adjustType) =====
 
     /** 调整:盘盈。 */

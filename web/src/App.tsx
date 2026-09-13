@@ -12,6 +12,8 @@ import { OutboundListPage } from "./pages/outbound/OutboundListPage";
 import { OutboundFormPage } from "./pages/outbound/OutboundFormPage";
 import { StockQueryPage } from "./pages/stock/StockQueryPage";
 import { TransactionQueryPage } from "./pages/transaction/TransactionQueryPage";
+import { OpeningStockListPage } from "./pages/opening/OpeningStockListPage";
+import { OpeningStockNewPage } from "./pages/opening/OpeningStockNewPage";
 import { ItemListPage } from "./pages/item/ItemListPage";
 import { ItemFormPage } from "./pages/item/ItemFormPage";
 import { WarehouseListPage } from "./pages/warehouse/WarehouseListPage";
@@ -77,6 +79,15 @@ export default function App() {
               />
               <Route path="stock" element={<StockQueryPage />} />
               <Route path="transactions" element={<TransactionQueryPage />} />
+              <Route path="opening" element={<OpeningStockListPage />} />
+              <Route
+                path="opening/new"
+                element={
+                  <RequireAuth>
+                    <OpeningStockNewPage />
+                  </RequireAuth>
+                }
+              />
               <Route path="suppliers" element={<SupplierPage />} />
               <Route path="customers" element={<CustomerPage />} />
               <Route path="purchase-orders" element={<PurchaseOrderListPage />} />

@@ -209,6 +209,38 @@ export interface PagedResponse<T> {
   pageSize: number;
 }
 
+// V13 期初库存(创建即过账,联动入库单 ref_type=opening)
+export interface OpeningStockDocItem {
+  id: number;
+  docId: number;
+  lineNo: number;
+  itemId: number;
+  itemCode?: string | null;
+  itemName?: string | null;
+  specSnapshot?: string | null;
+  unit?: string | null;
+  quantity: string | number;
+  unitPrice?: string | number | null;
+  batchNo?: string | null;
+  productionDate?: string | null;
+  expiryDate?: string | null;
+  locationId?: number | null;
+}
+
+export interface OpeningStockDoc {
+  id: number;
+  docNo: string;
+  docDate: string;
+  warehouseId: number;
+  totalQty: string | number;
+  remark?: string | null;
+  status: string;
+  creator?: string | null;
+  createdAt: string;
+  warehouse?: Warehouse;
+  items?: OpeningStockDocItem[];
+}
+
 export interface DashboardSummary {
   warehouseCount: number;
   itemCount: number;

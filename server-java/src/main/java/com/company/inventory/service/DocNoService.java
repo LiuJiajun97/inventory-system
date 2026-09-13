@@ -12,6 +12,7 @@ import com.company.inventory.model.entity.stocktake.StocktakeDocDO;
 import com.company.inventory.model.entity.transfer.TransferDocDO;
 import com.company.inventory.model.entity.returns.PurchaseReturnDO;
 import com.company.inventory.model.entity.returns.SalesReturnDO;
+import com.company.inventory.model.entity.opening.OpeningStockDocDO;
 import com.company.inventory.mapper.InboundDocMapper;
 import com.company.inventory.mapper.OutboundDocMapper;
 import com.company.inventory.mapper.StockAdjustDocMapper;
@@ -21,6 +22,7 @@ import com.company.inventory.mapper.StocktakeDocMapper;
 import com.company.inventory.mapper.TransferDocMapper;
 import com.company.inventory.mapper.PurchaseReturnMapper;
 import com.company.inventory.mapper.SalesReturnMapper;
+import com.company.inventory.mapper.OpeningStockDocMapper;
 
 import org.springframework.stereotype.Service;
 
@@ -30,7 +32,7 @@ import java.util.List;
 
 /**
  * 单据编号生成服务:RK/CK(出入库)、CG(采购)、XS(销售)、DB(调拨)、PD(盘点)、TZ(调整)、
- * CT(采购退货)、XT(销售退货)均为 PREFIX-YYYYMMDD-NNNN 按天序列。
+ * CT(采购退货)、XT(销售退货)、QC(期初)均为 PREFIX-YYYYMMDD-NNNN 按天序列。
  *
  * <p>序号取"当日已用最大值 + 1"(按单号前缀 LIKE 匹配),而非"当日计数 + 1":
  * 当天单据被物理删除后计数回退会重号撞唯一约束,最大值天然抗删除。</p>
@@ -69,6 +71,9 @@ public class DocNoService {
     /** 销售退货单号前缀。 */
     private static final String PREFIX_SALES_RETURN = "XT";
 
+    /** 期初单号前缀。 */
+    private static final String PREFIX_OPENING = "QC";
+
     /** 日期格式 yyyyMMdd。 */
     private static final String DATE_FORMAT = "yyyyMMdd";
 
@@ -84,6 +89,7 @@ public class DocNoService {
     private final StockAdjustDocMapper stockAdjustDocMapper;
     private final PurchaseReturnMapper purchaseReturnMapper;
     private final SalesReturnMapper salesReturnMapper;
+    private final OpeningStockDocMapper openingStockDocMapper;
 
     /**
      * 构造服务。
@@ -97,12 +103,13 @@ public class DocNoService {
      * @param stockAdjustDocMapper 调整单 Mapper
      * @param purchaseReturnMapper 采购退货单 Mapper
      * @param salesReturnMapper    销售退货单 Mapper
+     * @param openingStockDocMapper 期初单 Mapper
      */
     public DocNoService(InboundDocMapper inboundDocMapper, OutboundDocMapper outboundDocMapper,
             PurchaseOrderMapper purchaseOrderMapper, SalesOrderMapper salesOrderMapper,
             TransferDocMapper transferDocMapper, StocktakeDocMapper stocktakeDocMapper,
             StockAdjustDocMapper stockAdjustDocMapper, PurchaseReturnMapper purchaseReturnMapper,
-            SalesReturnMapper salesReturnMapper) {
+            SalesReturnMapper salesReturnMapper, OpeningStockDocMapper openingStockDocMapper) {
         this.inboundDocMapper = inboundDocMapper;
         this.outboundDocMapper = outboundDocMapper;
         this.purchaseOrderMapper = purchaseOrderMapper;
@@ -112,6 +119,7 @@ public class DocNoService {
         this.stockAdjustDocMapper = stockAdjustDocMapper;
         this.purchaseReturnMapper = purchaseReturnMapper;
         this.salesReturnMapper = salesReturnMapper;
+        this.openingStockDocMapper = openingStockDocMapper;
     }
 
     /**
@@ -193,6 +201,15 @@ public class DocNoService {
      */
     public String generateSalesReturnNo() {
         return buildNo(PREFIX_SALES_RETURN, salesReturnMapper, SalesReturnDO::getDocNo);
+    }
+
+    /**
+     * 生成期初单号(QC-YYYYMMDD-NNNN)。
+     *
+     * @return 单号
+     */
+    public String generateOpeningDocNo() {
+        return buildNo(PREFIX_OPENING, openingStockDocMapper, OpeningStockDocDO::getDocNo);
     }
 
     /**

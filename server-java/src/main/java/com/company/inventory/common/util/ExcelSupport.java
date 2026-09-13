@@ -32,6 +32,12 @@ public final class ExcelSupport {
     /** 数据行起始的 Excel 行号(第 1 行为表头)。 */
     public static final int FIRST_DATA_ROW_NO = 2;
 
+    /** xlsx 文件头 ZIP 魔数第 1 字节(PK 的 P)。 */
+    private static final int ZIP_MAGIC_1 = 0x50;
+
+    /** xlsx 文件头 ZIP 魔数第 2 字节(PK 的 K)。 */
+    private static final int ZIP_MAGIC_2 = 0x4B;
+
     private ExcelSupport() {
     }
 
@@ -91,7 +97,7 @@ public final class ExcelSupport {
         }
         try (InputStream in = file.getInputStream()) {
             byte[] buf = in.readAllBytes();
-            if (buf.length < 2 || buf[0] != 0x50 || buf[1] != 0x4B) {
+            if (buf.length < 2 || buf[0] != ZIP_MAGIC_1 || buf[1] != ZIP_MAGIC_2) {
                 throw new BizException("文件不是有效的 xlsx(文件头非法)");
             }
             List<T> rows = EasyExcel.read(new java.io.ByteArrayInputStream(buf))

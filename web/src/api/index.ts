@@ -9,6 +9,7 @@ import type {
   StockTransaction,
   InboundDoc,
   OutboundDoc,
+  OpeningStockDoc,
   PagedResponse,
   DashboardSummary,
   MonitorOverview,
@@ -464,6 +465,34 @@ export const inboundApi = {
     to?: string;
   }) => http.get<unknown, PagedResponse<InboundDoc>>("/inbound", { params }),
   get: (id: number) => http.get<unknown, InboundDoc>(`/inbound/${id}`),
+};
+
+// V13 期初库存(创建即过账,单事务,每物品×仓库限一次)
+export const openingApi = {
+  create: (data: {
+    warehouseId: number;
+    docDate: string;
+    remark?: string;
+    items: Array<{
+      itemId: number;
+      quantity: number;
+      unitPrice?: number;
+      batchNo?: string;
+      productionDate?: string;
+      expiryDate?: string;
+      locationId?: number;
+    }>;
+  }) => http.post("/opening", data),
+  list: (params: {
+    page?: number;
+    pageSize?: number;
+    warehouseId?: number;
+    docNo?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+  }) => http.get<unknown, PagedResponse<OpeningStockDoc>>("/opening", { params }),
+  get: (id: number) => http.get<unknown, OpeningStockDoc>(`/opening/${id}`),
 };
 
 export const outboundApi = {

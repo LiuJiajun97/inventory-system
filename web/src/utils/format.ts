@@ -25,4 +25,5 @@ export const REF_TYPE_LABEL: Record<string, string> = {
   sales: "销售发货",
   purchase_return: "采购退货",
   sales_return: "销售退货",
+  opening: "期初",
 };
