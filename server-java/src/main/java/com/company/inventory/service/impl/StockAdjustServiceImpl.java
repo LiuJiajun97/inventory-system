@@ -112,7 +112,7 @@ public class StockAdjustServiceImpl implements StockAdjustService {
     }
 
     /**
-     * 新建调整单(draft)。
+     * 新建调整单(draft,手工建单;refDocNo 恒为空,来源单号仅由盘点差异生成写入)。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -123,7 +123,7 @@ public class StockAdjustServiceImpl implements StockAdjustService {
         doc.setDocDate(dto.docDate());
         doc.setWarehouseId(dto.warehouseId());
         doc.setAdjustType(dto.adjustType());
-        doc.setRefDocNo(dto.refDocNo());
+        doc.setRefDocNo(null);
         doc.setStatus(DocStatus.DRAFT);
         doc.setRemark(dto.remark());
         doc.setCreator(username);
@@ -131,7 +131,31 @@ public class StockAdjustServiceImpl implements StockAdjustService {
         docMapper.insert(doc);
         insertLines(doc.getId(), dto);
         LOGGER.info("新建调整单: docNo={}, 类型={}, 行数={}, operator={}",
-                doc.getDocNo(), dto.adjustType(), dto.items().size(), username);
+                doc.getDocNo(), doc.getAdjustType(), dto.items().size(), username);
+        return get(doc.getId());
+    }
+
+    /**
+     * 新建带来源单号的调整单(盘点差异生成专用,refDocNo 落库并参与防重复唯一约束)。
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public StockAdjustDocVO createWithRef(StockAdjustCreateDTO dto, String refDocNo, String username) {
+        validateDto(dto);
+        StockAdjustDocDO doc = new StockAdjustDocDO();
+        doc.setDocNo(docNoService.generateAdjustDocNo());
+        doc.setDocDate(dto.docDate());
+        doc.setWarehouseId(dto.warehouseId());
+        doc.setAdjustType(dto.adjustType());
+        doc.setRefDocNo(refDocNo);
+        doc.setStatus(DocStatus.DRAFT);
+        doc.setRemark(dto.remark());
+        doc.setCreator(username);
+        doc.setCreatedAt(LocalDateTime.now());
+        docMapper.insert(doc);
+        insertLines(doc.getId(), dto);
+        LOGGER.info("新建调整单(盘点生成): docNo={}, 来源={}, 类型={}, 行数={}, operator={}",
+                doc.getDocNo(), refDocNo, doc.getAdjustType(), dto.items().size(), username);
         return get(doc.getId());
     }
 
@@ -150,7 +174,6 @@ public class StockAdjustServiceImpl implements StockAdjustService {
         doc.setDocDate(dto.docDate());
         doc.setWarehouseId(dto.warehouseId());
         doc.setAdjustType(dto.adjustType());
-        doc.setRefDocNo(dto.refDocNo());
         doc.setRemark(dto.remark());
         doc.setUpdater(username);
         doc.setUpdatedAt(LocalDateTime.now());

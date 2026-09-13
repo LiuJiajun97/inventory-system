@@ -13,13 +13,23 @@ import com.company.inventory.model.vo.adjust.StockAdjustDocVO;
 public interface StockAdjustService {
 
     /**
-     * 新建调整单(draft,手工建单或盘点差异生成)。
+     * 新建调整单(draft,手工建单;来源单号由服务端盘点差异生成写入,此处恒为空)。
      *
-     * @param dto      入参
+     * @param dto      入参(refDocNo 会被忽略)
      * @param username 当前登录用户名
      * @return 新建调整单
      */
     StockAdjustDocVO create(StockAdjustCreateDTO dto, String username);
+
+    /**
+     * 新建带来源单号的调整单(盘点差异生成专用,refDocNo 落库并参与防重复唯一约束)。
+     *
+     * @param dto        入参
+     * @param refDocNo   来源盘点单号
+     * @param username   当前登录用户名
+     * @return 新建调整单
+     */
+    StockAdjustDocVO createWithRef(StockAdjustCreateDTO dto, String refDocNo, String username);
 
     /**
      * 编辑调整单(仅 draft/rejected 可编辑,已驳回编辑后回 draft 并清空驳回原因)。

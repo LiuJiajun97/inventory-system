@@ -13,12 +13,14 @@ import com.company.inventory.model.dto.adjust.StockAdjustLineDTO;
 import com.company.inventory.model.dto.stocktake.StocktakeActualDTO;
 import com.company.inventory.model.dto.stocktake.StocktakeActualLineDTO;
 import com.company.inventory.model.dto.stocktake.StocktakeCreateDTO;
+import com.company.inventory.model.entity.adjust.StockAdjustDocDO;
 import com.company.inventory.model.entity.item.ItemDO;
 import com.company.inventory.model.entity.stock.StockDO;
 import com.company.inventory.model.entity.stocktake.StocktakeDocDO;
 import com.company.inventory.model.entity.stocktake.StocktakeDocItemDO;
 import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.ItemMapper;
+import com.company.inventory.mapper.StockAdjustDocMapper;
 import com.company.inventory.mapper.StockMapper;
 import com.company.inventory.mapper.StocktakeDocItemMapper;
 import com.company.inventory.mapper.StocktakeDocMapper;
@@ -82,6 +84,8 @@ public class StocktakeServiceImpl implements StocktakeService {
     private final DocNoService docNoService;
     /** 状态机支撑。 */
     private final DocStateSupport stateSupport;
+    /** 调整单 Mapper(防重复生成校验)。 */
+    private final StockAdjustDocMapper adjustDocMapper;
     /** 调整单服务(差异生成;懒注入避免循环依赖)。 */
     private final StockAdjustService stockAdjustService;
 
@@ -96,12 +100,13 @@ public class StocktakeServiceImpl implements StocktakeService {
      * @param approvalGuard      审批资格校验
      * @param docNoService       单据号服务
      * @param stateSupport       状态机支撑
+     * @param adjustDocMapper    调整单 Mapper
      * @param stockAdjustService 调整单服务
      */
     public StocktakeServiceImpl(StocktakeDocMapper docMapper, StocktakeDocItemMapper itemMapper,
             WarehouseMapper warehouseMapper, ItemMapper itemMasterMapper, StockMapper stockMapper,
             ApprovalGuard approvalGuard, DocNoService docNoService, DocStateSupport stateSupport,
-            @Lazy StockAdjustService stockAdjustService) {
+            StockAdjustDocMapper adjustDocMapper, @Lazy StockAdjustService stockAdjustService) {
         this.docMapper = docMapper;
         this.itemMapper = itemMapper;
         this.warehouseMapper = warehouseMapper;
@@ -110,6 +115,7 @@ public class StocktakeServiceImpl implements StocktakeService {
         this.approvalGuard = approvalGuard;
         this.docNoService = docNoService;
         this.stateSupport = stateSupport;
+        this.adjustDocMapper = adjustDocMapper;
         this.stockAdjustService = stockAdjustService;
     }
 
@@ -373,6 +379,8 @@ public class StocktakeServiceImpl implements StocktakeService {
 
     /**
      * 差异生成调整单:盘盈 gain / 盘亏 loss 各一张草稿调整单,refDocNo 记录来源盘点单。
+     * 同一盘点单已有未作废调整单时拒绝重复生成(防盘盈/盘亏被重复计入库存);
+     * 存量调整单全部作废后方可重新生成,并发竞态由 uk_adjust_ref_doc_type 唯一索引兜底。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -405,14 +413,21 @@ public class StocktakeServiceImpl implements StocktakeService {
         if (gainLines.isEmpty() && lossLines.isEmpty()) {
             throw new BizException("无差异行,无需生成调整单");
         }
+        // 防重校验:同一盘点单已有未作废调整单则拒绝,避免盘盈/盘亏被重复计入库存
+        Long existing = adjustDocMapper.selectCount(new LambdaQueryWrapper<StockAdjustDocDO>()
+                .eq(StockAdjustDocDO::getRefDocNo, doc.getDocNo())
+                .ne(StockAdjustDocDO::getStatus, DocStatus.VOIDED));
+        if (existing != null && existing > 0) {
+            throw new BizException(DOC_NAME + "已生成过调整单,不可重复生成;如确需重做请先作废已有调整单");
+        }
         List<StockAdjustDocVO> created = new ArrayList<>();
         if (!gainLines.isEmpty()) {
-            created.add(stockAdjustService.create(buildAdjustDoc(doc, ErrorCode.ADJUST_TYPE_GAIN,
-                    gainLines), username));
+            created.add(stockAdjustService.createWithRef(buildAdjustDoc(doc, ErrorCode.ADJUST_TYPE_GAIN,
+                    gainLines), doc.getDocNo(), username));
         }
         if (!lossLines.isEmpty()) {
-            created.add(stockAdjustService.create(buildAdjustDoc(doc, ErrorCode.ADJUST_TYPE_LOSS,
-                    lossLines), username));
+            created.add(stockAdjustService.createWithRef(buildAdjustDoc(doc, ErrorCode.ADJUST_TYPE_LOSS,
+                    lossLines), doc.getDocNo(), username));
         }
         LOGGER.info("盘点差异生成调整单: docId={}, 盘盈行={}, 盘亏行={}, operator={}",
                 id, gainLines.size(), lossLines.size(), username);
@@ -531,6 +546,13 @@ public class StocktakeServiceImpl implements StocktakeService {
                 .collect(Collectors.toMap(ItemDO::getId, it -> it));
         Map<Long, List<StocktakeDocItemDO>> linesByDoc = allItems.stream()
                 .collect(Collectors.groupingBy(StocktakeDocItemDO::getDocId));
+        // 批量查未作废调整单,标记每张盘点单是否已生成过(防重复生成展示)
+        Set<String> docNos = docs.stream().map(StocktakeDocDO::getDocNo)
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<String> generatedNos = adjustDocMapper.selectList(new LambdaQueryWrapper<StockAdjustDocDO>()
+                        .in(StockAdjustDocDO::getRefDocNo, docNos)
+                        .ne(StockAdjustDocDO::getStatus, DocStatus.VOIDED))
+                .stream().map(StockAdjustDocDO::getRefDocNo).collect(Collectors.toSet());
 
         List<StocktakeDocVO> vos = new ArrayList<>();
         for (StocktakeDocDO doc : docs) {
@@ -550,7 +572,8 @@ public class StocktakeServiceImpl implements StocktakeService {
             }
             vos.add(new StocktakeDocVO(doc.getId(), doc.getDocNo(), doc.getDocDate(),
                     doc.getWarehouseId(), whMap.get(doc.getWarehouseId()), doc.getScopeType(),
-                    doc.getStatus(), doc.getCreator(), doc.getCreatedAt(), doc.getUpdater(),
+                    doc.getStatus(), generatedNos.contains(doc.getDocNo()),
+                    doc.getCreator(), doc.getCreatedAt(), doc.getUpdater(),
                     doc.getUpdatedAt(), doc.getApprover(), doc.getApprovedAt(),
                     doc.getRejectReason(), doc.getRemark(), lineVos));
         }

@@ -9,26 +9,27 @@ import java.util.List;
 /**
  * 盘点单出参(表头 + 行)。
  *
- * @param id          主键
- * @param docNo       单据编号
- * @param docDate     单据日期
- * @param warehouseId 仓库 ID
- * @param warehouse   仓库对象
- * @param scopeType   盘点范围
- * @param status      单据状态
- * @param creator     制单人
- * @param createdAt   制单时间
- * @param updater     修改人
- * @param updatedAt   修改时间
- * @param approver    审批人
- * @param approvedAt  审批时间
- * @param rejectReason 驳回原因
- * @param remark      备注
- * @param items       盘点行
+ * @param id              主键
+ * @param docNo           单据编号
+ * @param docDate         单据日期
+ * @param warehouseId     仓库 ID
+ * @param warehouse       仓库对象
+ * @param scopeType       盘点范围
+ * @param status          单据状态
+ * @param adjustGenerated 是否已生成过未作废调整单
+ * @param creator         制单人
+ * @param createdAt       制单时间
+ * @param updater         修改人
+ * @param updatedAt       修改时间
+ * @param approver        审批人
+ * @param approvedAt      审批时间
+ * @param rejectReason    驳回原因
+ * @param remark          备注
+ * @param items           盘点行
  * @author inventory
  */
 public record StocktakeDocVO(Long id, String docNo, LocalDate docDate, Long warehouseId,
-        WarehouseVO warehouse, String scopeType, String status,
+        WarehouseVO warehouse, String scopeType, String status, boolean adjustGenerated,
         String creator, LocalDateTime createdAt, String updater, LocalDateTime updatedAt,
         String approver, LocalDateTime approvedAt, String rejectReason, String remark,
         List<StocktakeDocItemVO> items) {

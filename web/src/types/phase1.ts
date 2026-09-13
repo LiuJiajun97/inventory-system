@@ -220,6 +220,7 @@ export interface StocktakeDoc {
   warehouseId: number;
   scopeType: string;
   status: DocStatus;
+  adjustGenerated?: boolean;
   creator?: string | null;
   createdAt: string;
   approver?: string | null;

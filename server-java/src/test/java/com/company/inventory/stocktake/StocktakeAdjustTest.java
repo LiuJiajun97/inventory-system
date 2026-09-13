@@ -212,6 +212,44 @@ class StocktakeAdjustTest {
         // 流水类型
         assertEquals(1, txCount("adjust_in"));
         assertEquals(1, txCount("adjust_out"));
+        // 防重复生成:盘点单已有未作废调整单,再次生成必须拒绝(防盘亏被重复扣减)
+        assertThrows(BizException.class, () -> stocktakeService.generateAdjust(vo.id(), "pd_creator"));
+        // 盘点单回读带已生成标记
+        assertTrue(stocktakeService.get(vo.id()).adjustGenerated());
+    }
+
+    /**
+     * 用例 4b:防重复生成的放行与拒绝边界(全部作废后可重新生成;部分作废仍拒绝;
+     * 手工建单 refDocNo 被服务端忽略不占索引位;列表回读也带已生成标记)。
+     */
+    @Test
+    void generateAdjustIdempotencyBoundaries() {
+        StocktakeDocVO vo = stocktakeService.create(
+                new StocktakeCreateDTO(warehouseId, LocalDate.now(), "all", null, null), "pd_creator");
+        long id = vo.id();
+        // 无差异行直接生成 → 400
+        assertThrows(BizException.class, () -> stocktakeService.generateAdjust(id, "pd_creator"));
+        // 录入实盘(B 盘亏 -3)后生成 loss 单
+        StocktakeDocVO got = stocktakeService.get(id);
+        long lineB = got.items().stream().filter(l -> l.itemId().equals(itemB)).findFirst().orElseThrow().id();
+        stocktakeService.enterActual(id, new StocktakeActualDTO(
+                List.of(new StocktakeActualLineDTO(lineB, new BigDecimal("7")))), "pd_creator");
+        List<StockAdjustDocVO> first = stocktakeService.generateAdjust(id, "pd_creator");
+        assertEquals(1, first.size());
+        StockAdjustDocVO loss = first.get(0);
+        // 部分作废口径:仍有未作废调整单时拒绝
+        assertThrows(BizException.class, () -> stocktakeService.generateAdjust(id, "pd_creator"));
+        // 手工建单传 refDocNo 被忽略,不占索引位(防手工单污染盘点单防重约束)
+        StockAdjustDocVO manual = stockAdjustService.create(new StockAdjustCreateDTO(warehouseId,
+                LocalDate.now(), "gain", vo.docNo(), "手工",
+                List.of(new StockAdjustLineDTO(itemA, new BigDecimal("1"), new BigDecimal("1"),
+                        null, null, null))), "pd_creator");
+        assertNull(manual.refDocNo());
+        // 全部作废后可重新生成,新单 ref 相同
+        stockAdjustService.voidDoc(loss.id(), "pd_creator");
+        List<StockAdjustDocVO> regen = stocktakeService.generateAdjust(id, "pd_creator");
+        assertEquals(1, regen.size());
+        assertEquals(vo.docNo(), regen.get(0).refDocNo());
     }
 
     /**

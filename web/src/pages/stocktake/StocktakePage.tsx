@@ -4,7 +4,7 @@
 // + 差异生成调整单(盘盈/盘亏各一张)+ 状态机操作
 
 import { useEffect, useRef, useState } from "react";
-import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, theme } from "antd";
+import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
@@ -311,15 +311,21 @@ export function StocktakePage() {
           );
         }
         if (canApprove && s === "approved") {
-          btns.push(
-            <Popconfirm
-              key="adjust"
-              title="将按差异生成盘盈/盘亏调整单(草稿),确认?"
-              onConfirm={() => doAction(() => stocktakeApi.generateAdjust(row.id), "调整单已生成,请到库存调整页审批执行")}
-            >
-              <a className="action-approve">生成调整单</a>
-            </Popconfirm>,
-          );
+          if (row.adjustGenerated) {
+            btns.push(
+              <Tag key="adjust" color="default">已生成</Tag>,
+            );
+          } else {
+            btns.push(
+              <Popconfirm
+                key="adjust"
+                title="将按差异生成盘盈/盘亏调整单(草稿),确认?"
+                onConfirm={() => doAction(() => stocktakeApi.generateAdjust(row.id), "调整单已生成,请到库存调整页审批执行")}
+              >
+                <a className="action-approve">生成调整单</a>
+              </Popconfirm>,
+            );
+          }
         }
         if (s === "draft" || s === "rejected") {
           if (canSubmit) {

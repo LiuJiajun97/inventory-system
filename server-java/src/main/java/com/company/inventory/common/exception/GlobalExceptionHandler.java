@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -142,6 +143,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
                 .body(errorBody(HttpStatus.METHOD_NOT_ALLOWED.value(), ErrorCode.BIZ_ERROR,
                         "请求方法不被支持: " + e.getMethod()));
+    }
+
+    /**
+     * 处理数据完整性冲突(唯一约束等,如并发重复生成):400,事务已整体回滚,数据安全无损。
+     *
+     * @param e 数据完整性异常
+     * @return 契约错误响应
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException e) {
+        LOGGER.warn("数据完整性冲突: {}", e.getMostSpecificCause().getMessage());
+        return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
+                .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, "操作冲突,请刷新后重试"));
     }
 
     /**
