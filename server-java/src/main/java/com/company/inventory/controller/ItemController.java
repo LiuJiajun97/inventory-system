@@ -5,6 +5,9 @@ import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.item.ItemCreateDTO;
 import com.company.inventory.model.dto.item.ItemUpdateDTO;
 import com.company.inventory.model.query.ItemQuery;
+import com.company.inventory.model.vo.excel.ImportResultVO;
+import com.company.inventory.service.ExportService;
+import com.company.inventory.service.ImportService;
 import com.company.inventory.service.ItemService;
 import com.company.inventory.model.vo.item.ItemVO;
 
@@ -20,6 +23,7 @@ import com.company.inventory.model.vo.item.ItemVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,7 +31,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 物品接口。
@@ -42,13 +48,24 @@ public class ItemController {
     /** 物品服务。 */
     private final ItemService itemService;
 
+    /** 导入服务。 */
+    private final ImportService importService;
+
+    /** 导出服务。 */
+    private final ExportService exportService;
+
     /**
      * 构造控制器。
      *
-     * @param itemService 物品服务
+     * @param itemService   物品服务
+     * @param importService 导入服务
+     * @param exportService 导出服务
      */
-    public ItemController(ItemService itemService) {
+    public ItemController(ItemService itemService, ImportService importService,
+            ExportService exportService) {
         this.itemService = itemService;
+        this.importService = importService;
+        this.exportService = exportService;
     }
 
     /**
@@ -100,5 +117,41 @@ public class ItemController {
     @RequireRole("admin")
     public ItemVO update(@PathVariable long id, @Valid @RequestBody ItemUpdateDTO dto) {
         return itemService.update(id, dto);
+    }
+
+    /**
+     * 物品导入(仅 admin,逐行校验,成功行走既有创建链路)。
+     *
+     * @param file xlsx 文件(列头须与模板一致)
+     * @return 导入结果(imported + 失败行汇总)
+     */
+    @Operation(summary = "物品导入")
+    @PostMapping("/import")
+    @RequireRole("admin")
+    public ImportResultVO importItems(@RequestParam("file") MultipartFile file) {
+        return importService.importItems(file);
+    }
+
+    /**
+     * 物品导出(xlsx,不分页,权限与列表读一致)。
+     *
+     * @param query 列表查询条件(keyword/itemCategory,分页参数忽略)
+     * @param resp  HTTP 响应(xlsx 流)
+     */
+    @Operation(summary = "物品导出")
+    @GetMapping("/export")
+    public void exportItems(@Valid ItemQuery query, HttpServletResponse resp) {
+        exportService.exportItems(query, resp);
+    }
+
+    /**
+     * 物品导入模板下载(表头 + 1 行示例)。
+     *
+     * @param resp HTTP 响应(xlsx 流)
+     */
+    @Operation(summary = "物品导入模板")
+    @GetMapping("/template")
+    public void itemTemplate(HttpServletResponse resp) {
+        importService.writeItemTemplate(resp);
     }
 }

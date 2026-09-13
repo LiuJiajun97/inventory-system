@@ -371,3 +371,18 @@ export interface SalesReturn {
   createdAt: string;
   items?: SalesReturnLine[];
 }
+
+// ===== V12 导入导出 =====
+
+// 导入失败行
+export interface ImportFailedRow {
+  row: number; // Excel 行号(第 1 行为表头)
+  code: string;
+  reason: string;
+}
+
+// 导入结果:{imported, failed}
+export interface ImportResult {
+  imported: number;
+  failed: ImportFailedRow[];
+}

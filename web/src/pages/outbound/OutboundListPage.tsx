@@ -1,13 +1,14 @@
 // 出库单列表(SPEC-WEB V2 2.5)
 // ProTable 版:筛选字段由 columns 配置驱动(单号/仓库/状态/日期区间)
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState , useMemo} from "react";
 import { Button, Descriptions, Modal, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import { outboundApi, warehouseApi } from "../../api";
+import { ExportButton } from "../../components/ExportButton";
 import type { OutboundDoc, Warehouse } from "../../types";
 import { usePermission } from "../../auth/usePermission";
 import { fmtDateTime, REF_TYPE_LABEL } from "../../utils/format";
@@ -24,7 +25,7 @@ export function OutboundListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<OutboundDoc | null>(null);
   const actionRef = useRef<ActionType>();
-  const { hasPerm } = usePermission();
+  const { hasPerm } = usePermission();  const canExport = hasPerm("outbound:export");
   const location = useLocation();
 
   // 仓库下拉数据源(异步加载,仅用于筛选项)
@@ -42,7 +43,10 @@ export function OutboundListPage() {
   }, [location.search]);
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
-  const request = async (params: {
+    // 当前筛选条件(导出 URL 用,随筛选变化重建)
+  const [filterParams, setFilterParams] = useState<Record<string, string | number | undefined>>({});
+
+const request = async (params: {
     current?: number;
     pageSize?: number;
     docNo?: string;
@@ -51,6 +55,12 @@ export function OutboundListPage() {
     from?: string;
     to?: string;
   }) => {
+    setFilterParams({
+      docNo: params.docNo,
+      status: params.status,
+      warehouseId: params.warehouseId,
+      from: params.from,
+      to: params.to,    });
     const res = await outboundApi.list({
       docNo: params.docNo,
       status: params.status,
@@ -63,6 +73,18 @@ export function OutboundListPage() {
     // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
     return { data: res.rows, success: true, total: res.total };
   };
+  // 导出 URL:带当前筛选条件(导出不分页)
+  const exportUrl = useMemo(() => {
+    const p = new URLSearchParams();
+    if (filterParams.docNo !== undefined && filterParams.docNo !== "") p.set("docNo", String(filterParams.docNo));
+    if (filterParams.status !== undefined && filterParams.status !== "") p.set("status", String(filterParams.status));
+    if (filterParams.warehouseId !== undefined && filterParams.warehouseId !== "") p.set("warehouseId", String(filterParams.warehouseId));
+    if (filterParams.from !== undefined && filterParams.from !== "") p.set("from", String(filterParams.from));
+    if (filterParams.to !== undefined && filterParams.to !== "") p.set("to", String(filterParams.to));
+    const qs = p.toString();
+    return "/outbound/export" + (qs ? `?${qs}` : "");
+  }, [filterParams]);
+
 
   const columns: ProColumns<OutboundDoc>[] = [
     {
@@ -197,6 +219,9 @@ export function OutboundListPage() {
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
+            canExport && (
+              <ExportButton key="export" url={exportUrl} filename="出库单.xlsx" />
+            ),
             hasPerm("outbound:create") && (
               <Link key="new" to="/outbound/new">
                 <Button type="primary">新建</Button>

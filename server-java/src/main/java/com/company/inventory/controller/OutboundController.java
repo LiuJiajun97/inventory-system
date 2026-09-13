@@ -6,6 +6,7 @@ import com.company.inventory.config.RequireRole;
 import com.company.inventory.model.dto.outbound.OutboundCreateDTO;
 import com.company.inventory.model.query.OutboundDocQuery;
 import com.company.inventory.service.OutboundService;
+import com.company.inventory.service.ExportService;
 import com.company.inventory.model.vo.outbound.OutboundDocCreatedVO;
 import com.company.inventory.model.vo.outbound.OutboundDocVO;
 
@@ -28,6 +29,7 @@ import com.company.inventory.model.vo.outbound.OutboundDocVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,13 +51,18 @@ public class OutboundController {
     /** 出库单服务。 */
     private final OutboundService outboundService;
 
+    /** 导出服务。 */
+    private final ExportService exportService;
+
     /**
      * 构造控制器。
      *
      * @param outboundService 出库单服务
+     * @param exportService 导出服务
      */
-    public OutboundController(OutboundService outboundService) {
+    public OutboundController(OutboundService outboundService, ExportService exportService) {
         this.outboundService = outboundService;
+        this.exportService = exportService;
     }
 
     /**
@@ -96,5 +103,18 @@ public class OutboundController {
     @GetMapping("/{id}")
     public OutboundDocVO get(@PathVariable long id) {
         return outboundService.get(id);
+    }
+
+
+    /**
+     * 出库单导出(xlsx,不分页,权限与列表读一致)。
+     *
+     * @param query 列表查询条件(分页参数忽略)
+     * @param resp  HTTP 响应(xlsx 流)
+     */
+    @Operation(summary = "出库单导出")
+    @GetMapping("/export")
+    public void export(@Valid OutboundDocQuery query, HttpServletResponse resp) {
+        exportService.exportOutbound(query, resp);
     }
 }

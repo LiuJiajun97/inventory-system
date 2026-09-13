@@ -7,11 +7,13 @@ import com.company.inventory.model.dto.sales.SalesActionDTO;
 import com.company.inventory.model.dto.sales.SalesOrderCreateDTO;
 import com.company.inventory.model.query.SalesOrderQuery;
 import com.company.inventory.service.SalesOrderService;
+import com.company.inventory.service.ExportService;
 import com.company.inventory.model.vo.sales.SalesOrderVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,13 +36,18 @@ public class SalesOrderController {
     /** 销售订单服务。 */
     private final SalesOrderService salesOrderService;
 
+    /** 导出服务。 */
+    private final ExportService exportService;
+
     /**
      * 构造控制器。
      *
      * @param salesOrderService 销售订单服务
+     * @param exportService 导出服务
      */
-    public SalesOrderController(SalesOrderService salesOrderService) {
+    public SalesOrderController(SalesOrderService salesOrderService, ExportService exportService) {
         this.salesOrderService = salesOrderService;
+        this.exportService = exportService;
     }
 
     /**
@@ -175,5 +182,18 @@ public class SalesOrderController {
     public SalesOrderVO close(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return salesOrderService.close(id, username);
+    }
+
+
+    /**
+     * 销售订单导出(xlsx,不分页,权限与列表读一致)。
+     *
+     * @param query 列表查询条件(分页参数忽略)
+     * @param resp  HTTP 响应(xlsx 流)
+     */
+    @Operation(summary = "销售订单导出")
+    @GetMapping("/export")
+    public void export(@Valid SalesOrderQuery query, HttpServletResponse resp) {
+        exportService.exportSalesOrders(query, resp);
     }
 }

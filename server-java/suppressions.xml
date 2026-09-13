@@ -44,9 +44,11 @@
     <suppress files="[\\/]SalesOrderCreateDTO\.java" checks="ParameterNumberCheck" lines="56-59"/>
     <suppress files="[\\/]WarehouseVO\.java" checks="ParameterNumberCheck" lines="26-29"/>
     <!-- V11 单据号服务构造器:新增采购退货/销售退货 Mapper 后 9 个依赖注入,属 Spring 构造器注入 -->
-    <suppress files="[\\/]DocNoService\.java" checks="ParameterNumberCheck" lines="109-113"/>
+    <suppress files="[\\/]DocNoService\.java" checks="ParameterNumberCheck" lines="101-105"/>
     <!-- V11 采购退货单服务构造器:8 个依赖注入(Mapper/OutboundService/DocNoService 等),属 Spring 构造器注入 -->
     <suppress files="[\\/]PurchaseReturnServiceImpl\.java" checks="ParameterNumberCheck" lines="98-102"/>
     <!-- V11 销售退货单服务构造器:8 个依赖注入(Mapper/InboundService/DocNoService 等),属 Spring 构造器注入 -->
     <suppress files="[\\/]SalesReturnServiceImpl\.java" checks="ParameterNumberCheck" lines="98-102"/>
+    <!-- V12 导出服务构造器:9 个依赖注入(8 个列表 Service + WarehouseMapper),属 Spring 构造器注入 -->
+    <suppress files="[\\/]ExportServiceImpl\.java" checks="ParameterNumberCheck" lines="111-115"/>
 </suppressions>

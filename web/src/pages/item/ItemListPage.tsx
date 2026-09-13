@@ -2,7 +2,7 @@
 // ProTable 版:筛选字段由 columns 配置驱动(关键字/分类),新建按钮经 optionRender 放筛选行右侧
 // 属性 KV 动态行:加行/删行,JSON 自动拼
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Form,
   Input,
@@ -23,6 +23,8 @@ import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { itemApi, dictApi } from "../../api";
 import type { Item } from "../../types";
 import { usePermission } from "../../auth/usePermission";
+import { ImportButton } from "../../components/ImportButton";
+import { ExportButton } from "../../components/ExportButton";
 
 interface AttrRow {
   key: string;
@@ -40,6 +42,13 @@ export function ItemListPage() {
   // 按钮级权限码(前端仅控制显隐,403 兜底由后端拦截)
   const canEdit = hasPerm("item:edit");
   const canCreate = hasPerm("item:create");
+  const canImport = hasPerm("item:import");
+  const canExport = hasPerm("item:export");
+  // 当前筛选条件(导出 URL 用,随筛选变化重建)
+  const [filterParams, setFilterParams] = useState<{
+    keyword?: string;
+    itemCategory?: string;
+  }>({});
   const { message } = App.useApp();
   // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
   const { token } = theme.useToken();
@@ -56,6 +65,10 @@ export function ItemListPage() {
     keyword?: string;
     itemCategory?: string;
   }) => {
+    setFilterParams({
+      keyword: params.keyword || undefined,
+      itemCategory: params.itemCategory || undefined,
+    });
     const res = await itemApi.list({
       keyword: params.keyword || undefined,
       itemCategory: params.itemCategory || undefined,
@@ -65,6 +78,15 @@ export function ItemListPage() {
     // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
     return { data: res.rows, success: true, total: res.total };
   };
+
+  // 导出 URL:带当前筛选条件(导出不分页)
+  const exportUrl = useMemo(() => {
+    const p = new URLSearchParams();
+    if (filterParams.keyword) p.set("keyword", filterParams.keyword);
+    if (filterParams.itemCategory) p.set("itemCategory", filterParams.itemCategory);
+    const s = p.toString();
+    return "/items/export" + (s ? `?${s}` : "");
+  }, [filterParams]);
 
   const columns: ProColumns<Item>[] = [
     { title: "编码", dataIndex: "itemCode", width: 180, search: false },
@@ -293,6 +315,18 @@ export function ItemListPage() {
           // 新建按钮放筛选行右侧(替代默认工具栏行)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
+            canImport && (
+              <ImportButton
+                key="import"
+                importUrl="/items/import"
+                templateUrl="/items/template"
+                templateFilename="物品导入模板.xlsx"
+                onDone={() => actionRef.current?.reload()}
+              />
+            ),
+            canExport && (
+              <ExportButton key="export" url={exportUrl} filename="物品.xlsx" />
+            ),
             canCreate && (
               <Button key="new" type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                 新建

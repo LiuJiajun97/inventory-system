@@ -798,3 +798,14 @@ a.action-edit .anticon {
 .doc-detail-modal .ant-table .ant-table-thead > tr > th {
   padding-block: 8px !important;
 }
+
+/* ProTable 筛选行操作按钮区:列宽不足时按钮组自动换行,避免被裁到视口外(物品页 6 按钮场景) */
+.ant-pro-query-filter-actions .ant-form-item-control-input-content {
+  width: 100%;
+}
+.ant-pro-query-filter-actions .ant-form-item-control-input-content > .ant-space {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 8px;
+}

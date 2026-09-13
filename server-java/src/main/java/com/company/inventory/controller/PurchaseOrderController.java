@@ -7,11 +7,13 @@ import com.company.inventory.model.dto.purchase.PurchaseActionDTO;
 import com.company.inventory.model.dto.purchase.PurchaseOrderCreateDTO;
 import com.company.inventory.model.query.PurchaseOrderQuery;
 import com.company.inventory.service.PurchaseOrderService;
+import com.company.inventory.service.ExportService;
 import com.company.inventory.model.vo.purchase.PurchaseOrderVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,13 +36,18 @@ public class PurchaseOrderController {
     /** 采购订单服务。 */
     private final PurchaseOrderService purchaseOrderService;
 
+    /** 导出服务。 */
+    private final ExportService exportService;
+
     /**
      * 构造控制器。
      *
      * @param purchaseOrderService 采购订单服务
+     * @param exportService 导出服务
      */
-    public PurchaseOrderController(PurchaseOrderService purchaseOrderService) {
+    public PurchaseOrderController(PurchaseOrderService purchaseOrderService, ExportService exportService) {
         this.purchaseOrderService = purchaseOrderService;
+        this.exportService = exportService;
     }
 
     /**
@@ -175,5 +182,18 @@ public class PurchaseOrderController {
     public PurchaseOrderVO close(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return purchaseOrderService.close(id, username);
+    }
+
+
+    /**
+     * 采购订单导出(xlsx,不分页,权限与列表读一致)。
+     *
+     * @param query 列表查询条件(分页参数忽略)
+     * @param resp  HTTP 响应(xlsx 流)
+     */
+    @Operation(summary = "采购订单导出")
+    @GetMapping("/export")
+    public void export(@Valid PurchaseOrderQuery query, HttpServletResponse resp) {
+        exportService.exportPurchaseOrders(query, resp);
     }
 }

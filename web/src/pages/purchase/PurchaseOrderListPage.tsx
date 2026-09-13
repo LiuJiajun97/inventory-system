@@ -3,7 +3,7 @@
 // 状态机操作列:提交(草稿/驳回) / 审批 / 驳回 / 关闭 / 作废(admin)
 // 详情 Drawer 展示价税三列 + 行到货进度
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState , useMemo} from "react";
 import { Button, Descriptions, Input, Modal, Popconfirm, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
@@ -11,6 +11,7 @@ import { Link, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { fmtDate, fmtDateTime } from "../../utils/format";
 import { purchaseApi, supplierApi } from "../../api";
+import { ExportButton } from "../../components/ExportButton";
 import type { PurchaseOrder } from "../../types/phase1";
 import type { Supplier } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
@@ -35,7 +36,7 @@ const STATUS_ENUM = {
 };
 
 export function PurchaseOrderListPage() {
-  const { hasPerm } = usePermission();
+  const { hasPerm } = usePermission();  const canExport = hasPerm("purchase-order:export");
   // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePermission 拦截)
   const canEdit = hasPerm("purchase-order:edit");
   const canSubmit = hasPerm("purchase-order:submit");
@@ -57,7 +58,10 @@ export function PurchaseOrderListPage() {
   }, []);
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
-  const request = async (params: {
+    // 当前筛选条件(导出 URL 用,随筛选变化重建)
+  const [filterParams, setFilterParams] = useState<Record<string, string | number | undefined>>({});
+
+const request = async (params: {
     current?: number;
     pageSize?: number;
     docNo?: string;
@@ -66,6 +70,12 @@ export function PurchaseOrderListPage() {
     from?: string;
     to?: string;
   }) => {
+    setFilterParams({
+      docNo: params.docNo,
+      supplierId: params.supplierId,
+      status: params.status,
+      from: params.from,
+      to: params.to,    });
     const res = await purchaseApi.list({
       docNo: params.docNo,
       supplierId: params.supplierId,
@@ -77,6 +87,18 @@ export function PurchaseOrderListPage() {
     });
     return { data: res.rows, success: true, total: res.total };
   };
+  // 导出 URL:带当前筛选条件(导出不分页)
+  const exportUrl = useMemo(() => {
+    const p = new URLSearchParams();
+    if (filterParams.docNo !== undefined && filterParams.docNo !== "") p.set("docNo", String(filterParams.docNo));
+    if (filterParams.supplierId !== undefined && filterParams.supplierId !== "") p.set("supplierId", String(filterParams.supplierId));
+    if (filterParams.status !== undefined && filterParams.status !== "") p.set("status", String(filterParams.status));
+    if (filterParams.from !== undefined && filterParams.from !== "") p.set("from", String(filterParams.from));
+    if (filterParams.to !== undefined && filterParams.to !== "") p.set("to", String(filterParams.to));
+    const qs = p.toString();
+    return "/purchase-orders/export" + (qs ? `?${qs}` : "");
+  }, [filterParams]);
+
 
   const doAction = async (fn: () => Promise<unknown>, msg: string) => {
     try {
@@ -224,6 +246,9 @@ export function PurchaseOrderListPage() {
           // 新建按钮放筛选行右侧(替代默认工具栏行);4 字段单行放得下,不显示展开/收起
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
+            canExport && (
+              <ExportButton key="export" url={exportUrl} filename="采购订单.xlsx" />
+            ),
             // 采购订单无独立 :create 码,按约定复用 :edit(能编辑即可新建)
             canEdit && (
               <Link key="new" to="/purchase-orders/new">

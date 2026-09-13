@@ -2,14 +2,18 @@
 // 基于 ProTable:筛选字段由 columns 配置驱动(仓库/物品关键字/批次号)
 // 数量 0 行灰色弱化(row-zero);可用量为负红色
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProTable } from "@ant-design/pro-components";
 import type { ProColumns } from "@ant-design/pro-components";
 import { stockApi, warehouseApi } from "../../api";
+import { ExportButton } from "../../components/ExportButton";
+import { usePermission } from "../../auth/usePermission";
 import type { StockRow, Warehouse } from "../../types";
 import { fmtDate } from "../../utils/format";
 
 export function StockQueryPage() {
+  const { hasPerm } = usePermission();
+  const canExport = hasPerm("stock:export");
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
   // 仓库下拉数据源(异步加载,仅用于筛选项)
@@ -21,13 +25,20 @@ export function StockQueryPage() {
   }, []);
 
   // 参数适配:ProTable 发 current/pageSize,后端吃 page/pageSize
-  const request = async (params: {
+    // 当前筛选条件(导出 URL 用,随筛选变化重建)
+  const [filterParams, setFilterParams] = useState<Record<string, string | number | undefined>>({});
+
+const request = async (params: {
     current?: number;
     pageSize?: number;
     warehouseId?: number;
     itemKeyword?: string;
     batchNo?: string;
   }) => {
+    setFilterParams({
+      warehouseId: params.warehouseId,
+      itemKeyword: params.itemKeyword,
+      batchNo: params.batchNo,    });
     const res = await stockApi.query({
       warehouseId: params.warehouseId,
       itemKeyword: params.itemKeyword,
@@ -38,6 +49,16 @@ export function StockQueryPage() {
     // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
     return { data: res.rows, success: true, total: res.total };
   };
+  // 导出 URL:带当前筛选条件(导出不分页)
+  const exportUrl = useMemo(() => {
+    const p = new URLSearchParams();
+    if (filterParams.warehouseId !== undefined && filterParams.warehouseId !== "") p.set("warehouseId", String(filterParams.warehouseId));
+    if (filterParams.itemKeyword !== undefined && filterParams.itemKeyword !== "") p.set("itemKeyword", String(filterParams.itemKeyword));
+    if (filterParams.batchNo !== undefined && filterParams.batchNo !== "") p.set("batchNo", String(filterParams.batchNo));
+    const qs = p.toString();
+    return "/stock/export" + (qs ? `?${qs}` : "");
+  }, [filterParams]);
+
 
   const columns: ProColumns<StockRow>[] = [
     {
@@ -156,7 +177,17 @@ export function StockQueryPage() {
       request={request}
       headerTitle={false}
       options={false}
-      search={{ labelWidth: "auto", defaultCollapsed: false, span: 6 }}
+      search={{
+        labelWidth: "auto",
+        defaultCollapsed: false,
+        span: 6,
+        optionRender: (_searchConfig, _props, dom) => [
+          ...dom,
+          canExport && (
+            <ExportButton key="export" url={exportUrl} filename="库存.xlsx" />
+          ),
+        ],
+      }}
       pagination={{
         pageSize: 20,
         showSizeChanger: true,
