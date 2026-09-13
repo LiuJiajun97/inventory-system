@@ -23,6 +23,7 @@ import type {
   SalesOrder,
   PurchaseReturn,
   SalesReturn,
+  OperationLog,
   TransferDoc,
   StocktakeDoc,
   StockAdjustDoc,
@@ -664,4 +665,19 @@ export const reportApi = {
     page?: number;
     pageSize?: number;
   }) => http.get<unknown, PagedResponse<SalesReconRow>>("/reports/sales-recon", { params }),
+};
+
+// 操作日志(V16,仅 admin)
+export const operationLogApi = {
+  list: (params: {
+    username?: string;
+    module?: string;
+    success?: number;
+    from?: string;
+    to?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<OperationLog>>("/operation-logs", { params }),
+  // 模块筛选项(后端 LogModule 集中映射)
+  modules: () => http.get<unknown, string[]>("/operation-logs/modules"),
 };

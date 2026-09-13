@@ -38,6 +38,7 @@ import { AlertPage } from "./pages/alert/AlertPage";
 import { ReportPage } from "./pages/report/ReportPage";
 import { DictPage } from "./pages/dict/DictPage";
 import { MonitorPage } from "./pages/monitor/MonitorPage";
+import { OperationLogPage } from "./pages/operationLog/OperationLogPage";
 import { RequireAuth } from "./auth/RequireAuth";
 import { MenuProvider } from "./auth/MenuContext";
 
@@ -194,6 +195,14 @@ export default function App() {
                 element={
                   <RequireAuth>
                     <MonitorPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="operation-logs"
+                element={
+                  <RequireAuth>
+                    <OperationLogPage />
                   </RequireAuth>
                 }
               />

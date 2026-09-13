@@ -73,6 +73,7 @@ const MENU_ICON: Record<string, React.ReactNode> = {
   roles: <TeamOutlined />,
   dicts: <AuditOutlined />,
   monitor: <MonitorOutlined />,
+  "operation-logs": <FileSearchOutlined />,
 };
 
 const FALLBACK_ICON = <SettingOutlined />;

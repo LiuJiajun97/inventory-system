@@ -30,6 +30,10 @@ jwt:
   secret: ${JWT_SECRET:dev-secret-please-change-in-production-9f3a8b2c1e4d}
   expires-seconds: 28800
 
+# 操作日志:保留天数(每天 3 点定时清理早于该天数的记录)
+operation-log:
+  retention-days: 180
+
 springdoc:
   api-docs:
     path: /v3/api-docs

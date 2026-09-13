@@ -386,3 +386,21 @@ export interface ImportResult {
   imported: number;
   failed: ImportFailedRow[];
 }
+
+// ===== V16 操作日志 =====
+
+// 操作日志行(写操作执行流水)
+export interface OperationLog {
+  id: number;
+  username: string;
+  ip?: string | null;
+  module: string;
+  action: string; // POST/PUT/DELETE
+  path: string;
+  targetType?: string | null;
+  targetId?: number | null;
+  success: number; // 1 成功 0 失败
+  errorMsg?: string | null;
+  costMs?: number | null;
+  createdAt: string;
+}
