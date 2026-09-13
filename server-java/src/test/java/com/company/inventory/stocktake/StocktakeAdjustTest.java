@@ -298,6 +298,89 @@ class StocktakeAdjustTest {
     }
 
     /**
+     * 用例 4c:序列号仓库盘点差异调整(盘盈自动生成台账序列号,盘亏按台账选取,台账不足拒绝)。
+     */
+    @Test
+    void serialWarehouseStocktakeAdjust() {
+        WarehouseDO wh = new WarehouseDO();
+        wh.setWarehouseCode("PD-SN");
+        wh.setWarehouseName("序列号测试仓");
+        wh.setWarehouseType("finished");
+        wh.setEnableBatch(false);
+        wh.setEnableExpiry(false);
+        wh.setEnableSerial(true);
+        wh.setEnableLocation(false);
+        warehouseMapper.insert(wh);
+        long itemId = insertItem("PD-SN-ITEM");
+        // 序列号仓入库 2 件(逐个 SN)
+        StockOpRequest request = new StockOpRequest();
+        request.setWarehouseId(wh.getId());
+        request.setDocNo("RK-PD-SN");
+        request.setOperator("pd_test");
+        StockLine line = new StockLine();
+        line.setItemId(itemId);
+        line.setQty(new BigDecimal("2"));
+        line.setSerialNos(List.of("SN-PD-1001", "SN-PD-1002"));
+        request.setLines(List.of(line));
+        stockCoreService.inbound(request);
+        // 盘盈 +1:生成 gain 调整单并审批执行,台账新增 1 个自动序列号
+        StocktakeDocVO vo = stocktakeService.create(new StocktakeCreateDTO(
+                wh.getId(), LocalDate.now(), "item", List.of(itemId), null), "pd_creator");
+        StocktakeDocVO got = stocktakeService.get(vo.id());
+        long lineId = got.items().get(0).id();
+        stocktakeService.enterActual(vo.id(), new StocktakeActualDTO(
+                List.of(new StocktakeActualLineDTO(lineId, new BigDecimal("3")))), "pd_creator");
+        List<StockAdjustDocVO> docs = stocktakeService.generateAdjust(vo.id(), "pd_creator");
+        assertEquals(1, docs.size());
+        StockAdjustDocVO gain = docs.get(0);
+        stockAdjustService.submit(gain.id(), "pd_creator");
+        StockAdjustDocVO done = stockAdjustService.approve(gain.id(), "pd_approver");
+        assertEquals("completed", done.status());
+        assertEquals(0, new BigDecimal("3").compareTo(serialStockQty(wh.getId(), itemId)));
+        Long serialCount = jdbcTemplate.queryForObject(
+                "select count(*) from serial where item_id = ? and status = 'in_stock'",
+                Long.class, itemId);
+        assertEquals(3L, serialCount);
+        // 盘亏 -1:按台账选取执行
+        StocktakeDocVO vo2 = stocktakeService.create(new StocktakeCreateDTO(
+                wh.getId(), LocalDate.now(), "item", List.of(itemId), null), "pd_creator");
+        long lineId2 = stocktakeService.get(vo2.id()).items().get(0).id();
+        stocktakeService.enterActual(vo2.id(), new StocktakeActualDTO(
+                List.of(new StocktakeActualLineDTO(lineId2, new BigDecimal("2")))), "pd_creator");
+        StockAdjustDocVO loss = stocktakeService.generateAdjust(vo2.id(), "pd_creator").get(0);
+        stockAdjustService.submit(loss.id(), "pd_creator");
+        assertEquals("completed", stockAdjustService.approve(loss.id(), "pd_approver").status());
+        assertEquals(0, new BigDecimal("2").compareTo(serialStockQty(wh.getId(), itemId)));
+        // 台账不足:手工调整单盘亏 3 个(台账仅 2 个),审批必须拒绝(不静默扣)
+        StockAdjustDocVO overLoss = stockAdjustService.create(new StockAdjustCreateDTO(wh.getId(),
+                LocalDate.now(), "loss", null, null,
+                List.of(new StockAdjustLineDTO(itemId, new BigDecimal("3"), new BigDecimal("1"),
+                        null, null, "台账不足场景"))), "pd_creator");
+        stockAdjustService.submit(overLoss.id(), "pd_creator");
+        assertThrows(BizException.class, () -> stockAdjustService.approve(overLoss.id(), "pd_approver"));
+        // 清理本用例残留(adjust 流水会污染其他用例的全表计数)
+        jdbcTemplate.update("DELETE FROM stock_transaction WHERE item_id = ?", itemId);
+        jdbcTemplate.update("DELETE FROM serial WHERE item_id = ?", itemId);
+    }
+
+    /**
+     * 序列号仓物品库存总量。
+     *
+     * @param whId   仓库 ID
+     * @param itemId 物品 ID
+     * @return 总量
+     */
+    private BigDecimal serialStockQty(long whId, long itemId) {
+        List<StockDO> rows = stockMapper.selectList(new LambdaQueryWrapper<StockDO>()
+                .eq(StockDO::getWarehouseId, whId).eq(StockDO::getItemId, itemId));
+        BigDecimal total = BigDecimal.ZERO;
+        for (StockDO row : rows) {
+            total = total.add(row.getQuantity());
+        }
+        return total;
+    }
+
+    /**
      * 造物品。
      *
      * @param code 编码

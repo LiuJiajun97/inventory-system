@@ -15,9 +15,11 @@ import com.company.inventory.model.entity.adjust.StockAdjustDocDO;
 import com.company.inventory.model.entity.adjust.StockAdjustDocItemDO;
 import com.company.inventory.model.entity.item.ItemDO;
 import com.company.inventory.model.entity.stock.BatchDO;
+import com.company.inventory.model.entity.stock.SerialDO;
 import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.BatchMapper;
 import com.company.inventory.mapper.ItemMapper;
+import com.company.inventory.mapper.SerialMapper;
 import com.company.inventory.mapper.StockAdjustDocItemMapper;
 import com.company.inventory.mapper.StockAdjustDocMapper;
 import com.company.inventory.mapper.WarehouseMapper;
@@ -74,6 +76,8 @@ public class StockAdjustServiceImpl implements StockAdjustService {
     private final ItemMapper itemMasterMapper;
     /** 批次 Mapper(调整行携带批次时取批次号)。 */
     private final BatchMapper batchMapper;
+    /** 序列号台账 Mapper(序列号仓库盘盈自动生成/盘亏按台账选取)。 */
+    private final SerialMapper serialMapper;
     /** 审批资格校验。 */
     private final ApprovalGuard approvalGuard;
     /** 单据号服务。 */
@@ -91,6 +95,7 @@ public class StockAdjustServiceImpl implements StockAdjustService {
      * @param warehouseMapper  仓库 Mapper
      * @param itemMasterMapper 物品 Mapper
      * @param batchMapper      批次 Mapper
+     * @param serialMapper     序列号台账 Mapper
      * @param approvalGuard    审批资格校验
      * @param docNoService     单据号服务
      * @param stateSupport     状态机支撑
@@ -98,13 +103,14 @@ public class StockAdjustServiceImpl implements StockAdjustService {
      */
     public StockAdjustServiceImpl(StockAdjustDocMapper docMapper, StockAdjustDocItemMapper itemMapper,
             WarehouseMapper warehouseMapper, ItemMapper itemMasterMapper, BatchMapper batchMapper,
-            ApprovalGuard approvalGuard, DocNoService docNoService, DocStateSupport stateSupport,
-            StockCoreService stockCoreService) {
+            SerialMapper serialMapper, ApprovalGuard approvalGuard, DocNoService docNoService,
+            DocStateSupport stateSupport, StockCoreService stockCoreService) {
         this.docMapper = docMapper;
         this.itemMapper = itemMapper;
         this.warehouseMapper = warehouseMapper;
         this.itemMasterMapper = itemMasterMapper;
         this.batchMapper = batchMapper;
+        this.serialMapper = serialMapper;
         this.approvalGuard = approvalGuard;
         this.docNoService = docNoService;
         this.stateSupport = stateSupport;
@@ -384,6 +390,8 @@ public class StockAdjustServiceImpl implements StockAdjustService {
 
     /**
      * 执行调整(加入调用方事务):gain 调整入库,loss/scrap 调整出库。
+     * 序列号仓库:盘点录入只录数量无序列号,盘盈自动生成台账序列号,
+     * 盘亏按 in_stock 台账按物品选取(台账不足拒绝——数量超台账说明盘点数据有误,不静默扣)。
      *
      * @param doc 调整单
      */
@@ -396,6 +404,8 @@ public class StockAdjustServiceImpl implements StockAdjustService {
             throw new BizException(DOC_NAME + "无调整行,不可执行");
         }
         boolean gain = ErrorCode.ADJUST_TYPE_GAIN.equals(doc.getAdjustType());
+        WarehouseDO warehouse = warehouseMapper.selectById(doc.getWarehouseId());
+        boolean serialWh = warehouse != null && Boolean.TRUE.equals(warehouse.getEnableSerial());
         StockOpRequest request = new StockOpRequest();
         request.setWarehouseId(doc.getWarehouseId());
         request.setDocNo(doc.getDocNo());
@@ -416,6 +426,9 @@ public class StockAdjustServiceImpl implements StockAdjustService {
                 sl.setProductionDate(batch.getProductionDate());
                 sl.setExpiryDate(batch.getExpiryDate());
             }
+            if (serialWh) {
+                sl.setSerialNos(gain ? generateSerials(doc, line) : pickSerials(doc, line));
+            }
             stockLines.add(sl);
         }
         request.setLines(stockLines);
@@ -424,6 +437,54 @@ public class StockAdjustServiceImpl implements StockAdjustService {
         } else {
             stockCoreService.outbound(request);
         }
+    }
+
+    /**
+     * 盘盈自动生成序列号:格式 物品编码-ADJ-调整单号-3位序号(台账唯一,冲突 400 可重试)。
+     *
+     * @param doc  调整单
+     * @param line 调整行
+     * @return 序列号列表(数量=行数量)
+     */
+    private List<String> generateSerials(StockAdjustDocDO doc, StockAdjustDocItemDO line) {
+        long qty = line.getQty().longValue();
+        if (line.getQty().stripTrailingZeros().scale() > 0) {
+            throw new BizException(DOC_NAME + "行" + line.getLineNo() + "序列号仓库数量必须为整数");
+        }
+        ItemDO item = itemMasterMapper.selectById(line.getItemId());
+        String prefix = (item == null ? "ITEM" : item.getItemCode()) + "-ADJ-" + doc.getDocNo() + "-";
+        List<String> serials = new ArrayList<>();
+        for (long i = 1; i <= qty; i++) {
+            serials.add(prefix + String.format("%03d", i));
+        }
+        Long dup = serialMapper.selectCount(new LambdaQueryWrapper<SerialDO>()
+                .in(SerialDO::getSerialNo, serials));
+        if (dup != null && dup > 0) {
+            throw new BizException("自动生成的序列号已存在,请作废本单后重新生成");
+        }
+        return serials;
+    }
+
+    /**
+     * 盘亏按序列号台账选取:本仓本物品 in_stock 状态按入库序取前 N 个,不足 400。
+     *
+     * @param doc  调整单
+     * @param line 调整行
+     * @return 选中的序列号列表(数量=行数量)
+     */
+    private List<String> pickSerials(StockAdjustDocDO doc, StockAdjustDocItemDO line) {
+        long qty = line.getQty().longValue();
+        List<SerialDO> pool = serialMapper.selectList(new LambdaQueryWrapper<SerialDO>()
+                .eq(SerialDO::getItemId, line.getItemId())
+                .eq(SerialDO::getWarehouseId, doc.getWarehouseId())
+                .eq(SerialDO::getStatus, ErrorCode.SERIAL_STATUS_IN_STOCK)
+                .orderByAsc(SerialDO::getId)
+                .last("limit " + qty));
+        if (pool.size() != qty) {
+            throw new BizException(DOC_NAME + "行" + line.getLineNo() + "序列号台账不足" + qty
+                    + "个(现有" + pool.size() + "个),实盘数量与台账不符,请作废后重新盘点");
+        }
+        return pool.stream().map(SerialDO::getSerialNo).collect(Collectors.toList());
     }
 
     /**
