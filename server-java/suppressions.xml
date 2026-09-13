@@ -20,8 +20,8 @@
     <suppress files="[\\/]OutboundServiceImpl\.java" checks="ParameterNumberCheck" lines="108-117"/>
     <!-- 销售订单服务构造器:11 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
     <suppress files="[\\/]SalesOrderServiceImpl\.java" checks="ParameterNumberCheck" lines="110-116"/>
-    <!-- 库存调整单服务构造器:9 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
-    <suppress files="[\\/]StockAdjustServiceImpl\.java" checks="ParameterNumberCheck" lines="97-103"/>
+    <!-- 库存调整单服务构造器:10 个依赖注入(含 ApprovalGuard/StockCoreService),属 Spring 构造器注入 -->
+    <suppress files="[\\/]StockAdjustServiceImpl\.java" checks="ParameterNumberCheck" lines="104-106"/>
     <!-- 盘点单服务构造器:9 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
     <suppress files="[\\/]StocktakeServiceImpl\.java" checks="ParameterNumberCheck" lines="100-106"/>
     <!-- 采购订单服务构造器:8 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
@@ -59,4 +59,6 @@
     <suppress files="[\\/]OpeningStockServiceImpl\.java" checks="ParameterNumberCheck" lines="98-101"/>
     <!-- V17 单据明细行查询服务构造器:10 个只读主表 Mapper 注入,属 Spring 构造器注入 -->
     <suppress files="[\\/]DocLineServiceImpl\.java" checks="ParameterNumberCheck" lines="90-100"/>
+    <!-- V20 库存成本报表服务构造器:9 个依赖注入(流水/单据/主数据 Mapper),属 Spring 构造器注入 -->
+    <suppress files="[\\/]CostReportServiceImpl\.java" checks="ParameterNumberCheck" lines="127-131"/>
 </suppressions>

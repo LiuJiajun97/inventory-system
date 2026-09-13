@@ -182,10 +182,7 @@ public class TransferServiceImpl implements TransferService {
      */
     @Override
     public TransferDocVO get(long id) {
-        TransferDocDO doc = docMapper.selectById(id);
-        if (doc == null) {
-            throw BizException.notFound("调拨单不存在");
-        }
+        TransferDocDO doc = requireDoc(id);
         return toVOs(List.of(doc)).get(0);
     }
 
@@ -397,7 +394,7 @@ public class TransferServiceImpl implements TransferService {
     }
 
     /**
-     * 查调拨单,不存在抛 404。
+     * 查调拨单,不存在抛 404,非 admin 无权访问该仓单据抛 403。
      *
      * @param id 调拨单 ID
      * @return 调拨单
@@ -407,7 +404,24 @@ public class TransferServiceImpl implements TransferService {
         if (doc == null) {
             throw BizException.notFound("调拨单不存在");
         }
+        assertWarehouseAccess(doc.getFromWarehouseId(), doc.getToWarehouseId());
         return doc;
+    }
+
+    /**
+     * 数据权限按单据所属仓校验:非 admin 且源仓/目的仓均不在授权列表 → 403。
+     *
+     * @param fromWarehouseId 源仓 ID
+     * @param toWarehouseId   目的仓 ID
+     */
+    private void assertWarehouseAccess(Long fromWarehouseId, Long toWarehouseId) {
+        List<Long> allowed = DataScope.allowedWarehouseIds();
+        if (allowed == null) {
+            return;
+        }
+        if (!allowed.contains(fromWarehouseId) && !allowed.contains(toWarehouseId)) {
+            throw BizException.forbidden("无权操作该仓库的单据");
+        }
     }
 
     /**

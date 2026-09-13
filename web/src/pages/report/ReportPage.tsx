@@ -1,4 +1,4 @@
-// 报表中心(V15):单页 4 Tab——进销存月报/库龄呆滞/采购对账/销售对账
+// 报表中心(V15):单页 5 Tab——进销存月报/库龄呆滞/采购对账/销售对账/库存成本
 // 全部只读;菜单权限控制页面可见性,导出与列表读一致(不加新权限码)
 // Tabs 用 antd(与预警中心一致;pro-components 2.8 无 ProTabs 导出)
 
@@ -7,6 +7,7 @@ import { MonthlyReportTab } from "./MonthlyReportTab";
 import { AgeingReportTab } from "./AgeingReportTab";
 import { PurchaseReconTab } from "./PurchaseReconTab";
 import { SalesReconTab } from "./SalesReconTab";
+import { CostReportTab } from "./CostReportTab";
 
 export function ReportPage() {
   return (
@@ -17,6 +18,7 @@ export function ReportPage() {
         { key: "ageing", label: "库龄/呆滞", children: <AgeingReportTab /> },
         { key: "purchase", label: "采购对账", children: <PurchaseReconTab /> },
         { key: "sales", label: "销售对账", children: <SalesReconTab /> },
+        { key: "cost", label: "库存成本", children: <CostReportTab /> },
       ]}
     />
   );

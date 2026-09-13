@@ -1,14 +1,17 @@
 package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
+import com.company.inventory.model.query.report.CostReportQuery;
 import com.company.inventory.model.query.report.PurchaseReconQuery;
 import com.company.inventory.model.query.report.SalesReconQuery;
 import com.company.inventory.model.query.report.StockAgeingQuery;
 import com.company.inventory.model.query.report.StockMonthlyQuery;
+import com.company.inventory.model.vo.report.CostReportVO;
 import com.company.inventory.model.vo.report.PurchaseReconVO;
 import com.company.inventory.model.vo.report.SalesReconVO;
 import com.company.inventory.model.vo.report.StockAgeingVO;
 import com.company.inventory.model.vo.report.StockMonthlyVO;
+import com.company.inventory.service.CostReportService;
 import com.company.inventory.service.ReportService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 报表中心接口:进销存月报/库龄呆滞/采购对账/销售对账,各带 xlsx 导出。
+ * 报表中心接口:进销存月报/库龄呆滞/采购对账/销售对账/库存成本,各带 xlsx 导出。
  *
  * <p>全部只读;菜单权限控制页面可见性,导出与列表读权限一致(不另设权限码);
  * 数据权限与 7 列表同口径(admin 豁免、未授权查空、授权仓过滤)。</p>
@@ -35,13 +38,18 @@ public class ReportController {
     /** 报表服务。 */
     private final ReportService reportService;
 
+    /** 库存成本报表服务。 */
+    private final CostReportService costReportService;
+
     /**
      * 构造控制器。
      *
-     * @param reportService 报表服务
+     * @param reportService     报表服务
+     * @param costReportService 库存成本报表服务
      */
-    public ReportController(ReportService reportService) {
+    public ReportController(ReportService reportService, CostReportService costReportService) {
         this.reportService = reportService;
+        this.costReportService = costReportService;
     }
 
     /**
@@ -138,5 +146,29 @@ public class ReportController {
     @GetMapping("/sales-recon/export")
     public void exportSalesRecon(@Valid SalesReconQuery query, HttpServletResponse resp) {
         reportService.exportSalesRecon(query, resp);
+    }
+
+    /**
+     * 库存成本(移动均价)报表(成本单元 = 仓库+物品+批次,不分页,全量行 + 合计行)。
+     *
+     * @param query 查询条件(warehouseId/itemId/date 均可空)
+     * @return 报表(行 + 合计)
+     */
+    @Operation(summary = "库存成本(移动均价)报表")
+    @GetMapping("/cost")
+    public CostReportVO costReport(@Valid CostReportQuery query) {
+        return costReportService.costReport(query);
+    }
+
+    /**
+     * 库存成本 xlsx 导出(不分页,与列表筛选一致)。
+     *
+     * @param query 查询条件
+     * @param resp  HTTP 响应(xlsx 流)
+     */
+    @Operation(summary = "库存成本导出")
+    @GetMapping("/cost/export")
+    public void exportCostReport(@Valid CostReportQuery query, HttpServletResponse resp) {
+        costReportService.exportCostReport(query, resp);
     }
 }

@@ -44,6 +44,7 @@ import type {
   StockAgeingRow,
   PurchaseReconRow,
   SalesReconRow,
+  CostReportResult,
 } from "../types/report";
 
 export const authApi = {
@@ -790,6 +791,12 @@ export const reportApi = {
     page?: number;
     pageSize?: number;
   }) => http.get<unknown, PagedResponse<SalesReconRow>>("/reports/sales-recon", { params }),
+  // 库存成本(移动均价,不分页:全量行 + 合计)
+  cost: (params?: {
+    warehouseId?: number;
+    itemId?: number;
+    date?: string;
+  }) => http.get<unknown, CostReportResult>("/reports/cost", { params }),
 };
 
 // 操作日志(V16,仅 admin)

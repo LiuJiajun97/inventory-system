@@ -200,10 +200,7 @@ public class StocktakeServiceImpl implements StocktakeService {
      */
     @Override
     public StocktakeDocVO get(long id) {
-        StocktakeDocDO doc = docMapper.selectById(id);
-        if (doc == null) {
-            throw BizException.notFound("盘点单不存在");
-        }
+        StocktakeDocDO doc = requireDoc(id);
         return toVOs(List.of(doc)).get(0);
     }
 
@@ -503,7 +500,7 @@ public class StocktakeServiceImpl implements StocktakeService {
     }
 
     /**
-     * 查盘点单,不存在抛 404。
+     * 查盘点单,不存在抛 404,非 admin 无权访问该仓单据抛 403。
      *
      * @param id 盘点单 ID
      * @return 盘点单
@@ -513,7 +510,23 @@ public class StocktakeServiceImpl implements StocktakeService {
         if (doc == null) {
             throw BizException.notFound("盘点单不存在");
         }
+        assertWarehouseAccess(doc.getWarehouseId());
         return doc;
+    }
+
+    /**
+     * 数据权限按单据所属仓校验:非 admin 且所属仓不在授权列表 → 403。
+     *
+     * @param warehouseId 单据所属仓 ID
+     */
+    private void assertWarehouseAccess(Long warehouseId) {
+        List<Long> allowed = DataScope.allowedWarehouseIds();
+        if (allowed == null) {
+            return;
+        }
+        if (!allowed.contains(warehouseId)) {
+            throw BizException.forbidden("无权操作该仓库的单据");
+        }
     }
 
     /**

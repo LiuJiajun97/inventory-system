@@ -1,6 +1,8 @@
 package com.company.inventory.stocktake;
 
+import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.DataScope;
 import com.company.inventory.model.dto.adjust.StockAdjustCreateDTO;
 import com.company.inventory.model.dto.adjust.StockAdjustLineDTO;
 import com.company.inventory.model.dto.stock.StockOpRequest;
@@ -125,6 +127,26 @@ class StocktakeAdjustTest {
         jdbcTemplate.execute("DELETE FROM \"stock_adjust_doc_item\"");
         jdbcTemplate.execute("DELETE FROM \"stocktake_doc\"");
         jdbcTemplate.execute("DELETE FROM \"stocktake_doc_item\"");
+    }
+
+    /**
+     * 用例 0:数据权限按单据 ID——非 admin 授权仓不含盘点单所属仓 → 详情/作废 403;授权所属仓 → 放行。
+     */
+    @Test
+    void dataScopeByDocId() {
+        StocktakeDocVO vo = stocktakeService.create(
+                new StocktakeCreateDTO(warehouseId, LocalDate.now(), "all", null, null), "pd_creator");
+        try {
+            DataScope.set(List.of(999999L));
+            BizException ex = assertThrows(BizException.class, () -> stocktakeService.get(vo.id()));
+            assertEquals(ErrorCode.FORBIDDEN, ex.getCode(), "无权仓库应 403 而非 200");
+            assertEquals(403, ex.getStatus());
+            assertThrows(BizException.class, () -> stocktakeService.voidDoc(vo.id(), "pd_approver"));
+            DataScope.set(List.of(warehouseId));
+            assertNotNull(stocktakeService.get(vo.id()));
+        } finally {
+            DataScope.clear();
+        }
     }
 
     /**

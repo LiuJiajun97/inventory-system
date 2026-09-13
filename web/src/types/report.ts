@@ -80,3 +80,26 @@ export interface SalesReconRow {
   netAmount: string | null;
   details: ReconDocDetail[];
 }
+
+// 库存成本(移动均价)报表行(成本单元 = 仓库+物品+批次,batchId=0 为无批次单元)
+export interface CostReportRow {
+  warehouseId: number;
+  warehouseName: string | null;
+  itemId: number;
+  itemCode: string | null;
+  itemName: string | null;
+  unit: string | null;
+  batchId: number;
+  batchNo: string | null;
+  quantity: string;
+  // 均价 4 位小数(2.625 这类均价 2 位会失真)
+  avgPrice: string;
+  amount: string;
+}
+
+// 库存成本报表出参:全量行 + 合计行
+export interface CostReportResult {
+  rows: CostReportRow[];
+  totalQuantity: string;
+  totalAmount: string;
+}

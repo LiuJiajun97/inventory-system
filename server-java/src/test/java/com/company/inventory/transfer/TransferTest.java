@@ -1,6 +1,8 @@
 package com.company.inventory.transfer;
 
+import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.DataScope;
 import com.company.inventory.model.dto.transfer.TransferActionDTO;
 import com.company.inventory.model.dto.transfer.TransferCreateDTO;
 import com.company.inventory.model.dto.transfer.TransferLineDTO;
@@ -192,6 +194,26 @@ class TransferTest {
         assertThrows(BizException.class, () -> transferService.approve(id, "tr_creator"));
         // 他人审批通过
         assertEquals("completed", transferService.approve(id, "tr_approver").status());
+    }
+
+    /**
+     * 用例 5:数据权限按单据 ID——非 admin 授权仓不含源/目的仓 → 详情/作废 403;授权目的仓(任一命中)→ 放行。
+     */
+    @Test
+    void dataScopeByDocId() {
+        long id = createDoc("5");
+        try {
+            DataScope.set(List.of(999999L));
+            BizException ex = assertThrows(BizException.class, () -> transferService.get(id));
+            assertEquals(ErrorCode.FORBIDDEN, ex.getCode(), "无权仓库应 403 而非 200");
+            assertEquals(403, ex.getStatus());
+            assertThrows(BizException.class, () -> transferService.voidDoc(id, "tr_approver"));
+            // 源仓或目的仓任一在授权列表即放行
+            DataScope.set(List.of(toWh));
+            assertNotNull(transferService.get(id));
+        } finally {
+            DataScope.clear();
+        }
     }
 
     /**
