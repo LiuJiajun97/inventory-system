@@ -1,9 +1,9 @@
 # 库存管理系统
 
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable、单据表单页 ProForm 表头)。
-> 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占/退货/期初 + 基础出入库,21 个 Controller,前端 33 个页面(26 个业务模块)。
+> 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占/退货/期初/报表 + 基础出入库,22 个 Controller,前端 34 个页面(27 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **159 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **163 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初 + 4 V15 报表中心),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -68,7 +68,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 159 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 163 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -110,7 +110,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 | 字典:读 | ✅ | ✅ | ✅ |
 | 字典:增删改/停用 | ✅ | ❌ | ❌ |
 | 用户管理 | ✅ | ❌ | ❌ |
-| 数据权限(10 个库存列表行级过滤,批 2 + V11 退货列表 + V13 期初列表) | 豁免全量 | 仅授权仓 | 仅授权仓(未授权查空) |
+| 数据权限(14 个列表行级过滤:批 2 7 列表 + V11 退货 2 + V13 期初 + V15 报表 4) | 豁免全量 | 仅授权仓 | 仅授权仓(未授权查空) |
 | 系统监控 | ✅ | ❌ | ❌ |
 | 角色管理(RBAC:角色 CRUD + 角色-菜单分配) | ✅ | ❌ | ❌ |
 | 菜单管理(RBAC:菜单树查看/增删改) | ✅ | ❌ | ❌ |
@@ -157,6 +157,8 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 | GET | `/menus/tree` | 全量菜单树(含 button 子节点,管理页用) | admin |
 | POST/PUT/DELETE | `/menus` `/menus/:id` | 菜单新建(code 唯一) / 更新(code 不可改) / 删除(有子节点禁删,连带清 role_menu) | admin |
 | GET | `/monitor/overview` | 系统监控(本机 CPU/内存/JVM/磁盘快照,5 秒轮询) | admin |
+| GET | `/reports/stock-monthly` `/reports/stock-ageing` `/reports/purchase-recon` `/reports/sales-recon` | 报表中心 4 报表(进销存月报/库龄呆滞/采购对账/销售对账,只读聚合,分页) | 登录(菜单控可见性) |
+| GET | `/reports/{stock-monthly,stock-ageing,purchase-recon,sales-recon}/export` | 报表 xlsx 导出(与列表读一致,不分页) | 登录(菜单控可见性) |
 
 完整契约以 Swagger 为准:`http://127.0.0.1:8081/docs`。
 
@@ -188,6 +190,7 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 19. **导入导出(V12)**:EasyExcel 3.3.4(唯一新增依赖)。**导入**(仅 admin):物品/供应商/客户 3 类主数据 xlsx,逐行校验(必填/数值/分类与结算方式中英文映射),成功行走既有 `Service.create`(复用编码/条码查重与审计填充,行级独立事务),失败行汇总进 `{imported, failed:[{row,code,reason}]}`(HTTP 恒 200,非 xlsx/解析失败 400);模板下载 `GET /items|suppliers|customers/template`(表头+1 行示例)。**导出**(与列表读同权限,不分页复用列表 Query DTO + Service 查询):物品/供应商/客户/库存/入库/出库/采购/销售 8 个列表,中文表头,单据一行一单(单号/日期/状态/对方/仓库/金额/备注),库存导出沿用 DataScope 数据权限;响应头 `Content-Disposition: attachment; filename*=UTF-8''<中文名>.xlsx`。按钮码 11 个(V12 迁移:admin 全部/operator 5 个列表导出/viewer 无),前端 `ImportButton`(Upload 自定义请求 + 失败行 Modal)/`ExportButton`(fetch blob 下载)组件。
 20. **期初库存(V13)**:系统启用时批量录入现有库存。独立期初单(QC 前缀)create 即过账(无草稿流):单事务内校验仓库存在/序列号仓拒收(“期初不支持序列号物品,请走入库单”)/批次·保质期仓必填批次号/物品存在/同单不重复/每物品×仓库限一次期初(命中“已有期初”整单回滚)→ 落期初单头/行(含单价/批次/效期/库位快照,head `total_qty`=Σ行)→ 服务端构造 `InboundCreateDTO`(refType=opening,refDocId=期初单 ID,docType="期初")调 `InboundService.create` 走现有入库链路(StockCoreService 零改动,库存/流水可追溯,任一行失败整单回滚)。列表/详情带 DataScope 数据权限;refType 中文映射加“期初”。
 21. **单据打印(V14,纯前端,后端零改动)**:10 类单据(采购订单/销售订单/入库单/出库单/调拨单/采购退货单/销售退货单/盘点单/库存调整/期初库存)可打印纸质归档。各页详情弹窗底部新增「打印」按钮 → 通用组件 `components/PrintDocModal.tsx` 渲染 A4 黑白朴素版式(标题+单号居中、头部 label/value 网格空值自动过滤、原生 `<table>` 明细表 1px 黑边框带合计行、底部状态/备注/制单审批签字区),点「打印」调浏览器原生 `window.print()`;打印 `@media print` 规则在 `styles/global.css`(隐藏主应用与其它弹窗,仅保留 `.print-doc-sheet`,`@page` A4 边距 12mm)。每页用自己的 `buildPrintData(detail)` 转打印数据(金额 toFixed(2)、日期 yyyy-MM-dd、退货带原单号、出入库带仓库/承运/车牌);权限与导出一致(列表能看即可打印),零新增依赖。
+22. **报表中心(V15,只读聚合,StockCoreService/既有 mapper XML 零改动)**:单页 4 Tab(`ReportController` `/api/v1/reports` + `ReportMapper.xml` 报表专用 SQL 放 `mapper/report/` 子包):① **进销存月报**(item 维度跨仓汇总,筛仓库/物品/日期区间):期初量 = 期初前最后一次流水的 `after_qty`、期末量 = 期末后最后一次流水的 `after_qty`,均按库存粒度 (item,warehouse,batch,location) 窗口函数 `row_number() over (partition by 4 列 order by created_at desc)` 取 `rn=1` 后 Σ(某粒度组合区间前无流水贡献 0,不整行丢弃);入 = Σ change_qty (inbound/transfer_in/adjust_in)、出 = -Σ change_qty (outbound/transfer_out/adjust_out),`pre_alloc` 不计;期初+入-出=期末(测试断言);金额 = 区间内 inbound/outbound_doc(doc_date 在区间,finished)行表 Σ tax_inclusive_total,经流水 doc_no 关联存在性过滤(无快照为空);行展开各仓期末明细 ② **库龄/呆滞**(批次维度;无批次仓按 item+仓库 汇总,生产时间取该仓最早入方向流水日期):库龄区间 0-30/31-90/91-180/>180 文字不带颜色,呆滞 = 该物品+仓库 N 天(默认 90)内无出方向流水且当前量 > 0,文字「呆滞」 ③ **采购对账**(供应商维度:期间内采购单数/量/价税合计 + 退货量/金额 + 净采购,行展开期间内采购单+退货单明细;采购单无仓字段,数据权限经其关联入库单仓库过滤) ④ **销售对账**(客户维度,销售单/退货单按自有仓库过滤)。4 报表各带 xlsx 导出(复用 `ExcelSupport`/`ExportButton` 机制,与列表读一致不加权限码,菜单权限控页面可见性);数据权限与 7 列表同口径(admin 豁免/未授权查空/授权仓过滤);Service 层纯 SELECT(只读),列表分页全在 SQL 层(count + LIMIT/OFFSET)。
 
 ---
 
@@ -214,7 +217,7 @@ inventory-system/
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
 │   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,V11__return,V12__import_export,V13__opening_stock,seed}.sql
-│   └── src/test/java/         24 个测试类,159 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初)
+│   └── src/test/java/         25 个测试类,163 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/
