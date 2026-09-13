@@ -3,7 +3,7 @@
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable、单据表单页 ProForm 表头)。
 > 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占/退货/期初/报表 + 基础出入库,22 个 Controller,前端 34 个页面(27 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **185 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初 + 4 V15 报表中心 + 3 V16 操作日志 + 6 V17 单据明细行 + 12 V18 三单匹配/结算域 + 1 V19 盘点防重复生成),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **186 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初 + 4 V15 报表中心 + 3 V16 操作日志 + 6 V17 单据明细行 + 12 V18 三单匹配/结算域 + 1 V19 盘点防重复生成 + 1 V19b 序列号仓盘点调整),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -68,7 +68,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 185 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 186 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -209,6 +209,7 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 25. **三单匹配/应收应付(V18,结算域,对标用友 U8/金蝶/SAP,只做业务台账不做财务凭证)**:① 4 新表(invoice/invoice_item/payment_doc/payment_line,V18__settlement.sql 幂等):发票头(FP 前缀,类型 purchase/sales,对方 供应商/客户,三态 draft/mismatch/confirmed/voided,行净额合计=头总额)+ 发票行(src 单据三元组+sign 正负向唯一约束,sign 冗余头表);付款/收款单(FK/SK 前缀,payType payment/receipt,created/voided)+ 核销行(invoice_id 唯一防重核销)。② 发票生命周期:仅 draft 可改(重算总额,金额不匹配→mismatch,平账→draft 可确认);confirm 要求平账且行净合计=头额;void 整单作废释放唯一约束(物理删行释放 (src,sign) 占用);防超开:源行已有未作废票占着→拒,开票额>含税额→拒;退货单过账后自动生成红字负票 draft(与正票同 src 不同 sign 并存,金额取负)。③ 付款/收款:勾 confirmed 正票核销,行级防超核(核销额>剩余可核→拒),负票禁核,作废释放核销额度;方向强校验(payment 只能付供应商票/receipt 只能收客户票)。④ 台账零建表实时聚合:应付(采购行 Σ 含税−采购退货行 Σ 含税)/应收(销售−销售退货),发票净额仅计 confirmed,已核销计未作废付款单,余额=单据−发票±核销;行展开对方全部发票(含未确认/作废)+ 订单执行子表(订单级未执行/执行中/已完成);仪表盘 2 卡(应付红/应收绿)。⑤ 权限:写接口 invoices:edit/payments:create/receipts:create(admin+operator),读与列表一致不加权限码,菜单控可见性;菜单 seed 结算分组 5 菜单 8 按钮。⑥ 数据权限:发票/付款/台账/仪表盘均不加 DataScope(与采购/销售订单列表同口径,采购单无仓字段;销售侧仓库口径待后续对齐)。StockCoreService/StockMapper.xml/原 172 测试零改动。
 26. **SPA 共享组件路由复用修复(付款/收款/台账)**:同一组件以不同 `mode` 挂两条路由(`PaymentListPage` payment/receipt、`LedgerPage` ap/ar、`PaymentNewPage` payment/receipt)时,React Router 复用同一组件实例,侧栏切换只更新 props 不重挂载,列表不刷新、下拉数据滞留上一模式(收款页曾按付款口径请求 500)。修复:6 条路由元素加 `key`(payment/receipt、ap/ar、payment-new/receipt-new),模式切换强制重挂载,ProTable 重新请求、筛选区与下拉按当前模式重建。
 27. **盘点单防重复生成调整单(库存完整性)**:已审批盘点单可无限点击"生成调整单",调整单每执行一次动一次库存,重复生成 = 盘盈/盘亏被重复计入。三层防护:① 服务层 `generateAdjust` 前置校验——该盘点单(`refDocNo` 匹配)已有未作废调整单 → 400"已生成过调整单",全部作废后方可重新生成;② 部分唯一索引 `uk_adjust_ref_doc_type (ref_doc_no, adjust_type) WHERE ref_doc_no IS NOT NULL AND status <> 'voided'` 并发竞态兜底(同盘点单盘盈/盘亏各一张,手工调整单 ref 为 null 不受限),全局异常处理器对 `DataIntegrityViolationException` 统一转 400"操作冲突,请刷新后重试";③ 前端列表/详情 VO 带 `adjustGenerated` 标记(批量一次查询非 N+1),已生成单"生成调整单"按钮替换为"已生成"Tag。来源单号仅由服务端写入:手工建/改调整单 API 忽略客户端传入的 refDocNo(防手工单占用盘点单索引位),盘点生成走独立方法 `createWithRef`。
+28. **序列号仓库盘点差异调整(V19b,过账补序列号)**:盘点录入只录数量不录序列号,而启用序列号的仓库(如成品仓)过账要求逐号,导致盘点生成的调整单审批必 400("入库行必须填写序列号")。修复在调整执行层(`StockAdjustServiceImpl.doExecute`,不碰 StockCoreService 红线):盘盈(gain)自动生成台账序列号,格式 `物品编码-ADJ-调整单号-3位序号`(如 RAW-RESIN-ADJ-TZ-20260913-0007-001,生成前查重,冲突 400 可作废重试);盘亏(loss/scrap)按本仓本物品 in_stock 台账按入库序取前 N 个,台账不足 → 400"实盘数量与台账不符,请作废后重新盘点"(不静默扣,台账不足本身说明盘点数据有误)。非序列号仓行为零变化。
 
 ---
 
@@ -235,7 +236,7 @@ inventory-system/
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
 │   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,V11__return,V12__import_export,V13__opening_stock,V15__report_menu,V16__operation_log,seed}.sql
-│   └── src/test/java/         28 个测试类,185 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心/V16 操作日志/V17 单据明细行/V18 三单匹配+结算域/V19 盘点防重复生成)
+│   └── src/test/java/         28 个测试类,186 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心/V16 操作日志/V17 单据明细行/V18 三单匹配+结算域/V19 盘点防重复生成/V19b 序列号仓盘点调整)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/
