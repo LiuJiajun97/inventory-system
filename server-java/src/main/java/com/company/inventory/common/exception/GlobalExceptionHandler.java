@@ -16,6 +16,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -95,6 +96,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
         return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
                 .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, "参数 " + e.getName() + " 类型错误"));
+    }
+
+    /**
+     * 处理缺少必填查询参数:400(原落入 500 兜底)。
+     *
+     * @param e 缺参异常
+     * @return 契约错误响应
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingParam(MissingServletRequestParameterException e) {
+        return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
+                .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, "缺少必填参数 " + e.getParameterName()));
     }
 
     /**
