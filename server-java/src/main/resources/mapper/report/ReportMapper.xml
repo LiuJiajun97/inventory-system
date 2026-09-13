@@ -1,0 +1,483 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 报表中心 SQL:进销存月报/库龄呆滞/采购对账/销售对账,全部只读 SELECT。
+     口径约定:入 = (inbound, transfer_in, adjust_in),出 = (outbound, transfer_out, adjust_out),
+     pre_alloc 不计;期初/期末按 (item,warehouse,batch,location) 粒度窗口函数取最后一条流水 after_qty。 -->
+<mapper namespace="com.company.inventory.mapper.report.ReportMapper">
+
+    <!-- 月报流水表过滤:用户选仓 + 数据权限授权仓 + 物品集合(alias 固定 t) -->
+    <sql id="monthlyTxFilter">
+        <if test="q.warehouseId != null">
+            AND t.warehouse_id = #{q.warehouseId}
+        </if>
+        <if test="q.allowedWarehouseIds != null">
+            AND t.warehouse_id IN
+            <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                #{wh}
+            </foreach>
+        </if>
+        <if test="q.itemIds != null">
+            AND t.item_id IN
+            <foreach collection="q.itemIds" item="it" open="(" separator="," close=")">
+                #{it}
+            </foreach>
+        </if>
+    </sql>
+
+    <!-- 月报单据金额过滤(alias 固定 d/i) -->
+    <sql id="monthlyDocAmountFilter">
+        <if test="q.warehouseId != null">
+            AND d.warehouse_id = #{q.warehouseId}
+        </if>
+        <if test="q.allowedWarehouseIds != null">
+            AND d.warehouse_id IN
+            <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                #{wh}
+            </foreach>
+        </if>
+        <if test="q.itemIds != null">
+            AND i.item_id IN
+            <foreach collection="q.itemIds" item="it" open="(" separator="," close=")">
+                #{it}
+            </foreach>
+        </if>
+    </sql>
+
+    <!-- 月报 item 集合计数 -->
+    <select id="countMonthlyItems" resultType="long">
+        SELECT COUNT(*)
+        FROM (
+            SELECT DISTINCT t.item_id
+            FROM stock_transaction t
+            WHERE (#{q.toDate}::date IS NULL OR t.created_at &lt; #{q.toDate}::date + INTERVAL '1 day')
+            <include refid="monthlyTxFilter"/>
+        ) b
+    </select>
+
+    <!-- 月报聚合:item 维度,期初/期末走粒度窗口函数,入/出走方向 SUM,金额走单据行价税合计 -->
+    <select id="selectMonthlyItems" resultType="com.company.inventory.model.vo.report.MonthlyAggRow">
+        WITH base AS (
+            SELECT DISTINCT t.item_id
+            FROM stock_transaction t
+            WHERE (#{q.toDate}::date IS NULL OR t.created_at &lt; #{q.toDate}::date + INTERVAL '1 day')
+            <include refid="monthlyTxFilter"/>
+        ),
+        opening AS (
+            SELECT x.item_id AS item_id, SUM(x.after_qty) AS opening_qty
+            FROM (
+                SELECT t.item_id, t.after_qty,
+                       row_number() OVER (PARTITION BY t.item_id, t.warehouse_id, t.batch_id, t.location_id
+                                          ORDER BY t.created_at DESC) AS rn
+                FROM stock_transaction t
+                WHERE t.created_at &lt; #{q.fromDate}
+                <include refid="monthlyTxFilter"/>
+            ) x
+            WHERE x.rn = 1
+            GROUP BY x.item_id
+        ),
+        closing AS (
+            SELECT x.item_id AS item_id, SUM(x.after_qty) AS closing_qty
+            FROM (
+                SELECT t.item_id, t.after_qty,
+                       row_number() OVER (PARTITION BY t.item_id, t.warehouse_id, t.batch_id, t.location_id
+                                          ORDER BY t.created_at DESC) AS rn
+                FROM stock_transaction t
+                WHERE (#{q.toDate}::date IS NULL OR t.created_at &lt; #{q.toDate}::date + INTERVAL '1 day')
+                <include refid="monthlyTxFilter"/>
+            ) x
+            WHERE x.rn = 1
+            GROUP BY x.item_id
+        ),
+        inflow AS (
+            SELECT t.item_id AS item_id, SUM(t.change_qty) AS in_qty
+            FROM stock_transaction t
+            WHERE t.biz_code IN ('inbound', 'transfer_in', 'adjust_in')
+              AND (#{q.fromDate}::date IS NULL OR t.created_at &gt;= #{q.fromDate})
+              AND (#{q.toDate}::date IS NULL OR t.created_at &lt; #{q.toDate}::date + INTERVAL '1 day')
+            <include refid="monthlyTxFilter"/>
+            GROUP BY t.item_id
+        ),
+        outflow AS (
+            SELECT t.item_id AS item_id, -SUM(t.change_qty) AS out_qty
+            FROM stock_transaction t
+            WHERE t.biz_code IN ('outbound', 'transfer_out', 'adjust_out')
+              AND (#{q.fromDate}::date IS NULL OR t.created_at &gt;= #{q.fromDate})
+              AND (#{q.toDate}::date IS NULL OR t.created_at &lt; #{q.toDate}::date + INTERVAL '1 day')
+            <include refid="monthlyTxFilter"/>
+            GROUP BY t.item_id
+        ),
+        in_amount AS (
+            SELECT i.item_id AS item_id, SUM(i.tax_inclusive_total) AS in_amount
+            FROM inbound_doc_item i
+            JOIN inbound_doc d ON d.id = i.doc_id
+            WHERE d.status = 'finished'
+              AND (#{q.fromDate}::date IS NULL OR d.doc_date &gt;= #{q.fromDate})
+              AND (#{q.toDate}::date IS NULL OR d.doc_date &lt;= #{q.toDate})
+              AND EXISTS (SELECT 1 FROM stock_transaction x WHERE x.doc_no = d.doc_no)
+            <include refid="monthlyDocAmountFilter"/>
+            GROUP BY i.item_id
+        ),
+        out_amount AS (
+            SELECT i.item_id AS item_id, SUM(i.tax_inclusive_total) AS out_amount
+            FROM outbound_doc_item i
+            JOIN outbound_doc d ON d.id = i.doc_id
+            WHERE d.status = 'finished'
+              AND (#{q.fromDate}::date IS NULL OR d.doc_date &gt;= #{q.fromDate})
+              AND (#{q.toDate}::date IS NULL OR d.doc_date &lt;= #{q.toDate})
+              AND EXISTS (SELECT 1 FROM stock_transaction x WHERE x.doc_no = d.doc_no)
+            <include refid="monthlyDocAmountFilter"/>
+            GROUP BY i.item_id
+        )
+        SELECT b.item_id AS "itemId",
+               COALESCE(o.opening_qty, 0) AS "openingQty",
+               COALESCE(c.closing_qty, 0) AS "closingQty",
+               COALESCE(f.in_qty, 0) AS "inQty",
+               COALESCE(ot.out_qty, 0) AS "outQty",
+               ia.in_amount AS "inAmount",
+               oa.out_amount AS "outAmount"
+        FROM base b
+        LEFT JOIN opening o ON o.item_id = b.item_id
+        LEFT JOIN closing c ON c.item_id = b.item_id
+        LEFT JOIN inflow f ON f.item_id = b.item_id
+        LEFT JOIN outflow ot ON ot.item_id = b.item_id
+        LEFT JOIN in_amount ia ON ia.item_id = b.item_id
+        LEFT JOIN out_amount oa ON oa.item_id = b.item_id
+        ORDER BY b.item_id
+        LIMIT #{q.limit} OFFSET #{q.offset}
+    </select>
+
+    <!-- 月报行展开:指定物品各仓期末量(粒度窗口函数后按 item×warehouse 汇总) -->
+    <select id="selectMonthlyWarehouseClosing" resultType="com.company.inventory.model.vo.report.MonthlyWhRow">
+        SELECT x.item_id AS "itemId", x.warehouse_id AS "warehouseId", SUM(x.after_qty) AS "qty"
+        FROM (
+            SELECT t.item_id, t.warehouse_id, t.after_qty,
+                   row_number() OVER (PARTITION BY t.item_id, t.warehouse_id, t.batch_id, t.location_id
+                                      ORDER BY t.created_at DESC) AS rn
+            FROM stock_transaction t
+            WHERE t.item_id IN
+            <foreach collection="itemIds" item="it" open="(" separator="," close=")">
+                #{it}
+            </foreach>
+            AND (#{q.toDate}::date IS NULL OR t.created_at &lt; #{q.toDate}::date + INTERVAL '1 day')
+            <if test="q.warehouseId != null">
+                AND t.warehouse_id = #{q.warehouseId}
+            </if>
+            <if test="q.allowedWarehouseIds != null">
+                AND t.warehouse_id IN
+                <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                    #{wh}
+                </foreach>
+            </if>
+        ) x
+        WHERE x.rn = 1
+        GROUP BY x.item_id, x.warehouse_id
+    </select>
+
+    <!-- 库龄/呆滞公共过滤:当前量 > 0 的 仓库×物品×批次 组合 -->
+    <sql id="ageingCur">
+        SELECT s.warehouse_id, s.item_id, s.batch_id, SUM(s.quantity) AS qty
+        FROM stock s
+        WHERE s.quantity &gt; 0
+        <if test="q.warehouseId != null">
+            AND s.warehouse_id = #{q.warehouseId}
+        </if>
+        <if test="q.allowedWarehouseIds != null">
+            AND s.warehouse_id IN
+            <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                #{wh}
+            </foreach>
+        </if>
+        <if test="q.itemIds != null">
+            AND s.item_id IN
+            <foreach collection="q.itemIds" item="it" open="(" separator="," close=")">
+                #{it}
+            </foreach>
+        </if>
+        GROUP BY s.warehouse_id, s.item_id, s.batch_id
+    </sql>
+
+    <!-- 库龄/呆滞公共 WHERE:库龄天数区间(prod_date 为 null 的行在设了区间时被自然过滤) -->
+    <sql id="ageingWhere">
+        <if test="q.ageFrom != null">
+            WHERE (CURRENT_DATE - e.prod_date) &gt;= #{q.ageFrom}
+        </if>
+        <if test="q.ageFrom == null and q.ageTo != null">
+            WHERE (CURRENT_DATE - e.prod_date) &lt;= #{q.ageTo}
+        </if>
+    </sql>
+
+    <!-- 库龄/呆滞公共 CTE:cur(当前量)+ enriched(生产时间:批次行取批次表,无批次行取该仓最早入方向流水日期) -->
+    <sql id="ageingCte">
+        WITH cur AS (
+            <include refid="ageingCur"/>
+        ),
+        enriched AS (
+            SELECT c.warehouse_id, c.item_id, c.batch_id, c.qty,
+                   COALESCE(b.production_date,
+                       (SELECT MIN(t2.created_at)::date
+                          FROM stock_transaction t2
+                         WHERE t2.warehouse_id = c.warehouse_id
+                           AND t2.item_id = c.item_id
+                           AND t2.biz_code IN ('inbound', 'transfer_in', 'adjust_in')
+                           AND t2.batch_id = 0)) AS prod_date
+            FROM cur c
+            LEFT JOIN batch b ON b.id = c.batch_id AND c.batch_id &lt;&gt; 0
+        )
+    </sql>
+
+    <!-- 库龄/呆滞计数 -->
+    <select id="countAgeing" resultType="long">
+        <include refid="ageingCte"/>
+        SELECT COUNT(*)
+        FROM enriched e
+        <include refid="ageingWhere"/>
+    </select>
+
+    <!-- 库龄/呆滞聚合:批次维度;呆滞 = 该物品+仓库 N 天内无出方向流水(当前量 > 0 已由 cur 保证) -->
+    <select id="selectAgeing" resultType="com.company.inventory.model.vo.report.AgeingRow">
+        <include refid="ageingCte"/>
+        SELECT e.warehouse_id AS "warehouseId", e.item_id AS "itemId", e.batch_id AS "batchId",
+               b2.batch_no AS "batchNo", e.prod_date AS "prodDate",
+               (CURRENT_DATE - e.prod_date) AS "ageDays",
+               e.qty AS "qty",
+               NOT EXISTS (SELECT 1
+                             FROM stock_transaction t3
+                            WHERE t3.warehouse_id = e.warehouse_id
+                              AND t3.item_id = e.item_id
+                              AND t3.biz_code IN ('outbound', 'transfer_out', 'adjust_out')
+                              AND t3.created_at &gt;= CURRENT_TIMESTAMP - make_interval(days =&gt; #{q.stagnantDays})) AS "stagnant"
+        FROM enriched e
+        LEFT JOIN batch b2 ON b2.id = e.batch_id AND e.batch_id &lt;&gt; 0
+        <include refid="ageingWhere"/>
+        ORDER BY e.warehouse_id, e.item_id, e.batch_id
+        LIMIT #{q.limit} OFFSET #{q.offset}
+    </select>
+
+    <!-- 采购对账 CTE:po(采购单聚合,数据权限走关联入库单仓库)+ ret(退货单聚合,退货单自有仓库) -->
+    <sql id="purchaseReconCte">
+        WITH po AS (
+            SELECT po.supplier_id AS supplier_id,
+                   COUNT(DISTINCT po.id) AS order_count,
+                   COALESCE(SUM(poi.ordered_qty), 0) AS order_qty,
+                   COALESCE(SUM(poi.tax_inclusive_total), 0) AS order_amount
+            FROM purchase_order po
+            JOIN purchase_order_item poi ON poi.order_id = po.id
+            WHERE po.status &lt;&gt; 'voided'
+              AND (#{q.fromDate}::date IS NULL OR po.doc_date &gt;= #{q.fromDate})
+              AND (#{q.toDate}::date IS NULL OR po.doc_date &lt;= #{q.toDate})
+            <if test="q.supplierId != null">
+                AND po.supplier_id = #{q.supplierId}
+            </if>
+            <if test="q.allowedWarehouseIds != null">
+                AND EXISTS (SELECT 1
+                              FROM inbound_doc d
+                             WHERE d.ref_type = 'purchase'
+                               AND d.ref_doc_id = po.id
+                               AND d.warehouse_id IN
+                               <foreach collection="q.allowedWarehouseIds" item="wh"
+                                        open="(" separator="," close=")">#{wh}</foreach>)
+            </if>
+            GROUP BY po.supplier_id
+        ),
+        ret AS (
+            SELECT po.supplier_id AS supplier_id,
+                   COALESCE(SUM(pri.quantity), 0) AS return_qty,
+                   COALESCE(SUM(pri.tax_inclusive_total), 0) AS return_amount
+            FROM purchase_return pr
+            JOIN purchase_return_item pri ON pri.doc_id = pr.id
+            JOIN purchase_order po ON po.id = pr.purchase_order_id
+            WHERE (#{q.fromDate}::date IS NULL OR pr.doc_date &gt;= #{q.fromDate})
+              AND (#{q.toDate}::date IS NULL OR pr.doc_date &lt;= #{q.toDate})
+            <if test="q.supplierId != null">
+                AND po.supplier_id = #{q.supplierId}
+            </if>
+            <if test="q.allowedWarehouseIds != null">
+                AND pr.warehouse_id IN
+                <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                    #{wh}
+                </foreach>
+            </if>
+            GROUP BY po.supplier_id
+        ),
+        base AS (
+            SELECT supplier_id FROM po
+            UNION
+            SELECT supplier_id FROM ret
+        )
+    </sql>
+
+    <!-- 采购对账计数 -->
+    <select id="countPurchaseRecon" resultType="long">
+        <include refid="purchaseReconCte"/>
+        SELECT COUNT(*) FROM base
+    </select>
+
+    <!-- 采购对账聚合(供应商维度) -->
+    <select id="selectPurchaseRecon" resultType="com.company.inventory.model.vo.report.ReconAggRow">
+        <include refid="purchaseReconCte"/>
+        SELECT b.supplier_id AS "partyId",
+               COALESCE(p.order_count, 0) AS "orderCount",
+               COALESCE(p.order_qty, 0) AS "orderQty",
+               COALESCE(p.order_amount, 0) AS "orderAmount",
+               COALESCE(r.return_qty, 0) AS "returnQty",
+               COALESCE(r.return_amount, 0) AS "returnAmount"
+        FROM base b
+        LEFT JOIN po p ON p.supplier_id = b.supplier_id
+        LEFT JOIN ret r ON r.supplier_id = b.supplier_id
+        ORDER BY b.supplier_id
+        LIMIT #{q.limit} OFFSET #{q.offset}
+    </select>
+
+    <!-- 采购对账行展开:期间内指定供应商的采购单+退货单明细(金额=行价税合计合计) -->
+    <select id="selectPurchaseReconDocs" resultType="com.company.inventory.model.vo.report.ReconDocRow">
+        SELECT po.supplier_id AS "partyId", po.doc_no AS "docNo", po.doc_date AS "docDate",
+               'purchase' AS "docType", COALESCE(SUM(poi.tax_inclusive_total), 0) AS "amount"
+        FROM purchase_order po
+        JOIN purchase_order_item poi ON poi.order_id = po.id
+        WHERE po.status &lt;&gt; 'voided'
+          AND (#{q.fromDate}::date IS NULL OR po.doc_date &gt;= #{q.fromDate})
+          AND (#{q.toDate}::date IS NULL OR po.doc_date &lt;= #{q.toDate})
+          AND po.supplier_id IN
+          <foreach collection="partyIds" item="p" open="(" separator="," close=")">#{p}</foreach>
+        <if test="q.allowedWarehouseIds != null">
+            AND EXISTS (SELECT 1
+                          FROM inbound_doc d
+                         WHERE d.ref_type = 'purchase'
+                           AND d.ref_doc_id = po.id
+                           AND d.warehouse_id IN
+                           <foreach collection="q.allowedWarehouseIds" item="wh"
+                                    open="(" separator="," close=")">#{wh}</foreach>)
+        </if>
+        GROUP BY po.supplier_id, po.doc_no, po.doc_date
+        UNION ALL
+        SELECT po.supplier_id AS "partyId", pr.doc_no AS "docNo", pr.doc_date AS "docDate",
+               'purchase_return' AS "docType", COALESCE(SUM(pri.tax_inclusive_total), 0) AS "amount"
+        FROM purchase_return pr
+        JOIN purchase_order po ON po.id = pr.purchase_order_id
+        LEFT JOIN purchase_return_item pri ON pri.doc_id = pr.id
+        WHERE (#{q.fromDate}::date IS NULL OR pr.doc_date &gt;= #{q.fromDate})
+          AND (#{q.toDate}::date IS NULL OR pr.doc_date &lt;= #{q.toDate})
+          AND po.supplier_id IN
+          <foreach collection="partyIds" item="p" open="(" separator="," close=")">#{p}</foreach>
+        <if test="q.allowedWarehouseIds != null">
+            AND pr.warehouse_id IN
+            <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                #{wh}
+            </foreach>
+        </if>
+        GROUP BY po.supplier_id, pr.doc_no, pr.doc_date
+        ORDER BY 3, 2
+    </select>
+
+    <!-- 销售对账 CTE:so(销售单聚合,销售单自有仓库)+ ret(退货单聚合,退货单自有仓库) -->
+    <sql id="salesReconCte">
+        WITH so AS (
+            SELECT so.customer_id AS customer_id,
+                   COUNT(DISTINCT so.id) AS order_count,
+                   COALESCE(SUM(soi.ordered_qty), 0) AS order_qty,
+                   COALESCE(SUM(soi.tax_inclusive_total), 0) AS order_amount
+            FROM sales_order so
+            JOIN sales_order_item soi ON soi.order_id = so.id
+            WHERE so.status &lt;&gt; 'voided'
+              AND (#{q.fromDate}::date IS NULL OR so.doc_date &gt;= #{q.fromDate})
+              AND (#{q.toDate}::date IS NULL OR so.doc_date &lt;= #{q.toDate})
+            <if test="q.customerId != null">
+                AND so.customer_id = #{q.customerId}
+            </if>
+            <if test="q.allowedWarehouseIds != null">
+                AND so.warehouse_id IN
+                <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                    #{wh}
+                </foreach>
+            </if>
+            GROUP BY so.customer_id
+        ),
+        ret AS (
+            SELECT so.customer_id AS customer_id,
+                   COALESCE(SUM(sri.quantity), 0) AS return_qty,
+                   COALESCE(SUM(sri.tax_inclusive_total), 0) AS return_amount
+            FROM sales_return sr
+            JOIN sales_return_item sri ON sri.doc_id = sr.id
+            JOIN sales_order so ON so.id = sr.sales_order_id
+            WHERE (#{q.fromDate}::date IS NULL OR sr.doc_date &gt;= #{q.fromDate})
+              AND (#{q.toDate}::date IS NULL OR sr.doc_date &lt;= #{q.toDate})
+            <if test="q.customerId != null">
+                AND so.customer_id = #{q.customerId}
+            </if>
+            <if test="q.allowedWarehouseIds != null">
+                AND sr.warehouse_id IN
+                <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                    #{wh}
+                </foreach>
+            </if>
+            GROUP BY so.customer_id
+        ),
+        base AS (
+            SELECT customer_id FROM so
+            UNION
+            SELECT customer_id FROM ret
+        )
+    </sql>
+
+    <!-- 销售对账计数 -->
+    <select id="countSalesRecon" resultType="long">
+        <include refid="salesReconCte"/>
+        SELECT COUNT(*) FROM base
+    </select>
+
+    <!-- 销售对账聚合(客户维度) -->
+    <select id="selectSalesRecon" resultType="com.company.inventory.model.vo.report.ReconAggRow">
+        <include refid="salesReconCte"/>
+        SELECT b.customer_id AS "partyId",
+               COALESCE(s.order_count, 0) AS "orderCount",
+               COALESCE(s.order_qty, 0) AS "orderQty",
+               COALESCE(s.order_amount, 0) AS "orderAmount",
+               COALESCE(r.return_qty, 0) AS "returnQty",
+               COALESCE(r.return_amount, 0) AS "returnAmount"
+        FROM base b
+        LEFT JOIN so s ON s.customer_id = b.customer_id
+        LEFT JOIN ret r ON r.customer_id = b.customer_id
+        ORDER BY b.customer_id
+        LIMIT #{q.limit} OFFSET #{q.offset}
+    </select>
+
+    <!-- 销售对账行展开:期间内指定客户的销售单+退货单明细(金额=行价税合计合计) -->
+    <select id="selectSalesReconDocs" resultType="com.company.inventory.model.vo.report.ReconDocRow">
+        SELECT so.customer_id AS "partyId", so.doc_no AS "docNo", so.doc_date AS "docDate",
+               'sales' AS "docType", COALESCE(SUM(soi.tax_inclusive_total), 0) AS "amount"
+        FROM sales_order so
+        JOIN sales_order_item soi ON soi.order_id = so.id
+        WHERE so.status &lt;&gt; 'voided'
+          AND (#{q.fromDate}::date IS NULL OR so.doc_date &gt;= #{q.fromDate})
+          AND (#{q.toDate}::date IS NULL OR so.doc_date &lt;= #{q.toDate})
+          AND so.customer_id IN
+          <foreach collection="partyIds" item="p" open="(" separator="," close=")">#{p}</foreach>
+        <if test="q.allowedWarehouseIds != null">
+            AND so.warehouse_id IN
+            <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                #{wh}
+            </foreach>
+        </if>
+        GROUP BY so.customer_id, so.doc_no, so.doc_date
+        UNION ALL
+        SELECT so.customer_id AS "partyId", sr.doc_no AS "docNo", sr.doc_date AS "docDate",
+               'sales_return' AS "docType", COALESCE(SUM(sri.tax_inclusive_total), 0) AS "amount"
+        FROM sales_return sr
+        JOIN sales_order so ON so.id = sr.sales_order_id
+        LEFT JOIN sales_return_item sri ON sri.doc_id = sr.id
+        WHERE (#{q.fromDate}::date IS NULL OR sr.doc_date &gt;= #{q.fromDate})
+          AND (#{q.toDate}::date IS NULL OR sr.doc_date &lt;= #{q.toDate})
+          AND so.customer_id IN
+          <foreach collection="partyIds" item="p" open="(" separator="," close=")">#{p}</foreach>
+        <if test="q.allowedWarehouseIds != null">
+            AND sr.warehouse_id IN
+            <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                #{wh}
+            </foreach>
+        </if>
+        GROUP BY so.customer_id, sr.doc_no, sr.doc_date
+        ORDER BY 3, 2
+    </select>
+
+</mapper>

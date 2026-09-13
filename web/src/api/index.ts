@@ -31,6 +31,12 @@ import type {
   DictItem,
   DictTypeItem,
 } from "../types/phase1";
+import type {
+  StockMonthlyRow,
+  StockAgeingRow,
+  PurchaseReconRow,
+  SalesReconRow,
+} from "../types/report";
 
 export const authApi = {
   login: (username: string, password: string) =>
@@ -617,4 +623,45 @@ export const salesReturnApi = {
   get: (id: number) => http.get<unknown, SalesReturn>(`/sales-returns/${id}`),
   create: (data: SalesReturnCreatePayload) =>
     http.post<unknown, { id: number; docNo: string; inDocNo: string }>("/sales-returns", data),
+};
+
+// 报表中心(V15):4 个报表 + 各自 xlsx 导出(导出走 ExportButton,不另设权限码)
+export const reportApi = {
+  // 进销存月报(item 维度,跨仓汇总)
+  monthly: (params: {
+    warehouseId?: number;
+    itemId?: number;
+    itemKeyword?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<StockMonthlyRow>>("/reports/stock-monthly", { params }),
+  // 库龄/呆滞(批次维度)
+  ageing: (params: {
+    warehouseId?: number;
+    itemId?: number;
+    itemKeyword?: string;
+    ageFrom?: number;
+    ageTo?: number;
+    stagnantDays?: number;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<StockAgeingRow>>("/reports/stock-ageing", { params }),
+  // 采购对账(供应商维度)
+  purchaseRecon: (params: {
+    supplierId?: number;
+    from?: string;
+    to?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<PurchaseReconRow>>("/reports/purchase-recon", { params }),
+  // 销售对账(客户维度)
+  salesRecon: (params: {
+    customerId?: number;
+    from?: string;
+    to?: string;
+    page?: number;
+    pageSize?: number;
+  }) => http.get<unknown, PagedResponse<SalesReconRow>>("/reports/sales-recon", { params }),
 };

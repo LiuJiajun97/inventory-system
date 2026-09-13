@@ -35,6 +35,7 @@ import { TransferPage } from "./pages/transfer/TransferPage";
 import { StocktakePage } from "./pages/stocktake/StocktakePage";
 import { AdjustPage } from "./pages/adjust/AdjustPage";
 import { AlertPage } from "./pages/alert/AlertPage";
+import { ReportPage } from "./pages/report/ReportPage";
 import { DictPage } from "./pages/dict/DictPage";
 import { MonitorPage } from "./pages/monitor/MonitorPage";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -130,6 +131,7 @@ export default function App() {
               <Route path="stocktakes" element={<StocktakePage />} />
               <Route path="stock-adjusts" element={<AdjustPage />} />
               <Route path="alerts" element={<AlertPage />} />
+              <Route path="reports" element={<ReportPage />} />
               <Route path="items" element={<ItemListPage />} />
               <Route
                 path="items/new"

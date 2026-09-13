@@ -27,6 +27,7 @@ import {
   AlertOutlined,
   MonitorOutlined,
   SettingOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearAuth, getUser } from "../auth/useAuth";
@@ -46,12 +47,14 @@ const DIR_ICON: Record<string, React.ReactNode> = {
   "stock-dir": <DatabaseOutlined />,
   "base-dir": <AppstoreOutlined />,
   "system-dir": <SettingOutlined />,
+  "reports-dir": <BarChartOutlined />,
 };
 
 // 二级菜单图标映射(按 menuCode;未知菜单回退 SettingOutlined,不崩)
 const MENU_ICON: Record<string, React.ReactNode> = {
   dashboard: <DashboardOutlined />,
   alerts: <AlertOutlined />,
+  reports: <BarChartOutlined />,
   "purchase-orders": <ShoppingCartOutlined />,
   "sales-orders": <DollarOutlined />,
   inbound: <ImportOutlined />,
