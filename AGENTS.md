@@ -18,7 +18,7 @@ IDEA 没开或通道不通时,退回下面命令。
 
 ```bash
 # 构建/测试(必须在 server-java/ 下跑,Maven 必须经包装脚本,根目录直接跑报 no POM)
-bash ../scripts/mvn.sh test               # 后端测试(当前 102 条,必须全绿)
+bash ../scripts/mvn.sh test               # 后端测试(当前 200 条,必须全绿)
 bash ../scripts/mvn.sh checkstyle:check   # checkstyle(必须 0 违规)
 bash ../scripts/mvn.sh package            # 构建
 bash ../scripts/mvn.sh spring-boot:run    # 启动后端(8081)
@@ -52,6 +52,30 @@ docker compose up -d                   # 起 PG
 - 权限:写接口加 `@RequireRole("admin")`;审批动作必须走 `common/support/ApprovalGuard`(admin 可自批、operator 禁自批),不要手写角色判断
 - 字典:配置类枚举才进字典表;状态机/流水枚举不进,前端静态映射(`web/src/components/StatusTag.tsx` 的 BIZ_LABEL,新增 bizCode 同步加,与 `ErrorCode.BIZ_CODE_*` 对齐);业务表引用字典列的停用校验在 `DictReferenceRegistry`,新表要加注册
 
+## 前端约定(web/,违反即返工)
+
+- 布局:列表页**无标题横幅**(侧栏已表明当前页);页面级操作按钮(如"新建")放筛选区同一行右侧(ProTable `search.optionRender`),不单独占行;筛选区 4 列/行(`search.span: 6`)
+- 按钮:新建按钮文案只写"新建"两个字
+- 列表:行高统一 **45px**(`theme.ts` 的 cellPaddingBlock=11);金额/数量一律走 `fmtMoney`/`fmtQty`(`web/src/utils/format.ts`),禁直接 `toFixed`;空态用 `EmptyHint`
+- 单据新增界面(采购/销售/调拨/调整 4 页统一):页面头部 + 全宽卡片 + 底部固定操作条;添加行按钮在明细表下方左对齐,主按钮(提交)底部居中
+- 详情:弹窗统一宽度 960、行紧凑;10 个详情抽屉样式统一
+- 时间:前端传**空格分隔**的东八区字符串(如 `2026-09-01 00:00:00`),后端统一入口 `DateRangeSupport`;展示格式 `yyyy-MM-dd HH:mm:ss`
+- 主题:颜色/圆角一律用 `web/src/theme.ts` 设计 token(主色 #3056d3、圆角 10),不随手写 hex
+- 路由:`withSuspense` 懒加载(每页自带 Suspense);react-router v6 **禁止 `<Suspense>` 出现在 `<Route>` 子树**(首屏白屏,build 不报错)
+- 仓库范围切换:走 `WarehouseScopeContext`;列表页要配 `useEffect + actionRef.reload()`(Context 变化 ProTable 不会自动重请求)
+- 列表状态筛选:`useSearchParams` + ProTable `params` 接 URL 参数(如 `/purchase-orders?status=pending`),页内手动改筛选仍可覆盖
+- 交互:可回退/草稿态操作去确认弹层;不可逆/动库存操作保留确认
+
+## 数据状态(生产库 inventory)
+
+- 保留验收数据:PGTEST-001(客户)/PGSUP-01(供应商)/PGCUS-01/CG-20260911-0007 等,用户明确不清数据,**看到库里数据不许顺手删**
+- E2E/测试不清生产库数据;测试一律走 `inventory_test` 库且自包含(自建自清)
+
+## 前端验证标准
+
+- `npm run build` 0 错是**必要不充分**:已多次 build 全绿但运行时白屏(Suspense 进 Route 子树、Vite 依赖预构建竞态)
+- 前端改动必须浏览器(5173)过目页面实际渲染才算完工;改依赖/路由后先重启 dev server 再验
+
 ## 硬约束(违反即返工)
 
 1. 禁止改 `StockCoreService` 扣减逻辑和 `mapper/StockMapper.xml` 的防穿仓 SQL(条件 UPDATE)
@@ -61,7 +85,7 @@ docker compose up -d                   # 起 PG
 5. MyBatis-Plus 空集合防护:`selectByIds`/`IN` 前必须 `isEmpty()`
 6. 不引入新依赖,除非任务书明确允许
 7. 动了接口/表/测试数/权限 → 同步更新 README.md 对应章节 + docs/迭代日志.md 追加一条,与代码同 commit
-8. **git 不默认提交**:改完代码只报告"待提交",必须等用户明确说"提交"才 commit
+8. **git 不默认提交**:改完代码只报告"待提交",必须等用户明确说"提交"才 commit;一次"提交"只授权当时那一批改动,后续新改动仍需再次授权,不得当作持续授权
 
 ## 踩坑备忘
 
