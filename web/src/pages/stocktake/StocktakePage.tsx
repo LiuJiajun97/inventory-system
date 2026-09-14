@@ -4,6 +4,7 @@
 // + 差异生成调整单(盘盈/盘亏各一张)+ 状态机操作
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
@@ -80,6 +81,10 @@ export function StocktakePage() {
   }, []);
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+    // 支持 URL 带 ?status= 直达(仪表盘待办"待审批"跳转预置筛选)
+    const [searchParams] = useSearchParams();
+    const urlStatus = searchParams.get("status") || undefined;
+
   const request = async (params: {
     current?: number;
     pageSize?: number;
@@ -428,7 +433,9 @@ export function StocktakePage() {
   return (
     <>
       <ProTable<StocktakeDoc>
-        rowKey="id"
+
+      params={{ status: urlStatus }}
+      rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无盘点单" /> }}
         actionRef={actionRef}
         columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<StocktakeDoc>[]) : columns}

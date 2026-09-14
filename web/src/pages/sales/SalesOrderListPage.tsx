@@ -7,7 +7,7 @@ import { useEffect, useRef, useState , useMemo} from "react";
 import { Button, Descriptions, Input, Modal, Popconfirm, Segmented, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
 import { fmtDate, fmtDateTime, fmtMoney, fmtQty } from "../../utils/format";
 import { EmptyHint } from "../../components/EmptyHint";
@@ -72,6 +72,13 @@ export function SalesOrderListPage() {
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
     // 当前筛选条件(导出 URL 用,随筛选变化重建)
   const [filterParams, setFilterParams] = useState<Record<string, string | number | undefined>>({});
+
+  // 支持 URL 带 ?status= 直达(仪表盘待办"待审批"跳转预置筛选)
+
+  const [searchParams] = useSearchParams();
+
+  const urlStatus = searchParams.get("status") || undefined;
+
 
 const request = async (params: {
     current?: number;
@@ -401,7 +408,9 @@ const request = async (params: {
   return (
     <>
       <ProTable<SalesOrder>
-        rowKey="id"
+
+      params={{ status: urlStatus }}
+      rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无销售订单" /> }}
         actionRef={actionRef}
         columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<SalesOrder>[]) : columns}

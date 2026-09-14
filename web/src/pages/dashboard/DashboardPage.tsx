@@ -171,8 +171,10 @@ export function DashboardPage() {
   const [tx60, setTx60] = useState<StockTransaction[]>([]);
   // TASK-v22b:各仓库存金额(成本报表全量,前端按仓聚合)
   const [costRows, setCostRows] = useState<CostReportRow[]>([]);
-  // TASK-v22b:待审批单据数(五类单据 pending 合计)
-  const [pendingCount, setPendingCount] = useState(0);
+  // TASK-v22b:待审批单据数(按单据类型分开计数,待办行各自跳对应列表页)
+  const [pendingByType, setPendingByType] = useState<
+    Record<"purchase" | "sales" | "transfer" | "stocktake" | "adjust", number>
+  >({ purchase: 0, sales: 0, transfer: 0, stocktake: 0, adjust: 0 });
 
   useEffect(() => {
     settlementApi.dashboard().then(setSettlement).catch(() => undefined);
@@ -192,10 +194,18 @@ export function DashboardPage() {
       .then((r) => setTx60(r.rows))
       .catch(() => undefined);
     reportApi.cost().then((r) => setCostRows(r.rows)).catch(() => undefined);
-    // 待审批:采购/销售/调拨/盘点/调整五类单据 pending 总数
+    // 待审批:采购/销售/调拨/盘点/调整五类单据 pending 分类计数(待办行各自跳对应列表页)
     const p = { status: "pending", page: 1, pageSize: 1 };
     Promise.all([purchaseApi.list(p), salesApi.list(p), transferApi.list(p), stocktakeApi.list(p), adjustApi.list(p)])
-      .then((rs) => setPendingCount(rs.reduce((s, r) => s + r.total, 0)))
+      .then(([pu, sa, tr, st, ad]) =>
+        setPendingByType({
+          purchase: pu.total,
+          sales: sa.total,
+          transfer: tr.total,
+          stocktake: st.total,
+          adjust: ad.total,
+        }),
+      )
       .catch(() => undefined);
   }, []);
 
@@ -485,22 +495,53 @@ export function DashboardPage() {
                   label: "临期预警(30 天)",
                   count: expiryCount,
                   danger: true,
+                  to: "/alerts?tab=expiry",
                 },
                 {
                   key: "lowStock",
                   label: "低库存预警",
                   count: lowStockCount,
                   danger: true,
+                  to: "/alerts?tab=low",
                 },
                 {
-                  key: "pending",
-                  label: "待审批单据",
-                  count: pendingCount,
+                  key: "purchase",
+                  label: "待审批 · 采购订单",
+                  count: pendingByType.purchase,
                   danger: false,
+                  to: "/purchase-orders?status=pending",
+                },
+                {
+                  key: "sales",
+                  label: "待审批 · 销售订单",
+                  count: pendingByType.sales,
+                  danger: false,
+                  to: "/sales-orders?status=pending",
+                },
+                {
+                  key: "transfer",
+                  label: "待审批 · 调拨单",
+                  count: pendingByType.transfer,
+                  danger: false,
+                  to: "/transfers?status=pending",
+                },
+                {
+                  key: "stocktake",
+                  label: "待审批 · 盘点单",
+                  count: pendingByType.stocktake,
+                  danger: false,
+                  to: "/stocktakes?status=pending",
+                },
+                {
+                  key: "adjust",
+                  label: "待审批 · 库存调整",
+                  count: pendingByType.adjust,
+                  danger: false,
+                  to: "/stock-adjusts?status=pending",
                 },
               ]}
-              renderItem={(item: { key: string; label: string; count: number; danger: boolean }) => (
-                <Link to="/alerts" style={{ display: "block" }}>
+              renderItem={(item: { key: string; label: string; count: number; danger: boolean; to: string }) => (
+                <Link to={item.to} style={{ display: "block" }}>
                   <List.Item
                     style={{
                       cursor: "pointer",

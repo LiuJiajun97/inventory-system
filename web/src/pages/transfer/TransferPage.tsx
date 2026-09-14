@@ -4,6 +4,7 @@
 // 审批即执行:同一事务源仓扣减 + 目的仓入库
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Segmented, Select, Space, Table, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
@@ -109,6 +110,10 @@ export function TransferPage() {
   }, [toWh]);
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+    // 支持 URL 带 ?status= 直达(仪表盘待办"待审批"跳转预置筛选)
+    const [searchParams] = useSearchParams();
+    const urlStatus = searchParams.get("status") || undefined;
+
   const request = async (params: {
     current?: number;
     pageSize?: number;
@@ -500,7 +505,9 @@ export function TransferPage() {
   return (
     <>
       <ProTable<TransferDoc>
-        rowKey="id"
+
+      params={{ status: urlStatus }}
+      rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无调拨单" /> }}
         actionRef={actionRef}
         columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<TransferDoc>[]) : columns}

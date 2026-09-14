@@ -3,6 +3,7 @@
 // gain 盘盈入库 / loss 盘亏出库;审批即执行库存动作;盘点差异生成 + 手工调整共用
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Segmented, Select, Space, Table, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
@@ -79,6 +80,10 @@ export function AdjustPage() {
   }, []);
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
+    // 支持 URL 带 ?status= 直达(仪表盘待办"待审批"跳转预置筛选)
+    const [searchParams] = useSearchParams();
+    const urlStatus = searchParams.get("status") || undefined;
+
   const request = async (params: {
     current?: number;
     pageSize?: number;
@@ -411,7 +416,9 @@ export function AdjustPage() {
   return (
     <>
       <ProTable<StockAdjustDoc>
-        rowKey="id"
+
+      params={{ status: urlStatus }}
+      rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库存调整单" /> }}
         actionRef={actionRef}
         columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<StockAdjustDoc>[]) : columns}

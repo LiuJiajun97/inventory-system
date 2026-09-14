@@ -4,6 +4,7 @@
 // 刷新按钮放临期 tab 筛选行右侧,点击两个表都 reload
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button, Tabs, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
@@ -14,7 +15,10 @@ import { fmtQty } from "../../utils/format";
 import { EmptyHint } from "../../components/EmptyHint";
 
 export function AlertPage() {
-  const [tab, setTab] = useState("expiry");
+  // 支持 URL 带 ?tab= 直达(仪表盘待办"临期/低库存"跳转预置 tab)
+  const [searchParams] = useSearchParams();
+  const urlTab = searchParams.get("tab");
+  const [tab, setTab] = useState(urlTab === "low" ? "low" : "expiry");
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const expiryRef = useRef<ActionType>();
   const lowRef = useRef<ActionType>();
