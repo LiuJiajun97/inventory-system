@@ -17,7 +17,7 @@
                              │ /api proxy (vite)
                              ▼
                    ┌──────────────────────┐
-                   │  Spring Boot 后端    │  端口 8081
+                   │  Spring Boot 后端    │  端口 8888
                    │  MyBatis-Plus / JWT  │  /api/v1/*
                    │  springdoc → /docs   │
                    └─────────┬────────────┘
@@ -59,13 +59,13 @@ docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/mai
 # 3. 启动后端(IDEA 运行 InventoryApplication,或命令行)
 cd server-java
 bash ../scripts/mvn.sh spring-boot:run
-# 后端:http://127.0.0.1:8081  Swagger:http://127.0.0.1:8081/docs
+# 后端:http://127.0.0.1:8888  Swagger:http://127.0.0.1:8888/docs
 
 # 4. 启动前端
 cd web
 npm install   # 首次
 npm run dev
-# 前端:http://localhost:5173 (dev 代理 /api → 8081)
+# 前端:http://localhost:5173 (dev 代理 /api → 8888)
 
 # 5. 测试 & 构建(在 server-java 下)
 bash ../scripts/mvn.sh test        # 208 条,全绿,无 skip
@@ -174,7 +174,7 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 | GET | `/settlement/ap` `/settlement/ar`(V18) | 应付/应收台账(对方维度实时聚合零建表:累计单据金额/退货冲减/发票净额(仅 confirmed)/已核销/余额;行展开:① 对方全部发票(含未确认/作废,含正票已核销)② 订单执行子表(未执行/执行中/已完成,采购退货扣减净到货量);分页) | 登录(采购单无仓字段不加 DataScope,销售侧按自有仓库口径待后续对齐) |
 | GET | `/settlement/dashboard`(V18) | 结算总览(应付/应收余额合计,仪表盘 2 卡) | 登录 |
 
-完整契约以 Swagger 为准:`http://127.0.0.1:8081/docs`。
+完整契约以 Swagger 为准:`http://127.0.0.1:8888/docs`。
 
 ---
 
@@ -221,7 +221,7 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 36. **仪表盘+报表图表化(V22 批次 B)**:新增唯一依赖 `@ant-design/charts` 2.6.7。仪表盘:数字卡 28px 加粗 + count-up 进入动画 + 本月/上月环比(基于 /transactions 前端按月聚合);图表区三列 = 近 30 天出入库趋势折线(按日聚合 changeQty)+ 各仓库存金额占比环图(/reports/cost 按 warehouseName 聚合 amount)+ 待办卡(临期/低库存/待审批,点击跳预警页)。报表中心三 Tab 图表在上表格在下:进销存月报柱状(逐月入/出量)、库龄环图(ageBucket 段)、成本报表物品金额 Top10 横条;采购/销售对账 Tab 行结构不适合图表不加。图表数据全部来自现有接口前端聚合(后端零改动),实测 pageSize 上限 200,`utils/fetchAllPages.ts` 按 200/页循环拉全量。
 37. **仪表盘待办跳转修正(待审批拆分为五类单据)**:原「待审批单据」合计行统一跳预警页(无关联,误跳转)。改为:待审批拆成「待审批 · 采购订单/销售订单/调拨单/盘点单/库存调整」五行(各自计数,跳对应列表页 ?status=pending 预置状态筛选);临期/低库存跳预警页 ?tab=expiry/low 预置 tab。5 个单据列表页(采购/销售/调拨/盘点/调整)与预警页接 useSearchParams:列表页 ProTable params 带 urlStatus 并入请求(页内手动筛选可覆盖),预警页按 ?tab=low 初始化 tab。待办卡内容区定高 260(与图表卡同高)、行数多时内部滚动,不撑高卡片(7 行后仍与图表卡齐平 323px)。库存 Top 10 数量列改单行内联(数字左+迷你条右),行高 53→45,与最近流水卡等高(均 495px)。
 38. **入库/出库主表补单据日期列**(2026-09-14):主表原来只有"创建时间",用户反馈看不出单据日期;主表在供应商/客户后加"单据日期"(`docDate`),与明细视图的行级"日期"区分;scroll.x 1480→1590。
-39. **价税六列全铺+含税单价落库(V23,对齐金蝶/SAP 口径,StockCoreService/StockMapper.xml 零改动)**:6 张带价行表(采购/销售订单、采购/销售退货、入/出库行)新增 `tax_price` NUMERIC 列(V20 迁移,存量按 不含税×(1+税率/100) 回填)。口径:金额=数量×不含税单价、税额=金额×税率、含税金额=金额+税额;录入两单价二选一(前端各建页两列都可填+金额三列实时预览 `utils/lineMoney.ts` 与后端同口径),服务端**不含税优先**、只填含税时反算(含税金额=数量×含税单价,金额=含税金额÷(1+税率),不含税单价=金额÷数量),双缺 400"不含税单价与含税单价必填其一";退货继承源订单行 tax_price 快照(前端不传);入库/出库有源继承源单、无源与订单同口径二选一。`MoneyUtils` 加 `LineMoney` record + `fromExclusiveUnit`/`fromInclusiveUnit`(4 位 HALF_UP,税额用差值算法防双舍入误差)。展示:新建/表单 6 页六列(不含税单价|含税单价|税率|不含税金额|税额|含税金额),列表行表/详情弹窗/打印版同步补"含税单价"列;详情弹窗列宽压缩进 960 不溢出(订单 1030→868/退货 980→863)+ `scroll: max-content` 兜底,裸 ID 列改可读名称,退货/出入库详情头部"价税合计"改明细含税合计求和(原传不含税总额与明细打架)。测试 200→208(MoneyUtilsTest 6 + 含税路径集成 2,原 200 零删)。
+39. **价税六列全铺+含税单价落库(V23,对齐金蝶/SAP 口径,StockCoreService/StockMapper.xml 零改动)**:6 张带价行表(采购/销售订单、采购/销售退货、入/出库行)新增 `tax_price` NUMERIC 列(V20 迁移,存量按 不含税×(1+税率/100) 回填)。口径:金额=数量×不含税单价、税额=金额×税率、含税金额=金额+税额;录入两单价二选一(前端各建页两列都可填+金额三列实时预览 `utils/lineMoney.ts` 与后端同口径),服务端**不含税优先**、只填含税时反算(含税金额=数量×含税单价,金额=含税金额÷(1+税率),不含税单价=金额÷数量),双缺 400"不含税单价与含税单价必填其一";退货继承源订单行 tax_price 快照(前端不传);入库/出库有源继承源单、无源与订单同口径二选一。`MoneyUtils` 加 `LineMoney` record + `fromExclusiveUnit`/`fromInclusiveUnit`(4 位 HALF_UP,税额用差值算法防双舍入误差)。展示:新建/表单 6 页六列(不含税单价|含税单价|税率|不含税金额|税额|含税金额),列表行表/详情弹窗/打印版同步补"含税单价"列;详情弹窗列宽压缩进 960 不溢出(订单 1030→868/退货 980→863)+ `scroll: max-content` 兜底,裸 ID 列改可读名称,退货/出入库详情头部"价税合计"改明细含税合计求和(原传不含税总额与明细打架)。测试 200→208(MoneyUtilsTest 6 + 含税路径集成 2,原 200 零删)。 V23.1 增量(纯前端):双单价**实时双向联动**——改不含税实时算含税、改含税实时反算不含税、改税率按不含税正算重算含税(与后端"不含税优先"同向),清空不触发,选物品预填参考价同口径联动;两单价都填且按税率推算不一致(容差 0.0001)时含税单价框右侧琥珀色图标 + Tooltip 展示推算明细,纯展示不阻断提交(口径函数 `recalcPricePair`/`priceMismatchHint` 在 `utils/lineMoney.ts`,与后端 MoneyUtils 同 r4 四位)。
 
 
 ---
@@ -247,7 +247,7 @@ inventory-system/
 │   │   ├── service/ (+impl/)  业务层;StockCoreService = 库存核心
 │   │   └── support/           DictReferenceRegistry(字典引用校验注册表)
 │   ├── src/main/resources/
-│   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
+│   │   ├── application.yml    8888 / 5433 / JWT / jackson(Asia/Shanghai)
 │   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,V11__return,V12__import_export,V13__opening_stock,V15__report_menu,V16__operation_log,seed}.sql
 │   └── src/test/java/         30 个测试类,208 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心/V16 操作日志/V17 单据明细行/V18 三单匹配+结算域/V19 盘点防重复生成/V19b 序列号仓盘点调整/V20 库存成本报表/V23 价税工具+含税路径)
 └── web/                       Vite + React 18 + antd 5
@@ -286,4 +286,4 @@ A: 表/列统一小写蛇形(V6 迁移后),手写 SQL 不写引号;DO 走 `map-u
 A: `selectByIds`/`IN` 前必须 `isEmpty` 防护(本项目 6 处已有)。
 
 **Q: 端口?**
-A: PG 5433(避开本机 5432);后端 8081;前端 dev 5173。
+A: PG 5433(避开本机 5432);后端 8888;前端 dev 5173。 后端端口 2026-09-14 从 8081 迁至 8888(8081 另有用途)。
