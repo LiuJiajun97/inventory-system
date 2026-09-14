@@ -1,9 +1,11 @@
-// 总览 Dashboard(SPEC-WEB V2 2.3)
-// 顶部 6 张统计卡 + 下方两栏:Top10 库存 + 最近流水
-// 数据:现有 /dashboard/summary 与 /stock、/transactions,不改接口
+// 总览 Dashboard(SPEC-WEB V2 2.3 + TASK-v22b B2 图表化升级)
+// 顶部统计卡(count-up 数字 + 环比行)+ 图表区(近 30 天出入库趋势/各仓库存金额占比/待办)
+// + 下方两栏:Top10 库存 + 最近流水
+// 数据:现有 /dashboard/summary 与 /stock、/transactions、/reports/cost、/alerts、各单据列表,不改接口
 
 import { useEffect, useMemo, useState } from "react";
-import { Row, Col, Table, Spin } from "antd";
+import type { CSSProperties } from "react";
+import { Row, Col, Table, Spin, Card, List, Badge } from "antd";
 import {
   HomeOutlined,
   AppstoreOutlined,
@@ -11,16 +13,30 @@ import {
   ExportOutlined,
   AlertOutlined,
   FieldTimeOutlined,
+  AuditOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
-import { alertApi, dashboardApi, settlementApi, stockApi, transactionApi } from "../../api";
+import { Line, Pie } from "@ant-design/charts";
+import dayjs from "dayjs";
+import {
+  alertApi,
+  dashboardApi,
+  settlementApi,
+  stockApi,
+  transactionApi,
+  reportApi,
+  purchaseApi,
+  salesApi,
+  transferApi,
+  stocktakeApi,
+  adjustApi,
+} from "../../api";
 import { fmtDateTime, fmtMoney, fmtQty } from "../../utils/format";
-import type {
-  DashboardSummary,
-  StockRow,
-  StockTransaction,
-} from "../../types";
+import type { DashboardSummary, StockRow, StockTransaction } from "../../types";
+import type { CostReportRow } from "../../types/report";
 import { BizTag } from "../../components/StatusTag";
+import { useCountUp } from "../../hooks/useCountUp";
+import { ChartCard } from "../../components/ChartCard";
 
 /** 获取问候语(上午/下午/晚上) */
 function getGreeting(): string {
@@ -36,6 +52,111 @@ function getCurrentTime(): string {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
+// 月统计:笔数/入库量(正变动)/出库量(负变动绝对值)
+interface MonthStat {
+  count: number;
+  inQty: number;
+  outQty: number;
+}
+
+/** 环比行小字:本月 vs 上月;数据不足 2 个月或上月为 0 时显示 "—" */
+function TrendLine({
+  cur,
+  prev,
+  hasPrev,
+  goodUp,
+  format,
+}: {
+  cur: number;
+  prev: number;
+  hasPrev: boolean;
+  // goodUp=true:上升为好(绿);false:上升为坏(红,如出库)
+  goodUp: boolean;
+  format: (n: number) => string;
+}) {
+  // 数据不足 2 个月 → 灰色 "—"
+  if (!hasPrev) {
+    return (
+      <span style={{ fontSize: 12, color: "#9ca3af" }}>
+        环比 {format(cur)} vs —
+      </span>
+    );
+  }
+  if (prev === 0) {
+    return (
+      <span style={{ fontSize: 12, color: "#9ca3af" }}>
+        环比 {format(cur)} vs 上月 0
+      </span>
+    );
+  }
+  const pct = ((cur - prev) / prev) * 100;
+  const up = cur >= prev;
+  // 持平为中性灰
+  const color = cur === prev ? "#9ca3af" : (up === goodUp ? "#16a34a" : "#dc2626");
+  return (
+    <span style={{ fontSize: 12, color }}>
+      环比 {format(cur)} vs 上月 {format(prev)}{" "}
+      {up ? "↑" : "↓"} {Math.abs(pct).toFixed(1)}%
+    </span>
+  );
+}
+
+// 统计卡:主数字 28px 加粗等宽 + count-up 滚动 + 环比/备注行
+function StatCard({
+  icon,
+  iconClass,
+  label,
+  value,
+  renderValue,
+  trend,
+  sub,
+  cardClass,
+  linkTo,
+  valueStyle,
+}: {
+  icon: React.ReactNode;
+  iconClass: string;
+  label: string;
+  value: number;
+  renderValue: (n: number) => string;
+  // 主数字附加样式(如应付/应收正负色)
+  valueStyle?: CSSProperties;
+  // 环比行(小字)
+  trend?: React.ReactNode;
+  // 原有备注小字(与环比行可同时展示)
+  sub?: React.ReactNode;
+  cardClass?: string;
+  linkTo?: string;
+}) {
+  const display = useCountUp(value);
+  const body = (
+    <div className={`stat-card${cardClass ? ` ${cardClass}` : ""}`}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className={`stat-icon ${iconClass}`}>{icon}</div>
+        <div>
+          <div className="stat-card-label">{label}</div>
+          <div
+            className="stat-card-value"
+            style={{ fontSize: 28, fontWeight: 700, fontVariantNumeric: "tabular-nums", ...valueStyle }}
+          >
+            {renderValue(display)}
+          </div>
+          {trend}
+          {sub}
+        </div>
+      </div>
+    </div>
+  );
+  if (linkTo) {
+    return (
+      <Link to={linkTo} style={{ display: "block", height: "100%" }}>
+        {body}
+      </Link>
+    );
+  }
+  return body;
+}
+
 export function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [stocks, setStocks] = useState<StockRow[]>([]);
@@ -46,6 +167,13 @@ export function DashboardPage() {
   const [settlement, setSettlement] = useState<{ apBalance: number; arBalance: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // TASK-v22b:近 60 天流水(环比 + 30 天趋势共用);本地库数据量小(<1000),前端聚合可行
+  const [tx60, setTx60] = useState<StockTransaction[]>([]);
+  // TASK-v22b:各仓库存金额(成本报表全量,前端按仓聚合)
+  const [costRows, setCostRows] = useState<CostReportRow[]>([]);
+  // TASK-v22b:待审批单据数(五类单据 pending 合计)
+  const [pendingCount, setPendingCount] = useState(0);
+
   useEffect(() => {
     settlementApi.dashboard().then(setSettlement).catch(() => undefined);
   }, []);
@@ -54,6 +182,21 @@ export function DashboardPage() {
     // 预警计数只取 total,不阻断主加载
     alertApi.expiry({ page: 1, pageSize: 1 }).then((r) => setExpiryCount(r.total)).catch(() => undefined);
     alertApi.lowStock({ page: 1, pageSize: 1 }).then((r) => setLowStockCount(r.total)).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    // TASK-v22b:环比/趋势数据(近 60 天)与成本报表数据,失败不阻断主加载
+    const from = dayjs().subtract(60, "day").format("YYYY-MM-DD");
+    transactionApi
+      .query({ page: 1, pageSize: 200, from })
+      .then((r) => setTx60(r.rows))
+      .catch(() => undefined);
+    reportApi.cost().then((r) => setCostRows(r.rows)).catch(() => undefined);
+    // 待审批:采购/销售/调拨/盘点/调整五类单据 pending 总数
+    const p = { status: "pending", page: 1, pageSize: 1 };
+    Promise.all([purchaseApi.list(p), salesApi.list(p), transferApi.list(p), stocktakeApi.list(p), adjustApi.list(p)])
+      .then((rs) => setPendingCount(rs.reduce((s, r) => s + r.total, 0)))
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -74,6 +217,56 @@ export function DashboardPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // 环比:按 created_at 月分组算本月/上月笔数与入出量
+  const monthTrend = useMemo(() => {
+    const curKey = dayjs().format("YYYY-MM");
+    const prevKey = dayjs().subtract(1, "month").format("YYYY-MM");
+    const cur: MonthStat = { count: 0, inQty: 0, outQty: 0 };
+    const prev: MonthStat = { count: 0, inQty: 0, outQty: 0 };
+    let hasPrev = false;
+    tx60.forEach((t) => {
+      const key = dayjs(t.createdAt).format("YYYY-MM");
+      const stat = key === curKey ? cur : key === prevKey ? prev : null;
+      if (!stat) return;
+      if (key === prevKey) hasPrev = true;
+      stat.count += 1;
+      const q = Number(t.changeQty);
+      if (q >= 0) stat.inQty += q;
+      else stat.outQty += -q;
+    });
+    return { cur, prev, hasPrev };
+  }, [tx60]);
+
+  // 近 30 天出入库趋势:按 created_at 日聚合流水数量(入库=正变动,出库=负变动绝对值)
+  const trend30 = useMemo(() => {
+    const days: { date: string; inbound: number; outbound: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      days.push({ date: dayjs().subtract(i, "day").format("MM-DD"), inbound: 0, outbound: 0 });
+    }
+    const map = new Map(days.map((d) => [d.date, d]));
+    tx60.forEach((t) => {
+      const d = map.get(dayjs(t.createdAt).format("MM-DD"));
+      if (!d) return;
+      const q = Number(t.changeQty);
+      if (q >= 0) d.inbound += q;
+      else d.outbound += -q;
+    });
+    return days.flatMap((d) => [
+      { date: d.date, series: "入库量", value: d.inbound },
+      { date: d.date, series: "出库量", value: d.outbound },
+    ]);
+  }, [tx60]);
+
+  // 各仓库存金额占比:成本报表按仓聚合 amount(元,字符串转 Number)
+  const warehouseAmounts = useMemo(() => {
+    const m = new Map<string, number>();
+    costRows.forEach((r) => {
+      const name = r.warehouseName ?? "未知仓库";
+      m.set(name, (m.get(name) ?? 0) + Number(r.amount || 0));
+    });
+    return Array.from(m.entries()).map(([name, amount]) => ({ name, amount: Number(amount.toFixed(2)) }));
+  }, [costRows]);
 
   const top10 = useMemo(() => {
     return [...stocks]
@@ -102,6 +295,8 @@ export function DashboardPage() {
   }
 
   const totalAlerts = expiryCount + lowStockCount;
+  // 无环比数据源的卡片统一灰色 "—" 占位(中性)
+  const neutralTrend = <span style={{ fontSize: 12, color: "#9ca3af" }}>环比 —</span>;
 
   return (
     <>
@@ -118,144 +313,227 @@ export function DashboardPage() {
       <Row gutter={[16, 16]}>
         {/* 仓库数 */}
         <Col xs={24} sm={12} md={6}>
-          <div className="stat-card">
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div className="stat-icon blue">
-                <HomeOutlined />
-              </div>
-              <div>
-                <div className="stat-card-label">仓库数</div>
-                <div className="stat-card-value">{summary?.warehouseCount ?? 0}</div>
-              </div>
-            </div>
-          </div>
+          <StatCard
+            icon={<HomeOutlined />}
+            iconClass="blue"
+            label="仓库数"
+            value={summary?.warehouseCount ?? 0}
+            renderValue={(n) => String(Math.round(n))}
+            trend={neutralTrend}
+          />
         </Col>
 
         {/* 物品数 */}
         <Col xs={24} sm={12} md={6}>
-          <div className="stat-card">
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div className="stat-icon cyan">
-                <AppstoreOutlined />
-              </div>
-              <div>
-                <div className="stat-card-label">物品数</div>
-                <div className="stat-card-value">{summary?.itemCount ?? 0}</div>
-              </div>
-            </div>
-          </div>
+          <StatCard
+            icon={<AppstoreOutlined />}
+            iconClass="cyan"
+            label="物品数"
+            value={summary?.itemCount ?? 0}
+            renderValue={(n) => String(Math.round(n))}
+            trend={neutralTrend}
+          />
         </Col>
 
         {/* 今日入库 */}
         <Col xs={24} sm={12} md={6}>
-          <div className="stat-card">
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div className="stat-icon green">
-                <ImportOutlined />
-              </div>
-              <div>
-                <div className="stat-card-label">今日入库</div>
-                <div className="stat-card-value">
-                  {fmtQty(summary?.todayInboundQty ?? 0)}
-                </div>
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>
-                  {summary?.todayInboundCount ?? 0} 单
-                </div>
-              </div>
-            </div>
-          </div>
+          <StatCard
+            icon={<ImportOutlined />}
+            iconClass="green"
+            label="今日入库"
+            value={Number(summary?.todayInboundQty ?? 0)}
+            renderValue={fmtQty}
+            trend={
+              <TrendLine
+                cur={monthTrend.cur.inQty}
+                prev={monthTrend.prev.inQty}
+                hasPrev={monthTrend.hasPrev}
+                goodUp
+                format={fmtQty}
+              />
+            }
+            sub={<span style={{ fontSize: 12, color: "#9ca3af" }}>{summary?.todayInboundCount ?? 0} 单</span>}
+          />
         </Col>
 
         {/* 今日出库 */}
         <Col xs={24} sm={12} md={6}>
-          <div className="stat-card">
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div className="stat-icon orange">
-                <ExportOutlined />
-              </div>
-              <div>
-                <div className="stat-card-label">今日出库</div>
-                <div className="stat-card-value">
-                  {fmtQty(summary?.todayOutboundQty ?? 0)}
-                </div>
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>
-                  {summary?.todayOutboundCount ?? 0} 单
-                </div>
-              </div>
-            </div>
-          </div>
+          <StatCard
+            icon={<ExportOutlined />}
+            iconClass="orange"
+            label="今日出库"
+            value={Number(summary?.todayOutboundQty ?? 0)}
+            renderValue={fmtQty}
+            trend={
+              <TrendLine
+                cur={monthTrend.cur.outQty}
+                prev={monthTrend.prev.outQty}
+                hasPrev={monthTrend.hasPrev}
+                goodUp={false}
+                format={fmtQty}
+              />
+            }
+            sub={<span style={{ fontSize: 12, color: "#9ca3af" }}>{summary?.todayOutboundCount ?? 0} 单</span>}
+          />
         </Col>
 
         {/* 应付余额(V18 结算域) */}
         <Col xs={24} sm={12} md={6}>
-          <div className="stat-card">
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div className="stat-icon red">
-                <AlertOutlined />
-              </div>
-              <div>
-                <div className="stat-card-label">应付余额</div>
-                <div className="stat-card-value" style={Number(settlement?.apBalance ?? 0) < 0 ? { color: "#16a34a" } : { color: "#dc2626" }}>
-                  {fmtMoney(settlement?.apBalance ?? 0)}
-                </div>
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>确认采购票净额 - 已付</div>
-              </div>
-            </div>
-          </div>
+          <StatCard
+            icon={<AlertOutlined />}
+            iconClass="red"
+            label="应付余额"
+            value={Number(settlement?.apBalance ?? 0)}
+            renderValue={fmtMoney}
+            valueStyle={Number(settlement?.apBalance ?? 0) < 0 ? { color: "#16a34a" } : { color: "#dc2626" }}
+            trend={neutralTrend}
+            sub={<span style={{ fontSize: 12, color: "#9ca3af" }}>确认采购票净额 - 已付</span>}
+          />
         </Col>
 
         {/* 应收余额(V18 结算域) */}
         <Col xs={24} sm={12} md={6}>
-          <div className="stat-card">
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div className="stat-icon green">
-                <FieldTimeOutlined />
-              </div>
-              <div>
-                <div className="stat-card-label">应收余额</div>
-                <div className="stat-card-value" style={Number(settlement?.arBalance ?? 0) < 0 ? { color: "#dc2626" } : { color: "#16a34a" }}>
-                  {fmtMoney(settlement?.arBalance ?? 0)}
-                </div>
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>确认销售票净额 - 已收</div>
-              </div>
-            </div>
-          </div>
+          <StatCard
+            icon={<FieldTimeOutlined />}
+            iconClass="green"
+            label="应收余额"
+            value={Number(settlement?.arBalance ?? 0)}
+            renderValue={fmtMoney}
+            valueStyle={Number(settlement?.arBalance ?? 0) < 0 ? { color: "#dc2626" } : { color: "#16a34a" }}
+            trend={neutralTrend}
+            sub={<span style={{ fontSize: 12, color: "#9ca3af" }}>确认销售票净额 - 已收</span>}
+          />
         </Col>
 
         {/* 临期预警(30 天) - 0 时恢复普通样式 */}
         <Col xs={24} sm={12} md={6}>
-          <Link to="/alerts" style={{ display: "block", height: "100%" }}>
-            <div className={`stat-card clickable${expiryCount > 0 ? " alert-red" : ""}`}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div className={`stat-icon ${expiryCount > 0 ? "red" : "blue"}`}>
-                  <FieldTimeOutlined />
-                </div>
-                <div>
-                  <div className="stat-card-label">临期预警(30 天)</div>
-                  <div className="stat-card-value">{expiryCount}</div>
-                  <div style={{ fontSize: 12, color: "#9ca3af" }}>点击处理 →</div>
-                </div>
-              </div>
-            </div>
-          </Link>
+          <StatCard
+            icon={<FieldTimeOutlined />}
+            iconClass={expiryCount > 0 ? "red" : "blue"}
+            label="临期预警(30 天)"
+            value={expiryCount}
+            renderValue={(n) => String(Math.round(n))}
+            cardClass={`clickable${expiryCount > 0 ? " alert-red" : ""}`}
+            linkTo="/alerts"
+            sub={<span style={{ fontSize: 12, color: "#9ca3af" }}>点击处理 →</span>}
+          />
         </Col>
 
         {/* 低库存预警 - 0 时恢复普通样式 */}
         <Col xs={24} sm={12} md={6}>
-          <Link to="/alerts" style={{ display: "block", height: "100%" }}>
-            <div className={`stat-card clickable${lowStockCount > 0 ? " alert-orange" : ""}`}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div className={`stat-icon ${lowStockCount > 0 ? "orange" : "cyan"}`}>
-                  <AlertOutlined />
-                </div>
-                <div>
-                  <div className="stat-card-label">低库存预警</div>
-                  <div className="stat-card-value">{lowStockCount}</div>
-                  <div style={{ fontSize: 12, color: "#9ca3af" }}>点击处理 →</div>
-                </div>
-              </div>
-            </div>
-          </Link>
+          <StatCard
+            icon={<AlertOutlined />}
+            iconClass={lowStockCount > 0 ? "orange" : "cyan"}
+            label="低库存预警"
+            value={lowStockCount}
+            renderValue={(n) => String(Math.round(n))}
+            cardClass={`clickable${lowStockCount > 0 ? " alert-orange" : ""}`}
+            linkTo="/alerts"
+            sub={<span style={{ fontSize: 12, color: "#9ca3af" }}>点击处理 →</span>}
+          />
+        </Col>
+      </Row>
+
+      {/* TASK-v22b 图表区:近 30 天出入库趋势 + 各仓库存金额占比 + 待办 */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} md={8}>
+          <ChartCard
+            title="近 30 天出入库趋势"
+            note="按流水 created_at 聚合,数量口径"
+            height={260}
+            empty={trend30.every((d) => d.value === 0)}
+            emptyText="近 30 天暂无出入库流水"
+          >
+            <Line
+              data={trend30}
+              xField="date"
+              yField="value"
+              colorField="series"
+              height={260}
+              legend={{ color: { position: "right" } }}
+              style={{ lineWidth: 2 }}
+              tooltip={{ items: [{ channel: "y", valueFormatter: (v: number) => fmtQty(v) }] }}
+            />
+          </ChartCard>
+        </Col>
+        <Col xs={24} md={8}>
+          <ChartCard
+            title="各仓库存金额占比"
+            note="成本报表按仓库聚合(移动均价)"
+            height={260}
+            empty={warehouseAmounts.length === 0}
+            emptyText="暂无库存成本数据"
+          >
+            <Pie
+              data={warehouseAmounts}
+              angleField="amount"
+              colorField="name"
+              innerRadius={0.6}
+              height={260}
+              legend={{ color: { position: "right" } }}
+              tooltip={{ items: [{ channel: "y", valueFormatter: (v: number) => fmtMoney(v) }] }}
+            />
+          </ChartCard>
+        </Col>
+        <Col xs={24} md={8}>
+          <Card size="small" title="待办" style={{ height: "100%" }}>
+            <List
+              size="small"
+              dataSource={[
+                {
+                  key: "expiry",
+                  label: "临期预警(30 天)",
+                  count: expiryCount,
+                  danger: true,
+                },
+                {
+                  key: "lowStock",
+                  label: "低库存预警",
+                  count: lowStockCount,
+                  danger: true,
+                },
+                {
+                  key: "pending",
+                  label: "待审批单据",
+                  count: pendingCount,
+                  danger: false,
+                },
+              ]}
+              renderItem={(item: { key: string; label: string; count: number; danger: boolean }) => (
+                <Link to="/alerts" style={{ display: "block" }}>
+                  <List.Item
+                    style={{
+                      cursor: "pointer",
+                      paddingLeft: 0,
+                      paddingRight: 0,
+                      background: "transparent",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+                      <Badge
+                        status="error"
+                        color={item.count > 0 ? (item.danger ? "#dc2626" : "#d97706") : "#d1d5db"}
+                        text={
+                          <span style={{ flex: 1, fontSize: 13, color: "#374151" }}>{item.label}</span>
+                        }
+                      />
+                      <span
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 700,
+                          fontVariantNumeric: "tabular-nums",
+                          color: item.count > 0 ? (item.danger ? "#dc2626" : "#d97706") : "#9ca3af",
+                        }}
+                      >
+                        {item.count}
+                      </span>
+                      <AuditOutlined style={{ color: "#c4c9d4" }} />
+                    </div>
+                  </List.Item>
+                </Link>
+              )}
+            />
+          </Card>
         </Col>
       </Row>
 

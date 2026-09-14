@@ -5,14 +5,59 @@
 import { useEffect, useMemo, useState } from "react";
 import { ProTable } from "@ant-design/pro-components";
 import type { ProColumns } from "@ant-design/pro-components";
+import { Bar } from "@ant-design/charts";
 import dayjs from "dayjs";
 import { itemApi, reportApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
 import type { CostReportRow } from "../../types/report";
 import { ExportButton } from "../../components/ExportButton";
+import { ChartCard } from "../../components/ChartCard";
 import { QtyCell } from "./common";
 import { EmptyHint } from "../../components/EmptyHint";
 import { fmtMoney } from "../../utils/format";
+
+// TASK-v22b B3:成本报表图表——按物品聚合成本金额(多仓/多批次求和),Top10 横向条形图
+// 成本接口不分页(全量行),金额按当前库存(回放截止默认今天)
+function CostTop10Chart() {
+  const [data, setData] = useState<{ name: string; amount: number }[]>([]);
+
+  useEffect(() => {
+    reportApi
+      .cost()
+      .then((r) => {
+        const m = new Map<string, number>();
+        r.rows.forEach((row) => {
+          const name = row.itemName ?? "未知物品";
+          m.set(name, (m.get(name) ?? 0) + Number(row.amount || 0));
+        });
+        const arr = Array.from(m.entries())
+          .map(([name, amount]) => ({ name, amount: Number(amount.toFixed(2)) }))
+          .sort((a, b) => b.amount - a.amount)
+          .slice(0, 10);
+        setData(arr);
+      })
+      .catch(() => setData([]));
+  }, []);
+
+  return (
+    <ChartCard
+      title="物品库存金额 Top 10"
+      note="按当前库存金额(移动均价×数量)"
+      height={300}
+      empty={data.length === 0}
+      emptyText="暂无库存成本数据"
+    >
+      <Bar
+        data={data}
+        xField="amount"
+        yField="name"
+        height={300}
+        axis={{ x: { title: false } }}
+        tooltip={{ items: [{ channel: "x", valueFormatter: (v: number) => fmtMoney(v) }] }}
+      />
+    </ChartCard>
+  );
+}
 
 export function CostReportTab() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -139,7 +184,10 @@ export function CostReportTab() {
   ];
 
   return (
-    <ProTable<CostReportRow>
+    <>
+      {/* TASK-v22b B3:图表在上、表格在下(表格本身不动) */}
+      <CostTop10Chart />
+      <ProTable<CostReportRow>
       rowKey={(r) => `${r.warehouseId}-${r.itemId}-${r.batchId}`}
       locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无成本数据" /> }}
       columns={columns}
@@ -162,5 +210,6 @@ export function CostReportTab() {
       }}
       scroll={{ x: 950 }}
     />
+    </>
   );
 }

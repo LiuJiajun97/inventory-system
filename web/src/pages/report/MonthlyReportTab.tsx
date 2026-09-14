@@ -5,14 +5,89 @@
 import { useEffect, useMemo, useState } from "react";
 import { ProTable } from "@ant-design/pro-components";
 import type { ProColumns } from "@ant-design/pro-components";
+import { Column } from "@ant-design/charts";
 import { Table } from "antd";
+import dayjs from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 import { itemApi, reportApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
 import type { StockMonthlyDetail, StockMonthlyRow } from "../../types/report";
 import { ExportButton } from "../../components/ExportButton";
+import { ChartCard } from "../../components/ChartCard";
 import { AmountCell, QtyCell, dayPart } from "./common";
 import { EmptyHint } from "../../components/EmptyHint";
+import { fetchAllPages } from "../../utils/fetchAllPages";
+import { fmtQty } from "../../utils/format";
+
+// TASK-v22b B3:进销存月报图表——按月份拆区间调月报接口,全部物品入库/出量合计
+// 无日期筛选时默认近 6 个月;超过 12 个月只取最后 12 个月
+function MonthlyInoutChart({ from, to }: { from?: string; to?: string }) {
+  const [data, setData] = useState<{ month: string; type: string; value: number }[]>([]);
+
+  useEffect(() => {
+    const end = to ? dayjs(to) : dayjs();
+    const start = from ? dayjs(from) : end.subtract(5, "month");
+    // 生成月份区间列表(每月一个查询:当月 1 日~月末)
+    const months: { key: string; from: string; to: string }[] = [];
+    let cur = start.startOf("month");
+    const endMonth = end.startOf("month");
+    while ((cur.isSame(endMonth, "month") || cur.isBefore(endMonth, "month")) && months.length < 12) {
+      months.push({
+        key: cur.format("YYYY-MM"),
+        from: cur.format("YYYY-MM-01"),
+        to: cur.endOf("month").format("YYYY-MM-DD"),
+      });
+      cur = cur.add(1, "month");
+    }
+    // 每月一次月报查询(后端 pageSize 上限 200,循环拉全量;截断上限 1000,本地库远小于此)
+    Promise.all(
+      months.map(async (m) => {
+        try {
+          const rows = await fetchAllPages<StockMonthlyRow>((page, pageSize) =>
+            reportApi.monthly({ from: m.from, to: m.to, page, pageSize }),
+          );
+          return { key: m.key, rows };
+        } catch {
+          return { key: m.key, rows: [] as StockMonthlyRow[] };
+        }
+      }),
+    ).then((resList) => {
+      const flat: { month: string; type: string; value: number }[] = [];
+      resList.forEach(({ key, rows }) => {
+        let inQty = 0;
+        let outQty = 0;
+        rows.forEach((row) => {
+          inQty += Number(row.inQty) || 0;
+          outQty += Number(row.outQty) || 0;
+        });
+        flat.push({ month: key, type: "入库量", value: Number(inQty.toFixed(3)) });
+        flat.push({ month: key, type: "出库量", value: Number(outQty.toFixed(3)) });
+      });
+      setData(flat);
+    });
+  }, [from, to]);
+
+  const hasData = data.some((d) => d.value > 0);
+  return (
+    <ChartCard
+      title="各月入库/出库量"
+      note={from || to ? "按当前日期筛选按月拆分" : "默认近 6 个月"}
+      height={300}
+      empty={!hasData}
+      emptyText="当前区间内暂无入出库数据"
+    >
+      <Column
+        data={data}
+        xField="month"
+        yField="value"
+        colorField="type"
+        height={300}
+        legend={{ color: { position: "right" } }}
+        tooltip={{ items: [{ channel: "y", valueFormatter: (v: number) => fmtQty(v) }] }}
+      />
+    </ChartCard>
+  );
+}
 
 export function MonthlyReportTab() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -172,7 +247,13 @@ export function MonthlyReportTab() {
   ];
 
   return (
-    <ProTable<StockMonthlyRow>
+    <>
+      {/* TASK-v22b B3:图表在上、表格在下(表格本身不动) */}
+      <MonthlyInoutChart
+        from={filterParams.from as string | undefined}
+        to={filterParams.to as string | undefined}
+      />
+      <ProTable<StockMonthlyRow>
       rowKey="itemId"
       locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无月度库存数据" /> }}
       columns={columns}
@@ -207,5 +288,6 @@ export function MonthlyReportTab() {
       }}
       scroll={{ x: 1080 }}
     />
+    </>
   );
 }

@@ -5,12 +5,76 @@
 import { useEffect, useMemo, useState } from "react";
 import { ProTable } from "@ant-design/pro-components";
 import type { ProColumns } from "@ant-design/pro-components";
+import { Pie } from "@ant-design/charts";
 import { itemApi, reportApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
 import type { StockAgeingRow } from "../../types/report";
 import { ExportButton } from "../../components/ExportButton";
+import { ChartCard } from "../../components/ChartCard";
 import { QtyCell } from "./common";
 import { EmptyHint } from "../../components/EmptyHint";
+import { fetchAllPages } from "../../utils/fetchAllPages";
+import { fmtQty } from "../../utils/format";
+
+// TASK-v22b B3:库龄图——按库龄段(0-30/31-90/91-180/未知)聚合当前量占比(环图)
+// 不带筛选全量拉取(pageSize=1000;本地库批次行数远小于 1000)
+function AgeingBucketChart() {
+  // 库龄段展示顺序(后端 ageBucket 文字:0-30 / 31-90 / 91-180 / >180 / 未知)
+  const BUCKET_ORDER = ["0-30", "31-90", "91-180", ">180", "未知"];
+  const [data, setData] = useState<{ bucket: string; quantity: number }[]>([]);
+
+  useEffect(() => {
+    // 后端 pageSize 上限 200,循环拉全量(截断上限 1000,本地库批次行数远小于此)
+    fetchAllPages<StockAgeingRow>((page, pageSize) => reportApi.ageing({ page, pageSize }))
+      .then((rows) => {
+        const m = new Map<string, number>();
+        rows.forEach((row) => {
+          m.set(row.ageBucket, (m.get(row.ageBucket) ?? 0) + Number(row.quantity || 0));
+        });
+        const arr = Array.from(m.entries()).map(([bucket, quantity]) => ({
+          bucket,
+          quantity: Number(quantity.toFixed(3)),
+        }));
+        // 固定库龄段顺序,未预知的段排最后
+        arr.sort(
+          (a, b) =>
+            (BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket)) ||
+            b.quantity - a.quantity,
+        );
+        setData(arr);
+      })
+      .catch(() => setData([]));
+  }, []);
+
+  const total = data.reduce((s, d) => s + d.quantity, 0);
+  return (
+    <ChartCard
+      title="库龄段数量占比"
+      note="全部库存按库龄段聚合数量"
+      height={300}
+      empty={data.length === 0}
+      emptyText="暂无库存库龄数据"
+    >
+      <Pie
+        data={data}
+        angleField="quantity"
+        colorField="bucket"
+        innerRadius={0.6}
+        height={300}
+        legend={{ color: { position: "right" } }}
+        tooltip={{
+          items: [
+            {
+              channel: "y",
+              // 数量 + 占比
+              valueFormatter: (v: number) => `${fmtQty(v)} (${total > 0 ? ((v / total) * 100).toFixed(1) : "0.0"}%)`,
+            },
+          ],
+        }}
+      />
+    </ChartCard>
+  );
+}
 
 export function AgeingReportTab() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -167,7 +231,10 @@ export function AgeingReportTab() {
   ];
 
   return (
-    <ProTable<StockAgeingRow>
+    <>
+      {/* TASK-v22b B3:图表在上、表格在下(表格本身不动) */}
+      <AgeingBucketChart />
+      <ProTable<StockAgeingRow>
       rowKey={(r) => `${r.warehouseId}-${r.itemId}-${r.batchId}`}
       locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库龄数据" /> }}
       columns={columns}
@@ -190,5 +257,6 @@ export function AgeingReportTab() {
       }}
       scroll={{ x: 1080 }}
     />
+    </>
   );
 }
