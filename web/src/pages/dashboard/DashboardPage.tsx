@@ -634,12 +634,13 @@ export function DashboardPage() {
                   render: (v: string | number) => {
                     const num = Number(v);
                     const pct = maxQty > 0 ? (num / maxQty) * 100 : 0;
+                    // 单行内联:数字在左(右对齐)、迷你条在右,保持全系统 45px 行高
                     return (
-                      <div>
-                        <div style={{ marginBottom: 4, fontSize: 13 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ flex: 1, fontSize: 13, textAlign: "right" }}>
                           {fmtQty(num)}
-                        </div>
-                        <div className="data-bar">
+                        </span>
+                        <div className="data-bar" style={{ flex: "0 0 80px" }}>
                           <div
                             className="data-bar-fill"
                             style={{ width: `${Math.min(pct, 100)}%` }}
