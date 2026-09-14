@@ -11,6 +11,7 @@ import { adjustApi, itemApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
 import type { StockAdjustDoc, DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
+import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
 import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 import { fmtDate, fmtMoney, fmtQty } from "../../utils/format";
@@ -49,6 +50,15 @@ export function AdjustPage() {
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
+  // C3 顶栏仓库快捷切换:表单未选仓库时并入请求参数(表单值优先)
+  const scopeWarehouseId = useScopeWarehouseId();
+  // 顶栏仓库范围切换后自动刷新表格(scope 并入请求参数;首次挂载由 ProTable 自触发,不重复)
+  const scopeMounted = useRef(false);
+  useEffect(() => {
+    if (scopeMounted.current) actionRef.current?.reload();
+    else scopeMounted.current = true;
+  }, [scopeWarehouseId]);
+
   // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
   const { token } = theme.useToken();
   const [adjustType, setAdjustType] = useState<"gain" | "loss" | "scrap">("loss");
@@ -79,7 +89,7 @@ export function AdjustPage() {
   }) => {
     const res = await adjustApi.list({
       docNo: params.docNo,
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
       adjustType: params.adjustType,
       status: params.status,
       page: params.current ?? 1,
@@ -100,7 +110,7 @@ export function AdjustPage() {
   }) => {
     const res = await adjustApi.lines({
       docNo: params.docNo,
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
       adjustType: params.adjustType,
       status: params.status,
       itemKeyword: params.itemKeyword,

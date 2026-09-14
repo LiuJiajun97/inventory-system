@@ -2,12 +2,13 @@
 // 基于 ProTable:筛选字段由 columns 配置驱动(仓库/物品关键字/批次号)
 // 数量 0 行灰色弱化(row-zero);可用量为负红色
 
-import { useEffect, useMemo, useState } from "react";
-import { ProTable } from "@ant-design/pro-components";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ProTable, type ActionType } from "@ant-design/pro-components";
 import type { ProColumns } from "@ant-design/pro-components";
 import { stockApi, warehouseApi } from "../../api";
 import { ExportButton } from "../../components/ExportButton";
 import { usePermission } from "../../auth/usePermission";
+import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import type { StockRow, Warehouse } from "../../types";
 import { fmtDate, fmtQty } from "../../utils/format";
 import { EmptyHint } from "../../components/EmptyHint";
@@ -15,6 +16,16 @@ import { EmptyHint } from "../../components/EmptyHint";
 export function StockQueryPage() {
   const { hasPerm } = usePermission();
   const canExport = hasPerm("stock:export");
+  // C3 顶栏仓库快捷切换:表单未选仓库时并入请求参数(表单值优先)
+  const scopeWarehouseId = useScopeWarehouseId();
+  const actionRef = useRef<ActionType>();
+  // 顶栏仓库范围切换后自动刷新表格(scope 并入请求参数;首次挂载由 ProTable 自触发,不重复)
+  const scopeMounted = useRef(false);
+  useEffect(() => {
+    if (scopeMounted.current) actionRef.current?.reload();
+    else scopeMounted.current = true;
+  }, [scopeWarehouseId]);
+
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
   // 仓库下拉数据源(异步加载,仅用于筛选项)
@@ -41,7 +52,7 @@ const request = async (params: {
       itemKeyword: params.itemKeyword,
       batchNo: params.batchNo,    });
     const res = await stockApi.query({
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
       itemKeyword: params.itemKeyword,
       batchNo: params.batchNo,
       page: params.current ?? 1,
@@ -173,6 +184,7 @@ const request = async (params: {
 
   return (
     <ProTable<StockRow>
+      actionRef={actionRef}
       rowKey="id"
       locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库存" /> }}
       columns={columns}

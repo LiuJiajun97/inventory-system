@@ -14,6 +14,7 @@ import { itemApi, stocktakeApi, warehouseApi } from "../../api";
 import type { Item, Warehouse } from "../../types";
 import type { StocktakeDoc, StocktakeLine, DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
+import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
 import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 
@@ -52,6 +53,15 @@ export function StocktakePage() {
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
+  // C3 顶栏仓库快捷切换:表单未选仓库时并入请求参数(表单值优先)
+  const scopeWarehouseId = useScopeWarehouseId();
+  // 顶栏仓库范围切换后自动刷新表格(scope 并入请求参数;首次挂载由 ProTable 自触发,不重复)
+  const scopeMounted = useRef(false);
+  useEffect(() => {
+    if (scopeMounted.current) actionRef.current?.reload();
+    else scopeMounted.current = true;
+  }, [scopeWarehouseId]);
+
   // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
   const { token } = theme.useToken();
 
@@ -79,7 +89,7 @@ export function StocktakePage() {
   }) => {
     const res = await stocktakeApi.list({
       docNo: params.docNo,
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
       status: params.status,
       page: params.current ?? 1,
       pageSize: params.pageSize ?? 20,
@@ -98,7 +108,7 @@ export function StocktakePage() {
   }) => {
     const res = await stocktakeApi.lines({
       docNo: params.docNo,
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
       status: params.status,
       itemKeyword: params.itemKeyword,
       page: params.current ?? 1,

@@ -22,6 +22,7 @@ import { EmptyHint } from "../../components/EmptyHint";
 import { warehouseApi } from "../../api";
 import type { Location, Warehouse } from "../../types";
 import { usePermission } from "../../auth/usePermission";
+import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 
 export function LocationListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -29,6 +30,15 @@ export function LocationListPage() {
   const [editing, setEditing] = useState<Location | null>(null);
   const [form] = Form.useForm();
   const actionRef = useRef<ActionType>();
+  // C3 顶栏仓库快捷切换:表单未选仓库时并入请求参数(表单值优先)
+  const scopeWarehouseId = useScopeWarehouseId();
+  // 顶栏仓库范围切换后自动刷新表格(scope 并入请求参数;首次挂载由 ProTable 自触发,不重复)
+  const scopeMounted = useRef(false);
+  useEffect(() => {
+    if (scopeMounted.current) actionRef.current?.reload();
+    else scopeMounted.current = true;
+  }, [scopeWarehouseId]);
+
   const { hasPerm } = usePermission();
   // 按钮级权限码(前端仅控制显隐,403 兜底由后端拦截)
   const canEdit = hasPerm("location:edit");
@@ -55,7 +65,7 @@ export function LocationListPage() {
     warehouseId?: number;
   }) => {
     const res = await warehouseApi.listLocations({
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
       page: params.current ?? 1,
       pageSize: params.pageSize ?? 20,
     });

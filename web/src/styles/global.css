@@ -828,15 +828,35 @@ a.action-edit .anticon {
 }
 
 .print-doc-title {
-  text-align: center;
-  font-size: 22px;
+  text-align: right;
+  font-size: 24px;
   font-weight: 700;
 }
 
 .print-doc-no {
-  text-align: center;
+  text-align: right;
+  font-size: 16px;
+  margin: 2px 0 0;
+}
+
+/* 抬头行(TASK-v22c C6):左公司名,右单据类型+单号,下边线分隔 */
+.print-doc-letterhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #000;
+}
+
+.print-doc-company {
   font-size: 14px;
-  margin: 4px 0 14px;
+  font-weight: 600;
+  padding-top: 8px;
+}
+
+.print-doc-docinfo {
+  line-height: 1.5;
 }
 
 /* 头部键值对:纯表格两组 label/value,label 列固定 18% */
@@ -884,6 +904,14 @@ a.action-edit .anticon {
   display: flex;
   gap: 60px;
   margin-top: 28px;
+}
+
+.print-doc-pagemeta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 11px;
+  color: #595959;
 }
 
 /* 打印:隐藏主应用与其它弹窗,只保留 .print-doc-sheet(antd Modal portal 到 body) */
@@ -952,5 +980,6 @@ a.action-edit .anticon {
     border: none;
     padding: 0;
     width: 100%;
+    box-sizing: border-box;
   }
 }

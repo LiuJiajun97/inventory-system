@@ -5,8 +5,12 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { Button, Modal, Space } from "antd";
+import dayjs from "dayjs";
 import { itemApi, warehouseApi } from "../api";
 import { fmtMoney } from "../utils/format";
+
+// 打印抬头公司名(TASK-v22c C6):单机自用固定值,如需更换只改这里
+const COMPANY_NAME = "航民达美";
 
 /** 打印明细列定义(标题 + 对齐方式) */
 export interface PrintDocColumn {
@@ -127,8 +131,14 @@ export function PrintDocModal({
     >
       {data && (
         <div className="print-doc-sheet">
-          <div className="print-doc-title">{data.title}</div>
-          <div className="print-doc-no">{data.docNo}</div>
+          {/* TASK-v22c C6 抬头:左公司名,右单据类型(24px 加粗)+单号(16px) */}
+          <div className="print-doc-letterhead">
+            <div className="print-doc-company">{COMPANY_NAME}</div>
+            <div className="print-doc-docinfo">
+              <div className="print-doc-title">{data.title}</div>
+              <div className="print-doc-no">{data.docNo}</div>
+            </div>
+          </div>
           {data.header.length > 0 && (
             <table className="print-doc-header">
               <tbody>
@@ -196,6 +206,12 @@ export function PrintDocModal({
             <div className="print-doc-sign">
               <span>制单人:&nbsp;____________</span>
               <span>审批人:&nbsp;____________</span>
+            </div>
+            {/* TASK-v22c C6 页脚:左页码(简化固定“共 1 页”,单据明细不拆页不真实算页数),
+                右打印时间(浏览器本地时区,用户环境东八区) */}
+            <div className="print-doc-pagemeta">
+              <span>第 1 页 共 1 页</span>
+              <span>打印时间 {dayjs().format("YYYY-MM-DD HH:mm:ss")}</span>
             </div>
           </div>
         </div>

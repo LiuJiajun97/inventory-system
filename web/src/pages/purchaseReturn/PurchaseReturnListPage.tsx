@@ -13,8 +13,10 @@ import type { Warehouse } from "../../types";
 import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 import type { PurchaseReturn, DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
-import { fmtDate, fmtDateTime, fmtMoney, fmtQty } from "../../utils/format";
+import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
+import { fmtDate, fmtMoney, fmtQty } from "../../utils/format";
 import { EmptyHint } from "../../components/EmptyHint";
+import { DocDetailHeader, DocAuditLine } from "../../components/DocDetailSections";
 import { StatusTag } from "../../components/StatusTag";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
@@ -32,6 +34,15 @@ export function PurchaseReturnListPage() {
   const [printOpen, setPrintOpen] = useState(false);
   const { itemText, locText } = usePrintNameMaps(); // V14 打印:ID→可读文本映射
   const actionRef = useRef<ActionType>();
+  // C3 顶栏仓库快捷切换:表单未选仓库时并入请求参数(表单值优先)
+  const scopeWarehouseId = useScopeWarehouseId();
+  // 顶栏仓库范围切换后自动刷新表格(scope 并入请求参数;首次挂载由 ProTable 自触发,不重复)
+  const scopeMounted = useRef(false);
+  useEffect(() => {
+    if (scopeMounted.current) actionRef.current?.reload();
+    else scopeMounted.current = true;
+  }, [scopeWarehouseId]);
+
   const { hasPerm } = usePermission();
   const location = useLocation();
 
@@ -60,7 +71,7 @@ export function PurchaseReturnListPage() {
     const res = await purchaseReturnApi.list({
       docNo: params.docNo,
       status: params.status,
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
       from: params.from,
       to: params.to,
       page: params.current ?? 1,
@@ -83,7 +94,7 @@ export function PurchaseReturnListPage() {
     const res = await purchaseReturnApi.lines({
       docNo: params.docNo,
       status: params.status,
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
       from: params.from,
       to: params.to,
       itemKeyword: params.itemKeyword,
@@ -358,10 +369,13 @@ export function PurchaseReturnListPage() {
       >
         {detail && (
           <>
+            {/* TASK-v22c C4 三段式:头部(状态+单号+价税合计) */}
+            <DocDetailHeader
+              status={detail.status}
+              docNo={detail.docNo}
+              total={detail.totalAmount}
+            />
             <Descriptions column={2} bordered size="small">
-              <Descriptions.Item label="单号">
-                <span style={{ fontFamily: "monospace" }}>{detail.docNo}</span>
-              </Descriptions.Item>
               <Descriptions.Item label="日期">
                 {fmtDate(detail.docDate)}
               </Descriptions.Item>
@@ -378,13 +392,6 @@ export function PurchaseReturnListPage() {
                   ? "-"
                   : fmtMoney(detail.totalAmount)}
               </Descriptions.Item>
-              <Descriptions.Item label="创建人">
-                {detail.creator ?? "-"}
-              </Descriptions.Item>
-              <Descriptions.Item label="创建时间">
-                {fmtDateTime(detail.createdAt)}
-              </Descriptions.Item>
-              <Descriptions.Item label="状态">已完成</Descriptions.Item>
               <Descriptions.Item label="备注" span={2}>
                 {detail.remark ?? "-"}
               </Descriptions.Item>
@@ -456,6 +463,8 @@ export function PurchaseReturnListPage() {
                 },
               ]}
             />
+            {/* TASK-v22c C4 审计区:退货单无审批流,仅创建信息 */}
+            <DocAuditLine creator={detail.creator} createdAt={detail.createdAt} />
           </>
         )}
       </Modal>

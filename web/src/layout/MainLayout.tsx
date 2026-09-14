@@ -1,11 +1,14 @@
 // 主布局(SPEC-WEB V2 1.2 / RBAC 批 1b 动态菜单)
+// 顶栏(TASK-v22c C2/C3):左侧 折叠按钮 + 面包屑 + 仓库快捷切换 Select;
+// 右侧 当前日期 + 授权仓徽标(非 admin)+ 角色 Tag + 头像下拉(退出登录)
 // 左侧白底 Sider 208 + 顶栏白底 + 内容区浅灰底
 // 侧栏菜单由 GET /auth/menus 动态渲染:目录为一级分组(可展开),菜单为二级;
 // 图标按 menuCode 静态映射,未知编码回退默认图标;菜单加载中显示 Spin,不闪现硬编码
 // 面包屑按动态菜单树自动推导(所属目录 + 当前页)
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Layout, Menu, Breadcrumb, Button, Tooltip, Spin } from "antd";
+import { Layout, Menu, Breadcrumb, Tooltip, Spin, Tag, Dropdown, Select } from "antd";
+import dayjs from "dayjs";
 import {
   DashboardOutlined,
   ImportOutlined,
@@ -19,6 +22,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   LogoutOutlined,
+  SafetyCertificateOutlined,
   ShoppingCartOutlined,
   DollarOutlined,
   SwapOutlined,
@@ -34,6 +38,7 @@ import {
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearAuth, getUser } from "../auth/useAuth";
 import { useMenus } from "../auth/MenuContext";
+import { WarehouseScopeProvider, useWarehouseScope } from "../auth/WarehouseScopeContext";
 import { BrandLogo } from "../components/BrandLogo";
 import { UserAvatar } from "../components/UserAvatar";
 import { RoleTag } from "../components/StatusTag";
@@ -86,6 +91,9 @@ const MENU_ICON: Record<string, React.ReactNode> = {
 
 const FALLBACK_ICON = <SettingOutlined />;
 
+// 中文星期:dayjs() 本地时区(用户环境为东八区)
+const WEEK_CN = ["日", "一", "二", "三", "四", "五", "六"];
+
 // 展开状态持久化 key(按用户区分,不同角色目录不同,恢复时还会按当前 nodes 过滤)
 const menuOpenStorageKey = (username?: string) => `menu-open-${username}`;
 
@@ -113,6 +121,15 @@ function saveOpenKeys(username: string | undefined, keys: string[]): void {
 }
 
 export function MainLayout() {
+  return (
+    // 仓库范围上下文挂登录态内:顶栏徽标/快捷切换与各列表页共享同一份仓库列表
+    <WarehouseScopeProvider>
+      <MainLayoutInner />
+    </WarehouseScopeProvider>
+  );
+}
+
+function MainLayoutInner() {
   const location = useLocation();
   const navigate = useNavigate();
   const user = getUser();
@@ -198,6 +215,25 @@ export function MainLayout() {
     navigate("/login", { replace: true });
   };
 
+  // C2:当前日期(YYYY-MM-DD 周X,灰色小字)
+  const todayText = `${dayjs().format("YYYY-MM-DD")} 周${WEEK_CN[dayjs().day()]}`;
+
+  // C2:数据范围徽标——非 admin 且已拉到授权仓列表(数据权限过滤后的结果)时显示数量
+  const scope = useWarehouseScope();
+  const showScopeBadge = role !== "admin" && scope.warehouses.length > 0;
+
+  // C2:头像下拉菜单(退出登录);原独立退出按钮已移除
+  const avatarMenu = {
+    items: [
+      {
+        key: "logout",
+        icon: <LogoutOutlined />,
+        label: "退出登录",
+        onClick: onLogout,
+      },
+    ],
+  };
+
   return (
     <Layout className="app-layout">
       <Sider
@@ -237,20 +273,42 @@ export function MainLayout() {
             <Breadcrumb
               items={crumbs.map((c) => ({ title: c.label }))}
             />
+            {/* C3 仓库快捷切换:选中后列表页自动按此仓过滤,清空=全部仓库 */}
+            <Select
+              allowClear
+              style={{ width: 180, marginLeft: 16 }}
+              placeholder="全部仓库"
+              size="small"
+              value={scope.scopeWarehouseId ?? undefined}
+              onChange={(v) => scope.setScopeWarehouseId(v ?? null)}
+              options={scope.warehouses.map((w) => ({
+                label: w.warehouseName,
+                value: w.id,
+              }))}
+            />
           </div>
           <div className="app-header-right">
+            {/* C2 当前日期(灰色小字) */}
+            <span style={{ color: "#8c8c8c", fontSize: 12, marginRight: 12 }}>
+              {todayText}
+            </span>
+            {/* C2 数据范围徽标:非 admin 显示授权仓数量 */}
+            {showScopeBadge && (
+              <Tag icon={<SafetyCertificateOutlined />} style={{ marginRight: 8 }}>
+                授权仓:{scope.warehouses.length} 个
+              </Tag>
+            )}
             {role && <RoleTag role={role} />}
             <span className="user-meta">
-              <UserAvatar name={user?.name ?? user?.username} />
+              {/* C2:头像改为下拉菜单入口(退出登录) */}
+              <Dropdown menu={avatarMenu} trigger={["click"]}>
+                <UserAvatar
+                  name={user?.name ?? user?.username}
+                  style={{ cursor: "pointer" }}
+                />
+              </Dropdown>
               {user?.name ?? user?.username}
             </span>
-            <Tooltip title="退出登录">
-              <Button
-                type="text"
-                icon={<LogoutOutlined />}
-                onClick={onLogout}
-              />
-            </Tooltip>
           </div>
         </Header>
         <Content className="app-content">

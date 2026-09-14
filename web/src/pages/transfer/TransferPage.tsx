@@ -14,6 +14,7 @@ import { itemApi, transferApi, warehouseApi } from "../../api";
 import type { Item, Location, Warehouse } from "../../types";
 import type { TransferDoc, DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
+import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
 import { PrintDocModal, printHeader, type PrintDocData } from "../../components/PrintDocModal";
 
@@ -54,6 +55,15 @@ export function TransferPage() {
   const [saving, setSaving] = useState(false);
   const [createForm] = Form.useForm();
   const actionRef = useRef<ActionType>();
+  // C3 顶栏仓库快捷切换:只并入「源仓」字段 fromWarehouseId(目的仓不动),表单值优先
+  const scopeWarehouseId = useScopeWarehouseId();
+  // 顶栏仓库范围切换后自动刷新表格(scope 并入请求参数;首次挂载由 ProTable 自触发,不重复)
+  const scopeMounted = useRef(false);
+  useEffect(() => {
+    if (scopeMounted.current) actionRef.current?.reload();
+    else scopeMounted.current = true;
+  }, [scopeWarehouseId]);
+
   // antd 主题 token:抽屉 footer 上边线颜色(不硬编码色值)
   const { token } = theme.useToken();
   const [lines, setLines] = useState<Array<{ key: number; itemId?: number; qty?: number; unitPrice?: number; fromLocationId?: number; toLocationId?: number; vehicleNo?: string }>>([{ key: 1 }]);
@@ -111,7 +121,7 @@ export function TransferPage() {
   }) => {
     const res = await transferApi.list({
       docNo: params.docNo,
-      fromWarehouseId: params.fromWarehouseId,
+      fromWarehouseId: params.fromWarehouseId ?? scopeWarehouseId ?? undefined,
       toWarehouseId: params.toWarehouseId,
       status: params.status,
       from: params.from,
@@ -136,7 +146,7 @@ export function TransferPage() {
   }) => {
     const res = await transferApi.lines({
       docNo: params.docNo,
-      fromWarehouseId: params.fromWarehouseId,
+      fromWarehouseId: params.fromWarehouseId ?? scopeWarehouseId ?? undefined,
       toWarehouseId: params.toWarehouseId,
       status: params.status,
       from: params.from,

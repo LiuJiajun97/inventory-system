@@ -14,6 +14,7 @@ import type { OpeningStockDoc, OpeningStockDocItem, Warehouse } from "../../type
 import type { DocLine } from "../../types/phase1";
 import { PrintDocModal, printHeader, type PrintDocData } from "../../components/PrintDocModal";
 import { usePermission } from "../../auth/usePermission";
+import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import { fmtDate, fmtDateTime, fmtMoney, fmtQty } from "../../utils/format";
 import { EmptyHint } from "../../components/EmptyHint";
 import { StatusTag } from "../../components/StatusTag";
@@ -32,6 +33,15 @@ export function OpeningStockListPage() {
   const [viewMode, setViewMode] = useState<"main" | "line">("main");
   const [printOpen, setPrintOpen] = useState(false);
   const actionRef = useRef<ActionType>();
+  // C3 顶栏仓库快捷切换:表单未选仓库时并入请求参数(表单值优先)
+  const scopeWarehouseId = useScopeWarehouseId();
+  // 顶栏仓库范围切换后自动刷新表格(scope 并入请求参数;首次挂载由 ProTable 自触发,不重复)
+  const scopeMounted = useRef(false);
+  useEffect(() => {
+    if (scopeMounted.current) actionRef.current?.reload();
+    else scopeMounted.current = true;
+  }, [scopeWarehouseId]);
+
   const { hasPerm } = usePermission();
   const location = useLocation();
 
@@ -61,7 +71,7 @@ export function OpeningStockListPage() {
     const res = await openingApi.list({
       docNo: params.docNo,
       status: params.status,
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
       from: params.from,
       to: params.to,
       page: params.current ?? 1,
@@ -86,7 +96,7 @@ export function OpeningStockListPage() {
     const res = await openingApi.lines({
       docNo: params.docNo,
       status: params.status,
-      warehouseId: params.warehouseId,
+      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
       from: params.from,
       to: params.to,
       itemKeyword: params.itemKeyword,

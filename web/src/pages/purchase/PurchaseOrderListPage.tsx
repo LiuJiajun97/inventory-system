@@ -11,6 +11,7 @@ import { Link, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { fmtDate, fmtDateTime, fmtMoney, fmtQty } from "../../utils/format";
 import { EmptyHint } from "../../components/EmptyHint";
+import { DocDetailHeader, DocAuditLine } from "../../components/DocDetailSections";
 import { purchaseApi, supplierApi } from "../../api";
 import { ExportButton } from "../../components/ExportButton";
 import { PrintDocModal, printHeader, type PrintDocData } from "../../components/PrintDocModal";
@@ -420,29 +421,27 @@ const request = async (params: {
       >
         {detail && (
           <>
+            {/* TASK-v22c C4 三段式:头部(状态+单号+价税合计) */}
+            <DocDetailHeader
+              status={detail.status}
+              docNo={detail.docNo}
+              total={detail.totalTaxInclusive}
+            />
             <Descriptions column={3} bordered size="small">
               <Descriptions.Item label="下单日期">{fmtDate(detail.docDate)}</Descriptions.Item>
               <Descriptions.Item label="超收比例(%)">
                 {Number(detail.allowOverReceiptRate).toFixed(2)}
               </Descriptions.Item>
-              <Descriptions.Item label="状态">
-                <DocStatusTag status={detail.status} />
-              </Descriptions.Item>
               <Descriptions.Item label="金额">{fmtMoney(detail.totalAmount)}</Descriptions.Item>
               <Descriptions.Item label="税额">{fmtMoney(detail.totalTaxAmount)}</Descriptions.Item>
-              <Descriptions.Item label="价税合计">
-                {fmtMoney(detail.totalTaxInclusive)}
-              </Descriptions.Item>
               {/* V9 通用字段 */}
               <Descriptions.Item label="合同号">{detail.contractNo ?? "-"}</Descriptions.Item>
               <Descriptions.Item label="运费">
                 {fmtMoney(detail.freight)}
               </Descriptions.Item>
               <Descriptions.Item label="交货地址">{detail.shippingAddress ?? "-"}</Descriptions.Item>
-              <Descriptions.Item label="创建人">{detail.creator ?? "-"}</Descriptions.Item>
-              <Descriptions.Item label="审批人">{detail.approver ?? "-"}</Descriptions.Item>
               <Descriptions.Item label="驳回原因">{detail.rejectReason ?? "-"}</Descriptions.Item>
-              <Descriptions.Item label="备注" span={3}>{detail.remark ?? "-"}</Descriptions.Item>
+              <Descriptions.Item label="备注" span={2}>{detail.remark ?? "-"}</Descriptions.Item>
             </Descriptions>
             <div style={{ marginTop: 12, fontWeight: 600 }}>订单行(价税分离)</div>
             <Table
@@ -472,6 +471,13 @@ const request = async (params: {
                   ),
                 },
               ]}
+            />
+            {/* TASK-v22c C4 审计区:创建/审批信息一行灰字 */}
+            <DocAuditLine
+              creator={detail.creator}
+              createdAt={detail.createdAt}
+              approver={detail.approver}
+              approvedAt={detail.approvedAt}
             />
           </>
         )}
