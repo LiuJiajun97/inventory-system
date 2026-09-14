@@ -238,7 +238,7 @@ class SalesOrderTest {
 
         outboundService.create(new OutboundCreateDTO(warehouseId, "销售发货",
                 List.of(new OutboundLineDTO(itemId, new BigDecimal("30"), null, null,
-                        null, null, lineId)),
+                        null, null, null, null, lineId)),
                 "sales", id, LocalDate.now()), "so_creator");
 
         SalesOrderVO vo = salesOrderService.get(id);
@@ -260,12 +260,12 @@ class SalesOrderTest {
         long lineId = salesOrderService.get(id).items().get(0).id();
         outboundService.create(new OutboundCreateDTO(warehouseId, "部分发货",
                 List.of(new OutboundLineDTO(itemId, new BigDecimal("4"), null, null,
-                        null, null, lineId)),
+                        null, null, null, null, lineId)),
                 "sales", id, LocalDate.now()), "so_creator");
         assertThrows(BizException.class, () ->
                 outboundService.create(new OutboundCreateDTO(warehouseId, "超发",
                         List.of(new OutboundLineDTO(itemId, new BigDecimal("7"), null, null,
-                                null, null, lineId)),
+                                null, null, null, null, lineId)),
                         "sales", id, LocalDate.now()), "so_creator"));
         // 库存 96(只扣了 4),预占剩 6
         StockDO stock = stock(itemId);
@@ -284,7 +284,7 @@ class SalesOrderTest {
         long lineId = salesOrderService.get(id).items().get(0).id();
         outboundService.create(new OutboundCreateDTO(warehouseId, "部分发货",
                 List.of(new OutboundLineDTO(itemId, new BigDecimal("3"), null, null,
-                        null, null, lineId)),
+                        null, null, null, null, lineId)),
                 "sales", id, LocalDate.now()), "so_creator");
         assertEquals("closed", salesOrderService.close(id, "so_approver").status());
         StockDO stock = stock(itemId);
@@ -317,7 +317,7 @@ class SalesOrderTest {
         assertThrows(BizException.class, () ->
                 outboundService.create(new OutboundCreateDTO(warehouseId, null,
                         List.of(new OutboundLineDTO(itemId, new BigDecimal("1"), null, null,
-                                null, null, lineId)),
+                                null, null, null, null, lineId)),
                         "sales", id, LocalDate.now()), "so_creator"));
     }
 
@@ -333,7 +333,7 @@ class SalesOrderTest {
         assertThrows(BizException.class, () ->
                 outboundService.create(new OutboundCreateDTO(otherWarehouseId, null,
                         List.of(new OutboundLineDTO(itemId, new BigDecimal("1"), null, null,
-                                null, null, lineId)),
+                                null, null, null, null, lineId)),
                         "sales", id, LocalDate.now()), "so_creator"));
     }
 
@@ -349,7 +349,7 @@ class SalesOrderTest {
         assertThrows(BizException.class, () ->
                 outboundService.create(new OutboundCreateDTO(warehouseId, "手工出库",
                         List.of(new OutboundLineDTO(itemId, new BigDecimal("1"), null, null,
-                                null, null, null)),
+                                null, null, null, null, null)),
                         null, null, null), "so_creator"));
     }
 
@@ -364,7 +364,7 @@ class SalesOrderTest {
         long lineId = salesOrderService.get(id).items().get(0).id();
         outboundService.create(new OutboundCreateDTO(warehouseId, null,
                 List.of(new OutboundLineDTO(itemId, new BigDecimal("5"), null, null,
-                        null, null, lineId)),
+                        null, null, null, null, lineId)),
                 "sales", id, LocalDate.now()), "so_creator");
         assertEquals("completed", salesOrderService.get(id).status());
         assertThrows(BizException.class, () -> salesOrderService.close(id, "so_approver"));
@@ -386,7 +386,7 @@ class SalesOrderTest {
         return salesOrderService.create(new SalesOrderCreateDTO(LocalDate.now(), cu.getId(),
                 creatorUserId, warehouseId, null,
                 List.of(new SalesOrderLineDTO(itemId, new BigDecimal(qty), null,
-                        new BigDecimal("20"), new BigDecimal("13.00"), null))), "so_creator").id();
+                        new BigDecimal("20"), null, new BigDecimal("13.00"), null))), "so_creator").id();
     }
 
     /**

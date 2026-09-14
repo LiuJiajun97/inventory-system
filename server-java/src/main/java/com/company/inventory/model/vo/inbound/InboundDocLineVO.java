@@ -13,7 +13,7 @@ public record InboundDocLineVO(
         LocalDate docDate, String status, String warehouseName,
         Integer lineNo, Long itemId, String itemCode,
         String itemName, String spec, String unit,
-        BigDecimal quantity, BigDecimal unitPrice, BigDecimal taxRate,
+        BigDecimal quantity, BigDecimal unitPrice, BigDecimal taxPrice, BigDecimal taxRate,
         BigDecimal amount, BigDecimal taxAmount, BigDecimal taxInclusiveTotal,
         String batchNo) {
 }

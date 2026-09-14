@@ -166,6 +166,30 @@ class PurchaseOrderTest {
     }
 
     /**
+     * 用例 1b:含税单价录入路径——10 × 含税单价 113 @13%:金额 1000,税额 130,含税 1130,不含税单价反算 100。
+     */
+    @Test
+    void createByTaxPrice() {
+        PurchaseOrderVO vo = createOrderByTaxPrice("10", "113.00", "13.00");
+        PurchaseOrderItemVO line = vo.items().get(0);
+        assertEquals(0, new BigDecimal("1000").compareTo(new BigDecimal(line.amount())));
+        assertEquals(0, new BigDecimal("130").compareTo(new BigDecimal(line.taxAmount())));
+        assertEquals(0, new BigDecimal("1130").compareTo(new BigDecimal(line.taxInclusiveTotal())));
+        // 不含税单价反算:1000 ÷ 10 = 100
+        assertEquals(0, new BigDecimal("100").compareTo(line.unitPrice()));
+        // 含税单价原样落库
+        assertEquals(0, new BigDecimal("113.00").compareTo(line.taxPrice()));
+    }
+
+    /**
+     * 用例 1c:不含税/含税单价都缺 → 报错。
+     */
+    @Test
+    void createWithoutAnyPriceRejected() {
+        assertThrows(BizException.class, () -> createOrderFull("10", null, "13.00", "0"));
+    }
+
+    /**
      * 用例 2:提交→待审批。
      */
     @Test
@@ -228,7 +252,7 @@ class PurchaseOrderTest {
         PurchaseOrderVO edited = purchaseOrderService.update(id,
                 new PurchaseOrderCreateDTO(LocalDate.now(), supplierId, creatorUserId, null,
                         "改后", List.of(new PurchaseOrderLineDTO(itemId, new BigDecimal("2"),
-                                null, new BigDecimal("5"), null, null))), "po_creator");
+                                null, new BigDecimal("5"), null, null, null))), "po_creator");
         assertEquals("draft", edited.status());
         assertEquals(0, new BigDecimal("10").compareTo(new BigDecimal(edited.totalAmount())));
     }
@@ -244,7 +268,7 @@ class PurchaseOrderTest {
         assertThrows(BizException.class, () -> purchaseOrderService.update(id,
                 new PurchaseOrderCreateDTO(LocalDate.now(), supplierId, creatorUserId, null,
                         null, List.of(new PurchaseOrderLineDTO(itemId, new BigDecimal("1"),
-                                null, new BigDecimal("1"), null, null))), "po_creator"));
+                                null, new BigDecimal("1"), null, null, null))), "po_creator"));
     }
 
     /**
@@ -259,7 +283,7 @@ class PurchaseOrderTest {
 
         inboundService.create(new InboundCreateDTO(warehouseId, "部分到货",
                 List.of(new InboundLineDTO(itemId, new BigDecimal("4"), null, null, null,
-                        null, null, null, null, null, lineId)),
+                        null, null, null, null, null, null, lineId)),
                 "purchase", id, LocalDate.now()), "po_creator");
         PurchaseOrderVO mid = purchaseOrderService.get(id);
         assertEquals("approved", mid.status());
@@ -268,7 +292,7 @@ class PurchaseOrderTest {
 
         inboundService.create(new InboundCreateDTO(warehouseId, "到满",
                 List.of(new InboundLineDTO(itemId, new BigDecimal("6"), null, null, null,
-                        null, null, null, null, null, lineId)),
+                        null, null, null, null, null, null, lineId)),
                 "purchase", id, LocalDate.now()), "po_creator");
         PurchaseOrderVO done = purchaseOrderService.get(id);
         assertEquals("completed", done.status());
@@ -293,7 +317,7 @@ class PurchaseOrderTest {
         long lineId = purchaseOrderService.get(id).items().get(0).id();
         inboundService.create(new InboundCreateDTO(warehouseId, "到上限",
                 List.of(new InboundLineDTO(itemId, new BigDecimal("11"), null, null, null,
-                        null, null, null, null, null, lineId)),
+                        null, null, null, null, null, null, lineId)),
                 "purchase", id, LocalDate.now()), "po_creator");
         PurchaseOrderVO vo = purchaseOrderService.get(id);
         assertEquals("completed", vo.status());
@@ -312,7 +336,7 @@ class PurchaseOrderTest {
         BizException ex = assertThrows(BizException.class, () ->
                 inboundService.create(new InboundCreateDTO(warehouseId, "超收",
                         List.of(new InboundLineDTO(itemId, new BigDecimal("11.0001"), null, null, null,
-                                null, null, null, null, null, lineId)),
+                                null, null, null, null, null, null, lineId)),
                         "purchase", id, LocalDate.now()), "po_creator"));
         assertTrue(ex.getMessage().contains("超收"));
         // 拒绝后库存无变化、订单行未回写
@@ -334,7 +358,7 @@ class PurchaseOrderTest {
         assertThrows(BizException.class, () ->
                 inboundService.create(new InboundCreateDTO(warehouseId, "超收",
                         List.of(new InboundLineDTO(itemId, new BigDecimal("10.0001"), null, null, null,
-                                null, null, null, null, null, lineId)),
+                                null, null, null, null, null, null, lineId)),
                         "purchase", id, LocalDate.now()), "po_creator"));
     }
 
@@ -348,7 +372,7 @@ class PurchaseOrderTest {
         assertThrows(BizException.class, () ->
                 inboundService.create(new InboundCreateDTO(warehouseId, null,
                         List.of(new InboundLineDTO(itemId, new BigDecimal("1"), null, null, null,
-                                null, null, null, null, null, lineId)),
+                                null, null, null, null, null, null, lineId)),
                         "purchase", id, LocalDate.now()), "po_creator"));
     }
 
@@ -365,7 +389,7 @@ class PurchaseOrderTest {
         assertThrows(BizException.class, () ->
                 inboundService.create(new InboundCreateDTO(warehouseId, null,
                         List.of(new InboundLineDTO(itemId, new BigDecimal("1"), null, null, null,
-                                null, null, null, null, null, foreignLine)),
+                                null, null, null, null, null, null, foreignLine)),
                         "purchase", idA, LocalDate.now()), "po_creator"));
     }
 
@@ -396,7 +420,7 @@ class PurchaseOrderTest {
         assertThrows(BizException.class, () -> purchaseOrderService.update(id,
                 new PurchaseOrderCreateDTO(LocalDate.now(), supplierId, creatorUserId, null,
                         null, List.of(new PurchaseOrderLineDTO(itemId, new BigDecimal("1"),
-                                null, new BigDecimal("1"), null, null))), "po_creator"));
+                                null, new BigDecimal("1"), null, null, null))), "po_creator"));
     }
 
     /**
@@ -421,7 +445,7 @@ class PurchaseOrderTest {
         long lineId = purchaseOrderService.get(id).items().get(0).id();
         inboundService.create(new InboundCreateDTO(warehouseId, null,
                 List.of(new InboundLineDTO(itemId, new BigDecimal("1"), null, null, null,
-                        null, null, null, null, null, lineId)),
+                        null, null, null, null, null, null, lineId)),
                 "purchase", id, LocalDate.now()), "po_creator");
         assertEquals("completed", purchaseOrderService.get(id).status());
         assertThrows(BizException.class, () -> purchaseOrderService.close(id, "po_approver"));
@@ -467,10 +491,33 @@ class PurchaseOrderTest {
         sp.setSupplierName(code + "供应商");
         sp.setStatus(1);
         supplierMapper.insert(sp);
+        // V20:price 可空(测"单价全缺"场景),null 时不含税/含税单价均不传,由服务端校验拒绝
+        BigDecimal priceValue = price == null ? null : new BigDecimal(price);
         return purchaseOrderService.create(new PurchaseOrderCreateDTO(LocalDate.now(),
                 sp.getId(), creatorUserId, new BigDecimal(overRate), "测试",
                 List.of(new PurchaseOrderLineDTO(itemId, new BigDecimal(qty), null,
-                        new BigDecimal(price), new BigDecimal(rate), null))), "po_creator");
+                        priceValue, null, new BigDecimal(rate), null))), "po_creator");
+    }
+
+    /**
+     * 新建单行采购订单(含税单价路径:unitPrice 传 null,taxPrice 传值)。
+     *
+     * @param qty      数量
+     * @param taxPrice 含税单价
+     * @param rate     税率
+     * @return 订单 VO
+     */
+    private PurchaseOrderVO createOrderByTaxPrice(String qty, String taxPrice, String rate) {
+        String code = nextCode();
+        SupplierDO sp = new SupplierDO();
+        sp.setSupplierCode(code + "-SP");
+        sp.setSupplierName(code + "供应商");
+        sp.setStatus(1);
+        supplierMapper.insert(sp);
+        return purchaseOrderService.create(new PurchaseOrderCreateDTO(LocalDate.now(),
+                sp.getId(), creatorUserId, new BigDecimal("0"), "测试",
+                List.of(new PurchaseOrderLineDTO(itemId, new BigDecimal(qty), null,
+                        null, new BigDecimal(taxPrice), new BigDecimal(rate), null))), "po_creator");
     }
 
     /**

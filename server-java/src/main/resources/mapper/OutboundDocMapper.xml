@@ -45,7 +45,7 @@
             d.id AS doc_id, d.doc_no, d.doc_date, d.status,
             w.warehouse_name, i.line_no, i.item_id, it.item_code, it.item_name,
             it.spec, it.unit,
-            i.quantity, i.unit_price, i.tax_rate, i.amount,
+            i.quantity, i.unit_price, i.tax_price, i.tax_rate, i.amount,
             i.tax_amount, i.tax_inclusive_total
         <include refid="docLinesFrom"/>
         WHERE 1 = 1

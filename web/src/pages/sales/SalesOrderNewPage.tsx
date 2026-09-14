@@ -29,6 +29,8 @@ import { itemApi, salesApi, customerApi, userApi, warehouseApi } from "../../api
 import type { Warehouse } from "../../types";
 import type { Item, UserInfo } from "../../types";
 import type { Customer } from "../../types/phase1";
+import { fmtMoney } from "../../utils/format";
+import { previewLineMoney } from "../../utils/lineMoney";
 
 interface LineRow {
   key: number;
@@ -36,6 +38,8 @@ interface LineRow {
   orderedQty?: number;
   customerDeliveryDate?: Dayjs;
   unitPrice?: number;
+  // V20 含税单价:与不含税单价二选一,都填时服务端按不含税优先
+  taxPrice?: number;
   taxRate?: number;
   lineRemark?: string;
 }
@@ -102,6 +106,7 @@ export function SalesOrderNewPage() {
           orderedQty: Number(l.orderedQty),
           customerDeliveryDate: l.customerDeliveryDate ? dayjs(l.customerDeliveryDate) : undefined,
           unitPrice: Number(l.unitPrice),
+          taxPrice: l.taxPrice != null ? Number(l.taxPrice) : undefined,
           taxRate: Number(l.taxRate),
           lineRemark: l.lineRemark ?? undefined,
         }));
@@ -132,7 +137,10 @@ export function SalesOrderNewPage() {
 
   const onSubmit = async () => {
     const v = await form.validateFields();
-    const validLines = lines.filter((l) => l.itemId && l.orderedQty && l.unitPrice != null);
+    // V20:不含税单价/含税单价至少填一个(都填时服务端按不含税优先)
+    const validLines = lines.filter(
+      (l) => l.itemId && l.orderedQty && (l.unitPrice != null || l.taxPrice != null),
+    );
     if (validLines.length === 0) {
       message.error("请至少填写一行订单明细");
       return;
@@ -156,7 +164,8 @@ export function SalesOrderNewPage() {
           itemId: l.itemId!,
           orderedQty: l.orderedQty!,
           customerDeliveryDate: l.customerDeliveryDate?.format("YYYY-MM-DD"),
-          unitPrice: l.unitPrice!,
+          unitPrice: l.unitPrice ?? undefined,
+          taxPrice: l.taxPrice ?? undefined,
           taxRate: l.taxRate ?? 13,
           lineRemark: l.lineRemark,
         })),
@@ -234,6 +243,53 @@ export function SalesOrderNewPage() {
           }
         />
       ),
+    },
+    {
+      // V20 含税单价:与不含税单价二选一(都填时服务端按不含税优先)
+      title: "含税单价",
+      width: 120,
+      render: (_v: unknown, l: LineRow) => (
+        <InputNumber
+          min={0}
+          step={0.01}
+          style={{ width: "100%" }}
+          value={l.taxPrice}
+          onChange={(v) =>
+            setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, taxPrice: v ?? undefined } : x)))
+          }
+        />
+      ),
+    },
+    {
+      // V20 金额三列:只读预览(与后端同口径),提交后以服务端重算为准
+      title: "不含税金额",
+      width: 110,
+      align: "right" as const,
+      className: "num-cell",
+      render: (_v: unknown, l: LineRow) => {
+        const pm = previewLineMoney(l.orderedQty ?? 0, l.unitPrice, l.taxPrice, l.taxRate);
+        return pm ? fmtMoney(pm.amount) : "-";
+      },
+    },
+    {
+      title: "税额",
+      width: 100,
+      align: "right" as const,
+      className: "num-cell",
+      render: (_v: unknown, l: LineRow) => {
+        const pm = previewLineMoney(l.orderedQty ?? 0, l.unitPrice, l.taxPrice, l.taxRate);
+        return pm ? fmtMoney(pm.tax) : "-";
+      },
+    },
+    {
+      title: "含税金额",
+      width: 110,
+      align: "right" as const,
+      className: "num-cell",
+      render: (_v: unknown, l: LineRow) => {
+        const pm = previewLineMoney(l.orderedQty ?? 0, l.unitPrice, l.taxPrice, l.taxRate);
+        return pm ? fmtMoney(pm.inclusive) : "-";
+      },
     },
     {
       title: "税率(%)",
@@ -387,7 +443,7 @@ export function SalesOrderNewPage() {
             dataSource={lines}
             pagination={false}
             columns={lineColumns}
-            scroll={{ x: 900, y: "calc(100vh - 520px)" }}
+            scroll={{ x: 1560, y: "calc(100vh - 520px)" }}
           />
           {/* 添加行按钮:明细表正下方,左对齐 */}
           <div className="doc-form-line-adder">

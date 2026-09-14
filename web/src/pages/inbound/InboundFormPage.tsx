@@ -19,6 +19,7 @@ import {
 } from "antd";
 import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { fmtMoney } from "../../utils/format";
+import { previewLineMoney } from "../../utils/lineMoney";
 import { ProCard } from "@ant-design/pro-components";
 import { Link, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -40,6 +41,8 @@ interface Line {
   refLineId?: number;
   // V10:不含税单价(可空;采购到货由服务端按订单行覆盖)
   unitPrice?: number;
+  // V20:含税单价(可空;采购到货由服务端按订单行覆盖,手工入库可选填)
+  taxPrice?: number;
 }
 
 export function InboundFormPage() {
@@ -175,6 +178,8 @@ export function InboundFormPage() {
           refLineId: l.refLineId,
           // V10 不含税单价(采购到货由服务端覆盖,手工入库可选填)
           unitPrice: l.unitPrice,
+          // V20 含税单价(采购到货由服务端覆盖,手工入库可选填)
+          taxPrice: l.taxPrice,
         })),
         refType: refOrderId ? "purchase" : undefined,
         refDocId: refOrderId,
@@ -229,7 +234,7 @@ export function InboundFormPage() {
       ),
     },
     {
-      // V10 不含税单价(可空,手工入库选填)
+      // V10 不含税单价(可空,手工入库选填;采购到货由服务端按订单行覆盖)
       title: "不含税单价",
       width: 120,
       render: (_v, r) => (
@@ -243,14 +248,45 @@ export function InboundFormPage() {
       ),
     },
     {
-      // V10 金额列(只读实时:数量×不含税单价)
-      title: "金额",
+      // V20 含税单价(可空,手工入库选填;采购到货由服务端按订单行覆盖)
+      title: "含税单价",
+      width: 120,
+      render: (_v, r) => (
+        <InputNumber
+          min={0}
+          step={0.01}
+          style={{ width: "100%" }}
+          value={r.line.taxPrice}
+          onChange={(v) => updateLine(r.idx, "taxPrice", v == null ? undefined : Number(v))}
+        />
+      ),
+    },
+    {
+      // V20 金额三列(只读预览,与后端同口径,入库行无税率输入时税额按 0)
+      title: "不含税金额",
       width: 110,
       align: "right",
       render: (_v, r) => {
-        const qty = r.line.qty ?? 0;
-        const price = r.line.unitPrice ?? 0;
-        return qty > 0 && price > 0 ? fmtMoney(qty * price) : "-";
+        const pm = previewLineMoney(r.line.qty ?? 0, r.line.unitPrice, r.line.taxPrice, undefined);
+        return pm ? fmtMoney(pm.amount) : "-";
+      },
+    },
+    {
+      title: "税额",
+      width: 100,
+      align: "right",
+      render: (_v, r) => {
+        const pm = previewLineMoney(r.line.qty ?? 0, r.line.unitPrice, r.line.taxPrice, undefined);
+        return pm ? fmtMoney(pm.tax) : "-";
+      },
+    },
+    {
+      title: "含税金额",
+      width: 110,
+      align: "right",
+      render: (_v, r) => {
+        const pm = previewLineMoney(r.line.qty ?? 0, r.line.unitPrice, r.line.taxPrice, undefined);
+        return pm ? fmtMoney(pm.inclusive) : "-";
       },
     },
     {

@@ -40,6 +40,9 @@ public class SalesReturnItemDO {
     private BigDecimal quantity;
     /** 不含税单价(原行快照,服务端取)。 */
     private BigDecimal unitPrice;
+
+    /** 含税单价(V20,与 unit_price 二选一录入;服务端价税重算后落库)。 */
+    private BigDecimal taxPrice;
     /** 税率(原行快照,服务端取)。 */
     private BigDecimal taxRate;
     /** 行金额快照(数量×不含税单价)。 */

@@ -172,7 +172,7 @@ class FieldExtensionTest {
 
         // 入库 1 件带序列号
         InboundLineDTO line = new InboundLineDTO(item.getId(), BigDecimal.ONE, null, null, null,
-                "供应商A", locId, List.of("SN-V9-001"), new BigDecimal("10"), new BigDecimal("13"), null);
+                "供应商A", locId, List.of("SN-V9-001"), new BigDecimal("10"), new BigDecimal("13"), null, null);
         InboundDocCreatedVO in = inboundService.create(new InboundCreateDTO(whId, "V9 入库",
                 List.of(line), null, null, LocalDate.now(), "顺丰速运", "沪A12345",
                 new BigDecimal("88.50")), "v9_test");
@@ -189,7 +189,7 @@ class FieldExtensionTest {
 
         // 出库 1 件同序列号
         OutboundLineDTO outLine = new OutboundLineDTO(item.getId(), BigDecimal.ONE, null, locId,
-                List.of("SN-V9-001"), new BigDecimal("10"), null);
+                List.of("SN-V9-001"), new BigDecimal("10"), null, null, null);
         OutboundDocCreatedVO out = outboundService.create(new OutboundCreateDTO(whId, "V9 出库",
                 List.of(outLine), null, null, LocalDate.now(), "德邦物流", "沪B67890",
                 new BigDecimal("66.00")), "v9_test");
@@ -213,7 +213,7 @@ class FieldExtensionTest {
         long whId = env[0];
         ItemDO item = insertItem("V9-IT-4");
         InboundLineDTO line = new InboundLineDTO(item.getId(), BigDecimal.valueOf(3), null, null,
-                null, null, null, null, new BigDecimal("5"), new BigDecimal("13"), null);
+                null, null, null, null, new BigDecimal("5"), new BigDecimal("13"), null, null);
         inboundService.create(new InboundCreateDTO(whId, "V9 盘点备货", List.of(line),
                 null, null, LocalDate.now(), null, null, null), "v9_test");
 

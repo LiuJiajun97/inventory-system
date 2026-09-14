@@ -22,6 +22,6 @@ import java.math.BigDecimal;
  */
 public record SalesReturnItemVO(Long id, Long docId, Integer lineNo,
         Long salesOrderItemId, Long itemId, String specSnapshot, String unit,
-        String quantity, BigDecimal unitPrice, BigDecimal taxRate,
+        String quantity, BigDecimal unitPrice, BigDecimal taxPrice, BigDecimal taxRate,
         String amount, String taxAmount, String taxInclusiveTotal) {
 }

@@ -29,5 +29,7 @@ public record InboundDocItemVO(Long id, Long docId, Long itemId, String quantity
         Long batchId, Long locationId, String serialNos,
         BigDecimal unitPrice, BigDecimal taxRate, String batchNo,
         LocalDate productionDate, LocalDate expiryDate, Long refLineId,
-        Integer lineNo, BigDecimal amount, BigDecimal taxAmount, BigDecimal taxInclusiveTotal) {
+        Integer lineNo, BigDecimal amount, BigDecimal taxAmount, BigDecimal taxInclusiveTotal,
+        // V20 含税单价(增量,落库值,非推导)
+        BigDecimal taxPrice) {
 }

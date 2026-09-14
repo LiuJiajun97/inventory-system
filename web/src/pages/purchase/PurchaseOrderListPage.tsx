@@ -164,6 +164,7 @@ const request = async (params: {
     { title: "单位", dataIndex: "unit", width: 60, search: false },
     { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.quantity) },
     { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.unitPrice) },
+    { title: "含税单价", dataIndex: "taxPrice", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.taxPrice) },
     { title: "税率(%)", dataIndex: "taxRate", width: 80, align: "right", className: "num-cell", search: false },
     { title: "金额", dataIndex: "amount", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.amount) },
     { title: "税额", dataIndex: "taxAmount", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.taxAmount) },
@@ -222,6 +223,7 @@ const request = async (params: {
       { title: "物品" },
       { title: "订购量", align: "right" },
       { title: "单价", align: "right" },
+      { title: "含税单价", align: "right" },
       { title: "税率(%)", align: "right" },
       { title: "金额", align: "right" },
       { title: "税额", align: "right" },
@@ -232,12 +234,14 @@ const request = async (params: {
       `${l.itemCode} ${l.itemName}`,
       fmtQty(l.orderedQty),
       fmtMoney(l.unitPrice),
+      fmtMoney(l.taxPrice),
       String(l.taxRate),
       fmtMoney(l.amount),
       fmtMoney(l.taxAmount),
       fmtMoney(l.taxInclusiveTotal),
     ]),
     totals: [
+      "",
       "",
       "",
       "",
@@ -459,22 +463,23 @@ const request = async (params: {
               rowKey="id"
               dataSource={detail.items ?? []}
               pagination={false}
-              scroll={{ x: 900 }}
+              scroll={{ x: "max-content" }}
               columns={[
-                { title: "行号", dataIndex: "lineNo", width: 50 },
-                { title: "物品", dataIndex: "itemName", width: 140, render: (v: string, r) => `${r.itemCode} ${v}` },
-                { title: "规格快照", dataIndex: "specSnapshot", width: 90, render: (v) => v ?? "-" },
-                { title: "订购量", dataIndex: "orderedQty", width: 80, align: "right", className: "num-cell" },
-                { title: "已到货", dataIndex: "arrivedQty", width: 80, align: "right", className: "num-cell" },
-                { title: "单价", dataIndex: "unitPrice", width: 80, align: "right", className: "num-cell" },
-                { title: "税率(%)", dataIndex: "taxRate", width: 70, align: "right", className: "num-cell" },
-                { title: "金额", dataIndex: "amount", width: 90, align: "right", className: "num-cell" },
-                { title: "税额", dataIndex: "taxAmount", width: 90, align: "right", className: "num-cell" },
-                { title: "价税合计", dataIndex: "taxInclusiveTotal", width: 90, align: "right", className: "num-cell" },
+                { title: "行号", dataIndex: "lineNo", width: 44 },
+                { title: "物品", dataIndex: "itemName", width: 130, ellipsis: true, render: (v: string, r) => `${r.itemCode} ${v}` },
+                { title: "规格快照", dataIndex: "specSnapshot", width: 70, render: (v) => v ?? "-" },
+                { title: "订购量", dataIndex: "orderedQty", width: 66, align: "right", className: "num-cell" },
+                { title: "已到货", dataIndex: "arrivedQty", width: 66, align: "right", className: "num-cell" },
+                { title: "不含税单价", dataIndex: "unitPrice", width: 84, align: "right", className: "num-cell" },
+                { title: "含税单价", dataIndex: "taxPrice", width: 84, align: "right", className: "num-cell", render: (_v, r) => fmtMoney(r.taxPrice) },
+                { title: "税率(%)", dataIndex: "taxRate", width: 60, align: "right", className: "num-cell" },
+                { title: "金额", dataIndex: "amount", width: 84, align: "right", className: "num-cell" },
+                { title: "税额", dataIndex: "taxAmount", width: 72, align: "right", className: "num-cell" },
+                { title: "价税合计", dataIndex: "taxInclusiveTotal", width: 84, align: "right", className: "num-cell" },
                 {
                   title: "行状态",
                   dataIndex: "closed",
-                  width: 80,
+                  width: 64,
                   render: (v: boolean) => (
                     <Tag color={v ? "success" : "default"}>{v ? "已到满" : "未到满"}</Tag>
                   ),

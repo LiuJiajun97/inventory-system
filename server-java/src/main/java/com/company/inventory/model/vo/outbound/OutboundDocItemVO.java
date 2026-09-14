@@ -24,5 +24,7 @@ import java.math.BigDecimal;
 public record OutboundDocItemVO(Long id, Long docId, Long itemId, String quantity,
         Long batchId, Long locationId, String serialNos, BigDecimal unitPrice, Long refLineId,
         BigDecimal taxRate, Integer lineNo, BigDecimal amount, BigDecimal taxAmount,
-        BigDecimal taxInclusiveTotal) {
+        BigDecimal taxInclusiveTotal,
+        // V20 含税单价(增量,落库值,非推导)
+        BigDecimal taxPrice) {
 }

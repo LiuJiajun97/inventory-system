@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Form, Row, Col, Select, Input, InputNumber, Button, Table, Tag, DatePicker, App } from "antd";
 import { PlusOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { fmtMoney, fmtQty } from "../../utils/format";
+import { previewLineMoney } from "../../utils/lineMoney";
 import { ProCard } from "@ant-design/pro-components";
 import { Link, useNavigate } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
@@ -25,6 +26,8 @@ interface Row {
   specSnapshot?: string | null;
   unit: string;
   unitPrice: number;
+  // V20 含税单价:继承原订单行快照,只读展示
+  taxPrice: number;
   taxRate: number;
   shippedQty: number;
   returnedQty: number;
@@ -95,6 +98,7 @@ export function SalesReturnNewPage() {
             specSnapshot: it.specSnapshot,
             unit: it.unit,
             unitPrice: Number(it.unitPrice),
+            taxPrice: it.taxPrice != null ? Number(it.taxPrice) : 0,
             taxRate: Number(it.taxRate ?? 0),
             shippedQty: shipped,
             returnedQty: returned,
@@ -192,16 +196,51 @@ export function SalesReturnNewPage() {
     },
     {
       // 单价/税率锁原行快照,只读展示
-      title: "单价",
-      width: 100,
+      title: "不含税单价",
+      width: 110,
       align: "right",
       render: (_v, r) => fmtMoney(r.unitPrice),
     },
     {
+      // V20 含税单价锁原行快照,只读展示
+      title: "含税单价",
+      width: 110,
+      align: "right",
+      render: (_v, r) => (r.taxPrice ? fmtMoney(r.taxPrice) : "-"),
+    },
+    {
       title: "税率(%)",
-      width: 90,
+      width: 110,
       align: "right",
       render: (_v, r) => r.taxRate.toFixed(2),
+    },
+    {
+      // V20 金额三列:按原行快照(不含税单价×退货数量,税率)实时预览,服务端落库快照
+      title: "不含税金额",
+      width: 110,
+      align: "right",
+      render: (_v, r) => {
+        const pm = previewLineMoney(r.qty ?? 0, r.unitPrice, r.taxPrice, r.taxRate);
+        return pm ? fmtMoney(pm.amount) : "-";
+      },
+    },
+    {
+      title: "税额",
+      width: 100,
+      align: "right",
+      render: (_v, r) => {
+        const pm = previewLineMoney(r.qty ?? 0, r.unitPrice, r.taxPrice, r.taxRate);
+        return pm ? fmtMoney(pm.tax) : "-";
+      },
+    },
+    {
+      title: "含税金额",
+      width: 110,
+      align: "right",
+      render: (_v, r) => {
+        const pm = previewLineMoney(r.qty ?? 0, r.unitPrice, r.taxPrice, r.taxRate);
+        return pm ? fmtMoney(pm.inclusive) : "-";
+      },
     },
     {
       title: "已发货",

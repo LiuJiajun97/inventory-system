@@ -144,7 +144,7 @@ class ApprovalPermissionTest {
         PurchaseOrderVO vo = purchaseOrderService.create(new PurchaseOrderCreateDTO(LocalDate.now(),
                 supplierId, adminId, null, null,
                 List.of(new PurchaseOrderLineDTO(itemId, new BigDecimal("1"), null,
-                        new BigDecimal("10"), new BigDecimal("13.00"), null))), adminName);
+                        new BigDecimal("10"), null, new BigDecimal("13.00"), null))), adminName);
         purchaseOrderService.submit(vo.id(), adminName);
         PurchaseOrderVO approved = purchaseOrderService.approve(vo.id(), adminName);
         assertEquals("approved", approved.status());
@@ -160,7 +160,7 @@ class ApprovalPermissionTest {
         PurchaseOrderVO vo = purchaseOrderService.create(new PurchaseOrderCreateDTO(LocalDate.now(),
                 supplierId, operatorAId, null, null,
                 List.of(new PurchaseOrderLineDTO(itemId, new BigDecimal("1"), null,
-                        new BigDecimal("10"), new BigDecimal("13.00"), null))), username(operatorAId));
+                        new BigDecimal("10"), null, new BigDecimal("13.00"), null))), username(operatorAId));
         return vo.id();
     }
 

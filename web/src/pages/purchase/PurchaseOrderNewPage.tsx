@@ -22,6 +22,8 @@ import dayjs, { type Dayjs } from "dayjs";
 import { itemApi, purchaseApi, supplierApi, userApi } from "../../api";
 import type { Item, UserInfo } from "../../types";
 import type { Supplier } from "../../types/phase1";
+import { fmtMoney } from "../../utils/format";
+import { previewLineMoney } from "../../utils/lineMoney";
 
 interface LineRow {
   key: number;
@@ -29,6 +31,8 @@ interface LineRow {
   orderedQty?: number;
   expectedDeliveryDate?: Dayjs | string;
   unitPrice?: number;
+  // V20 含税单价:与不含税单价二选一,都填时服务端按不含税优先
+  taxPrice?: number;
   taxRate?: number;
   lineRemark?: string;
 }
@@ -80,6 +84,7 @@ export function PurchaseOrderNewPage() {
           orderedQty: Number(l.orderedQty),
           expectedDeliveryDate: l.expectedDeliveryDate ? dayjs(l.expectedDeliveryDate) : undefined,
           unitPrice: Number(l.unitPrice),
+          taxPrice: l.taxPrice != null ? Number(l.taxPrice) : undefined,
           taxRate: Number(l.taxRate),
           lineRemark: l.lineRemark ?? undefined,
         }));
@@ -184,7 +189,15 @@ export function PurchaseOrderNewPage() {
       width: 120,
       valueType: "digit",
       fieldProps: { min: 0, step: 0.01 },
-      formItemProps: { rules: [{ required: true, message: "请填写单价" }] },
+      formItemProps: { rules: [{ required: false, message: "单价至少填一个" }] },
+    },
+    {
+      // V20 含税单价:与不含税单价二选一(都填时服务端按不含税优先)
+      title: "含税单价",
+      dataIndex: "taxPrice",
+      width: 120,
+      valueType: "digit",
+      fieldProps: { min: 0, step: 0.01 },
     },
     {
       title: "税率(%)",
@@ -192,6 +205,43 @@ export function PurchaseOrderNewPage() {
       width: 110,
       valueType: "digit",
       fieldProps: { min: 0, max: 100, step: 0.01 },
+    },
+    {
+      // V20 金额三列:只读预览(与后端同口径),提交后以服务端重算为准
+      title: "不含税金额",
+      width: 110,
+      align: "right",
+      className: "num-cell",
+      search: false,
+      editable: false,
+      render: (_v: unknown, r: LineRow) => {
+        const pm = previewLineMoney(r.orderedQty ?? 0, r.unitPrice, r.taxPrice, r.taxRate);
+        return pm ? fmtMoney(pm.amount) : "-";
+      },
+    },
+    {
+      title: "税额",
+      width: 100,
+      align: "right",
+      className: "num-cell",
+      search: false,
+      editable: false,
+      render: (_v: unknown, r: LineRow) => {
+        const pm = previewLineMoney(r.orderedQty ?? 0, r.unitPrice, r.taxPrice, r.taxRate);
+        return pm ? fmtMoney(pm.tax) : "-";
+      },
+    },
+    {
+      title: "含税金额",
+      width: 110,
+      align: "right",
+      className: "num-cell",
+      search: false,
+      editable: false,
+      render: (_v: unknown, r: LineRow) => {
+        const pm = previewLineMoney(r.orderedQty ?? 0, r.unitPrice, r.taxPrice, r.taxRate);
+        return pm ? fmtMoney(pm.inclusive) : "-";
+      },
     },
     {
       title: "行备注",
@@ -226,8 +276,9 @@ export function PurchaseOrderNewPage() {
       message.warning("请完善订单明细必填项");
       return;
     }
+    // V20:不含税单价/含税单价至少填一个(都填时服务端按不含税优先)
     const validLines = data.filter(
-      (l) => l.itemId && l.orderedQty && l.unitPrice != null,
+      (l) => l.itemId && l.orderedQty && (l.unitPrice != null || l.taxPrice != null),
     );
     if (validLines.length === 0) {
       message.error("请至少填写一行订单明细");
@@ -255,7 +306,8 @@ export function PurchaseOrderNewPage() {
             typeof l.expectedDeliveryDate === "string"
               ? l.expectedDeliveryDate
               : l.expectedDeliveryDate?.format("YYYY-MM-DD"),
-          unitPrice: l.unitPrice!,
+          unitPrice: l.unitPrice ?? undefined,
+          taxPrice: l.taxPrice ?? undefined,
           taxRate: l.taxRate ?? 13,
           lineRemark: l.lineRemark,
         })),

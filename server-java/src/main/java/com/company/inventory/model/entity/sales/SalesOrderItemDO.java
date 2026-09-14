@@ -44,6 +44,9 @@ public class SalesOrderItemDO {
     private LocalDate customerDeliveryDate;
     /** 不含税单价。 */
     private BigDecimal unitPrice;
+
+    /** 含税单价(V20,与 unit_price 二选一录入;服务端价税重算后落库)。 */
+    private BigDecimal taxPrice;
     /** 税率。 */
     private BigDecimal taxRate;
     /** 不含税金额。 */

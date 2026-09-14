@@ -29,12 +29,7 @@ public record OutboundLineDTO(
         List<String> serialNos,
         BigDecimal unitPrice,
         BigDecimal taxRate,
+        // V20 含税单价(可空;销售发货由服务端按订单行覆盖,手工出库可选填)
+        BigDecimal taxPrice,
         @Positive(message = "订单行 ID 必须为正数") Long refLineId) {
-
-    /** 兼容旧签名构造器(V10 新增 taxRate 默认 null,既有调用/测试不受影响)。 */
-    public OutboundLineDTO(Long itemId, BigDecimal qty, String batchNo, Long locationId,
-            List<String> serialNos, BigDecimal unitPrice,
-            @Positive(message = "订单行 ID 必须为正数") Long refLineId) {
-        this(itemId, qty, batchNo, locationId, serialNos, unitPrice, null, refLineId);
-    }
 }

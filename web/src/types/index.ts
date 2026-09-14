@@ -134,6 +134,8 @@ export interface InboundDocItem {
   amount?: string | number | null;
   taxAmount?: string | number | null;
   taxInclusiveTotal?: string | number | null;
+  // V20 含税单价(服务端落库值,可空)
+  taxPrice?: string | number | null;
 }
 
 export interface InboundDoc {
@@ -175,6 +177,8 @@ export interface OutboundDocItem {
   amount?: string | number | null;
   taxAmount?: string | number | null;
   taxInclusiveTotal?: string | number | null;
+  // V20 含税单价(服务端落库值,可空)
+  taxPrice?: string | number | null;
 }
 
 export interface OutboundDoc {

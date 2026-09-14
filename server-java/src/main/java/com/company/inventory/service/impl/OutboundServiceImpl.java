@@ -208,10 +208,27 @@ public class OutboundServiceImpl implements OutboundService {
                 SalesOrderItemVO ref = refItems.get(line.refLineId());
                 docItem.setUnitPrice(ref.unitPrice());
                 docItem.setTaxRate(ref.taxRate());
+                // V20 含税单价:有源继承源订单行快照
+                docItem.setTaxPrice(ref.taxPrice());
                 shipLines.add(new ShipLine(line.refLineId(), line.qty()));
             } else {
-                docItem.setUnitPrice(line.unitPrice());
-                docItem.setTaxRate(line.taxRate());
+                // V20 无源:不含税单价/含税单价二选一(与订单同口径),缺的互算
+                BigDecimal up = line.unitPrice();
+                BigDecimal tp = line.taxPrice();
+                BigDecimal rt = line.taxRate() == null ? BigDecimal.ZERO : line.taxRate();
+                if (up == null && tp != null) {
+                    // 只填含税单价:按行数量反算不含税单价
+                    up = MoneyUtils.fromInclusiveUnit(line.qty(), tp, rt).unitPrice();
+                }
+                docItem.setUnitPrice(up);
+                docItem.setTaxRate(rt);
+                // 含税单价缺失时按 不含税×(1+税率/100) 补(存量回填同口径)
+                if (tp == null && up != null) {
+                    tp = up.multiply(BigDecimal.ONE.add(rt.divide(
+                            new BigDecimal("100"), 10, java.math.RoundingMode.HALF_UP)))
+                            .setScale(4, java.math.RoundingMode.HALF_UP);
+                }
+                docItem.setTaxPrice(tp);
             }
             // V10 金额快照:行号从 1 连号,金额=数量×(不含税单价??0),税额=金额×(税率??0)/100
             BigDecimal amount = MoneyUtils.amountOf(line.qty(),
@@ -385,7 +402,7 @@ public class OutboundServiceImpl implements OutboundService {
                 QtyUtils.toContractString(item.getQuantity()), item.getBatchId(),
                 item.getLocationId(), item.getSerialNos(), item.getUnitPrice(),
                 item.getRefLineId(), item.getTaxRate(), item.getLineNo(), item.getAmount(),
-                item.getTaxAmount(), item.getTaxInclusiveTotal());
+                item.getTaxAmount(), item.getTaxInclusiveTotal(), item.getTaxPrice());
     }
 
     /**

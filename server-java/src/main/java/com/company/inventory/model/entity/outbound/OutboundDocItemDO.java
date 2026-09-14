@@ -36,6 +36,9 @@ public class OutboundDocItemDO {
 
     /** 出库参考单价(销售发货携带订单行单价,可空)。 */
     private BigDecimal unitPrice;
+
+    /** 含税单价(V20,与 unit_price 二选一录入;服务端价税重算后落库)。 */
+    private BigDecimal taxPrice;
     /** 税率(百分数,可空,空按 0 算)。 */
     private BigDecimal taxRate;
     /** 关联销售订单行 ID(可空)。 */

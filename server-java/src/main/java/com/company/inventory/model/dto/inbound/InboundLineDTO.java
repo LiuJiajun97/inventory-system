@@ -36,5 +36,7 @@ public record InboundLineDTO(
         List<String> serialNos,
         BigDecimal unitPrice,
         BigDecimal taxRate,
+        // V20 含税单价(可空;采购到货由服务端按订单行覆盖,手工入库可选填)
+        BigDecimal taxPrice,
         @Positive(message = "订单行 ID 必须为正数") Long refLineId) {
 }

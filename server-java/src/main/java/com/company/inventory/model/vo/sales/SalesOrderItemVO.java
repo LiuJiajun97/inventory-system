@@ -30,6 +30,6 @@ public record SalesOrderItemVO(Long id, Integer lineNo, Long itemId, String item
         String itemName, String specSnapshot, String unit,
         String orderedQty, String shippedQty, String returnedQty,
         LocalDate customerDeliveryDate,
-        BigDecimal unitPrice, BigDecimal taxRate, String amount, String taxAmount,
+        BigDecimal unitPrice, BigDecimal taxPrice, BigDecimal taxRate, String amount, String taxAmount,
         String taxInclusiveTotal, Boolean closed, String lineRemark) {
 }

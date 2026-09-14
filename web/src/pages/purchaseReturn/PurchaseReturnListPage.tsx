@@ -146,6 +146,7 @@ export function PurchaseReturnListPage() {
     { title: "单位", dataIndex: "unit", width: 60, search: false },
     { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.quantity) },
     { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.unitPrice) },
+    { title: "含税单价", dataIndex: "taxPrice", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.taxPrice) },
     { title: "税率(%)", dataIndex: "taxRate", width: 80, align: "right", className: "num-cell", search: false },
     { title: "金额", dataIndex: "amount", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.amount) },
     { title: "税额", dataIndex: "taxAmount", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.taxAmount) },
@@ -182,6 +183,7 @@ export function PurchaseReturnListPage() {
       { title: "规格" },
       { title: "数量", align: "right" },
       { title: "单价", align: "right" },
+      { title: "含税单价", align: "right" },
       { title: "税率(%)", align: "right" },
       { title: "金额", align: "right" },
       { title: "税额", align: "right" },
@@ -193,12 +195,14 @@ export function PurchaseReturnListPage() {
       l.specSnapshot ?? "",
       fmtQty(l.quantity),
       fmtMoney(l.unitPrice),
+      fmtMoney(l.taxPrice),
       Number(l.taxRate).toFixed(2),
       fmtMoney(l.amount),
       fmtMoney(l.taxAmount),
       fmtMoney(l.taxInclusiveTotal),
     ]),
     totals: [
+      "",
       "",
       "",
       "",
@@ -373,7 +377,11 @@ export function PurchaseReturnListPage() {
             <DocDetailHeader
               status={detail.status}
               docNo={detail.docNo}
-              total={detail.totalAmount}
+              total={(detail.items ?? []).reduce(
+                (sum, l) =>
+                  sum + (l.taxInclusiveTotal == null ? 0 : Number(l.taxInclusiveTotal)),
+                0,
+              )}
             />
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="日期">
@@ -403,28 +411,43 @@ export function PurchaseReturnListPage() {
               rowKey="id"
               dataSource={detail.items ?? []}
               pagination={false}
+              scroll={{ x: "max-content" }}
               columns={[
-                { title: "行号", dataIndex: "lineNo", width: 60 },
-                { title: "物品ID", dataIndex: "itemId", width: 80 },
+                { title: "行号", dataIndex: "lineNo", width: 48 },
+                {
+                  title: "物品",
+                  dataIndex: "itemId",
+                  width: 150,
+                  ellipsis: true,
+                  render: (_v, r) => itemText(r.itemId),
+                },
                 {
                   title: "规格",
                   dataIndex: "specSnapshot",
-                  width: 140,
+                  width: 90,
                   ellipsis: true,
                   render: (v?: string | null) => v ?? "-",
                 },
                 {
                   title: "数量",
                   dataIndex: "quantity",
-                  width: 100,
+                  width: 70,
                   align: "right",
                   className: "num-cell",
                   render: (v: string) => fmtQty(v),
                 },
                 {
-                  title: "单价",
+                  title: "不含税单价",
                   dataIndex: "unitPrice",
-                  width: 100,
+                  width: 90,
+                  align: "right",
+                  className: "num-cell",
+                  render: (v: string) => fmtMoney(v),
+                },
+                {
+                  title: "含税单价",
+                  dataIndex: "taxPrice",
+                  width: 90,
                   align: "right",
                   className: "num-cell",
                   render: (v: string) => fmtMoney(v),
@@ -432,7 +455,7 @@ export function PurchaseReturnListPage() {
                 {
                   title: "税率(%)",
                   dataIndex: "taxRate",
-                  width: 90,
+                  width: 70,
                   align: "right",
                   className: "num-cell",
                   render: (v: string) => Number(v).toFixed(2),
@@ -440,7 +463,7 @@ export function PurchaseReturnListPage() {
                 {
                   title: "金额",
                   dataIndex: "amount",
-                  width: 100,
+                  width: 85,
                   align: "right",
                   className: "num-cell",
                   render: (v: string) => fmtMoney(v),
@@ -448,7 +471,7 @@ export function PurchaseReturnListPage() {
                 {
                   title: "税额",
                   dataIndex: "taxAmount",
-                  width: 100,
+                  width: 75,
                   align: "right",
                   className: "num-cell",
                   render: (v: string) => fmtMoney(v),
@@ -456,7 +479,7 @@ export function PurchaseReturnListPage() {
                 {
                   title: "价税合计",
                   dataIndex: "taxInclusiveTotal",
-                  width: 110,
+                  width: 95,
                   align: "right",
                   className: "num-cell",
                   render: (v: string) => fmtMoney(v),

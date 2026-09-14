@@ -188,6 +188,7 @@ public class SalesReturnServiceImpl implements SalesReturnService {
             SalesOrderItemVO ref = refItems.get(line.salesOrderItemId());
             BigDecimal unitPrice = ref.unitPrice() == null ? BigDecimal.ZERO : ref.unitPrice();
             BigDecimal taxRate = ref.taxRate() == null ? BigDecimal.ZERO : ref.taxRate();
+            BigDecimal taxPrice = ref.taxPrice() == null ? BigDecimal.ZERO : ref.taxPrice();
             BigDecimal amount = MoneyUtils.amountOf(line.quantity(), unitPrice);
             BigDecimal tax = MoneyUtils.taxOf(amount, taxRate);
             SalesReturnItemDO item = new SalesReturnItemDO();
@@ -199,6 +200,7 @@ public class SalesReturnServiceImpl implements SalesReturnService {
             item.setUnit(ref.unit());
             item.setQuantity(line.quantity());
             item.setUnitPrice(unitPrice);
+            item.setTaxPrice(taxPrice);
             item.setTaxRate(taxRate);
             item.setAmount(amount);
             item.setTaxAmount(tax);
@@ -214,9 +216,10 @@ public class SalesReturnServiceImpl implements SalesReturnService {
             SalesOrderItemVO ref = refItems.get(line.salesOrderItemId());
             BigDecimal unitPrice = ref.unitPrice() == null ? BigDecimal.ZERO : ref.unitPrice();
             BigDecimal taxRate = ref.taxRate() == null ? BigDecimal.ZERO : ref.taxRate();
+            BigDecimal taxPrice = ref.taxPrice() == null ? BigDecimal.ZERO : ref.taxPrice();
             return new InboundLineDTO(ref.itemId(), line.quantity(), line.batchNo(),
                     line.productionDate(), line.expiryDate(), null, line.locationId(),
-                    line.serialNos(), unitPrice, taxRate, null);
+                    line.serialNos(), unitPrice, taxRate, null, null);
         }).toList();
         InboundDocCreatedVO inDoc = inboundService.create(new InboundCreateDTO(
                 dto.warehouseId(), dto.remark(), inLines,
@@ -350,7 +353,7 @@ public class SalesReturnServiceImpl implements SalesReturnService {
         return new SalesReturnItemVO(item.getId(), item.getDocId(), item.getLineNo(),
                 item.getSalesOrderItemId(), item.getItemId(), item.getSpecSnapshot(),
                 item.getUnit(), QtyUtils.toContractString(item.getQuantity()),
-                item.getUnitPrice(), item.getTaxRate(),
+                item.getUnitPrice(), item.getTaxPrice(), item.getTaxRate(),
                 QtyUtils.toContractString(item.getAmount()),
                 QtyUtils.toContractString(item.getTaxAmount()),
                 QtyUtils.toContractString(item.getTaxInclusiveTotal()));

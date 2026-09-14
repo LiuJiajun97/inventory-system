@@ -296,7 +296,7 @@ class SettlementTest {
         long supplierId = insertSupplier("独立入库供应商");
         inboundService.create(new InboundCreateDTO(warehouseId, "结算独立入库",
                 List.of(new InboundLineDTO(itemId, new BigDecimal("5"), null, null, null,
-                        null, null, null, null, null, null)),
+                        null, null, null, null, null, null, null)),
                 null, null, LocalDate.now()), "settle_creator");
         Long inDocId = jdbcTemplate.queryForObject(
                 "SELECT id FROM inbound_doc WHERE ref_type IS NULL ORDER BY id DESC LIMIT 1",
@@ -673,7 +673,7 @@ class SettlementTest {
         PurchaseOrderVO vo = purchaseOrderService.create(new PurchaseOrderCreateDTO(
                 LocalDate.now(), supplierId, creatorUserId, BigDecimal.ZERO, "结算测试",
                 List.of(new PurchaseOrderLineDTO(itemId, new BigDecimal(qty), null,
-                        new BigDecimal(price), new BigDecimal(rate), null))), "settle_creator");
+                        new BigDecimal(price), null, new BigDecimal(rate), null))), "settle_creator");
         purchaseOrderService.submit(vo.id(), "settle_creator");
         return purchaseOrderService.approve(vo.id(), "settle_approver");
     }
@@ -689,7 +689,7 @@ class SettlementTest {
         inboundService.create(new InboundCreateDTO(
                 warehouseId, "结算到货",
                 List.of(new InboundLineDTO(itemId, new BigDecimal(qty), null, null, null,
-                        null, null, null, null, null, lineId)),
+                        null, null, null, null, null, null, lineId)),
                 "purchase", order.id(), LocalDate.now()), "settle_creator");
     }
 
@@ -706,19 +706,19 @@ class SettlementTest {
             String rate) {
         inboundService.create(new InboundCreateDTO(warehouseId, "结算备货",
                 List.of(new InboundLineDTO(itemId, new BigDecimal(qty), null, null, null,
-                        null, null, null, null, null, null)),
+                        null, null, null, null, null, null, null)),
                 null, null, LocalDate.now()), "settle_creator");
         SalesOrderVO vo = salesOrderService.create(new SalesOrderCreateDTO(
                 LocalDate.now(), customerId, creatorUserId, warehouseId, "结算测试",
                 List.of(new SalesOrderLineDTO(itemId, new BigDecimal(qty), null,
-                        new BigDecimal(price), new BigDecimal(rate), null))), "settle_creator");
+                        new BigDecimal(price), null, new BigDecimal(rate), null))), "settle_creator");
         salesOrderService.submit(vo.id(), "settle_creator");
         vo = salesOrderService.approve(vo.id(), "settle_approver");
         long lineId = vo.items().get(0).id();
         outboundService.create(new OutboundCreateDTO(
                 warehouseId, "结算发货",
                 List.of(new OutboundLineDTO(itemId, new BigDecimal(qty), null, null,
-                        null, null, null, lineId)),
+                        null, null, null, null, lineId)),
                 "sales", vo.id(), LocalDate.now()), "settle_creator");
         return salesOrderService.get(vo.id());
     }

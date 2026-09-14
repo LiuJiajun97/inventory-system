@@ -168,7 +168,8 @@ const request = async (params: {
     { title: "规格", dataIndex: "spec", width: 90, search: false, ellipsis: true },
     { title: "单位", dataIndex: "unit", width: 60, search: false },
     { title: "数量", dataIndex: "quantity", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtQty(r.quantity) },
-    { title: "单价", dataIndex: "unitPrice", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.unitPrice) },
+    { title: "不含税单价", dataIndex: "unitPrice", width: 110, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.unitPrice) },
+    { title: "含税单价", dataIndex: "taxPrice", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.taxPrice) },
     { title: "税率(%)", dataIndex: "taxRate", width: 80, align: "right", className: "num-cell", search: false },
     { title: "金额", dataIndex: "amount", width: 100, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.amount) },
     { title: "税额", dataIndex: "taxAmount", width: 90, align: "right", className: "num-cell", search: false, render: (_v, r) => fmtMoney(r.taxAmount) },
@@ -212,6 +213,12 @@ const request = async (params: {
         { title: "物品" },
         { title: "库位" },
         { title: "数量", align: "right" },
+        { title: "不含税单价", align: "right" },
+        { title: "含税单价", align: "right" },
+        { title: "税率(%)", align: "right" },
+        { title: "金额", align: "right" },
+        { title: "税额", align: "right" },
+        { title: "价税合计", align: "right" },
         { title: "序列号" },
       ],
       rows: (d.items ?? []).map((l, i) => [
@@ -219,9 +226,16 @@ const request = async (params: {
         itemText(l.itemId),
         locText(l.locationId),
         fmtQty(l.quantity),
+        fmtMoney(l.unitPrice),
+        // V23:后端已落库并返回真实 taxPrice(含税路径反算行与推导值不同,必须用落库值)
+        fmtMoney(l.taxPrice),
+        l.taxRate == null ? "" : String(l.taxRate),
+        fmtMoney(l.amount),
+        fmtMoney(l.taxAmount),
+        fmtMoney(l.taxInclusiveTotal),
         parseSerials(l.serialNos),
       ]),
-      totals: ["", "合计", "", fmtQty(totalQty), ""],
+      totals: ["", "合计", "", fmtQty(totalQty), "", "", "", "", "", "", ""],
       status: d.status === "finished" ? "已完成" : d.status,
       remark: d.remark,
     };
@@ -420,7 +434,11 @@ const request = async (params: {
             <DocDetailHeader
               status={detail.status}
               docNo={detail.docNo}
-              total={detail.totalAmount}
+              total={(detail.items ?? []).reduce(
+                (sum, l) =>
+                  sum + (l.taxInclusiveTotal == null ? 0 : Number(l.taxInclusiveTotal)),
+                0,
+              )}
             />
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="仓库">
@@ -443,18 +461,31 @@ const request = async (params: {
               rowKey="id"
               dataSource={detail.items ?? []}
               pagination={false}
+              scroll={{ x: "max-content" }}
               columns={[
-                { title: "物品ID", dataIndex: "itemId", width: 80 },
+                {
+                  title: "物品",
+                  dataIndex: "itemId",
+                  width: 130,
+                  ellipsis: true,
+                  render: (_v, r) => itemText(r.itemId),
+                },
                 {
                   title: "数量",
                   dataIndex: "quantity",
-                  width: 100,
+                  width: 80,
                   align: "right",
                   className: "num-cell",
                   render: (v: string | number) => fmtQty(v),
                 },
-                { title: "批次ID", dataIndex: "batchId", width: 80 },
-                { title: "库位ID", dataIndex: "locationId", width: 80 },
+                { title: "批次", dataIndex: "batchId", width: 150 },
+                {
+                  title: "库位",
+                  dataIndex: "locationId",
+                  width: 90,
+                  ellipsis: true,
+                  render: (_v, r) => locText(r.locationId),
+                },
                 {
                   title: "序列号",
                   dataIndex: "serialNos",

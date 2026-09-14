@@ -477,7 +477,7 @@ class ReturnDocTest {
         PurchaseOrderVO vo = purchaseOrderService.create(new PurchaseOrderCreateDTO(
                 LocalDate.now(), sp.getId(), creatorUserId, BigDecimal.ZERO, "退货测试",
                 List.of(new PurchaseOrderLineDTO(itemId, new BigDecimal(qty), null,
-                        new BigDecimal(price), new BigDecimal(rate), null))), "ret_creator");
+                        new BigDecimal(price), null, new BigDecimal(rate), null))), "ret_creator");
         return purchaseOrderService.get(vo.id());
     }
 
@@ -494,7 +494,7 @@ class ReturnDocTest {
         inboundService.create(new InboundCreateDTO(
                 whId, "退货测试到货",
                 List.of(new InboundLineDTO(itemId, new BigDecimal(qty), null, null, null,
-                        null, null, serialNos, null, null, lineId)),
+                        null, null, serialNos, null, null, null, lineId)),
                 "purchase", order.id(), LocalDate.now()), "ret_creator");
     }
 
@@ -507,7 +507,7 @@ class ReturnDocTest {
     private void manualInbound(long whId, String qty) {
         inboundService.create(new InboundCreateDTO(whId, "退货测试备货",
                 List.of(new InboundLineDTO(itemId, new BigDecimal(qty), null, null, null,
-                        null, null, null, null, null, null)),
+                        null, null, null, null, null, null, null)),
                 null, null, LocalDate.now()), "ret_creator");
     }
 
@@ -529,14 +529,14 @@ class ReturnDocTest {
         SalesOrderVO vo = salesOrderService.create(new SalesOrderCreateDTO(
                 LocalDate.now(), customer.getId(), creatorUserId, warehouseId, "退货测试",
                 List.of(new SalesOrderLineDTO(itemId, new BigDecimal(qty), null,
-                        new BigDecimal(price), new BigDecimal(rate), null))), "ret_creator");
+                        new BigDecimal(price), null, new BigDecimal(rate), null))), "ret_creator");
         salesOrderService.submit(vo.id(), "ret_creator");
         vo = salesOrderService.approve(vo.id(), "ret_approver");
         long lineId = vo.items().get(0).id();
         outboundService.create(new OutboundCreateDTO(
                 warehouseId, "退货测试发货",
                 List.of(new OutboundLineDTO(itemId, new BigDecimal(qty), null, null,
-                        null, null, null, lineId)),
+                        null, null, null, null, lineId)),
                 "sales", vo.id(), LocalDate.now()), "ret_creator");
         return salesOrderService.get(vo.id());
     }

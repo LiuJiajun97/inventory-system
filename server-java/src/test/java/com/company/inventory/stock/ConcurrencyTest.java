@@ -334,7 +334,7 @@ class ConcurrencyTest {
         PurchaseOrderVO po = purchaseOrderService.create(new PurchaseOrderCreateDTO(LocalDate.now(),
                 sp.getId(), user.getId(), BigDecimal.ZERO, null,
                 List.of(new PurchaseOrderLineDTO(itemId, BigDecimal.TEN, null,
-                        BigDecimal.ONE, new BigDecimal("13.00"), null))), "conc_creator");
+                        BigDecimal.ONE, null, new BigDecimal("13.00"), null))), "conc_creator");
         purchaseOrderService.submit(po.id(), "conc_creator");
         purchaseOrderService.approve(po.id(), "conc_approver");
         long lineId = purchaseOrderService.get(po.id()).items().get(0).id();

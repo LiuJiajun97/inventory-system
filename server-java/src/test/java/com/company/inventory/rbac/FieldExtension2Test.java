@@ -122,9 +122,9 @@ class FieldExtension2Test {
         // 行 1:2 × 10.50 = 21,税 = 21 × 10% = 2.10,价税合计 23.10
         // 行 2:3 × 空单价(按 0) = 0,税率空按 0 → 税额 0
         InboundLineDTO line1 = new InboundLineDTO(item.getId(), new BigDecimal("2"), null, null,
-                null, null, null, null, new BigDecimal("10.50"), new BigDecimal("10"), null);
+                null, null, null, null, new BigDecimal("10.50"), new BigDecimal("10"), null, null);
         InboundLineDTO line2 = new InboundLineDTO(item.getId(), new BigDecimal("3"), null, null,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
         InboundDocCreatedVO in = inboundService.create(new InboundCreateDTO(whId, "V10 入库",
                 List.of(line1, line2), null, null, LocalDate.now(), null, null, null,
                 "采购入库", "经办小王"), "v10_test");
@@ -153,13 +153,13 @@ class FieldExtension2Test {
         ItemDO item = insertItem("V10-IT-2");
         // 先入库备货 5 件(单价 12)
         InboundLineDTO inLine = new InboundLineDTO(item.getId(), new BigDecimal("5"), null, null,
-                null, null, null, null, new BigDecimal("12"), null, null);
+                null, null, null, null, new BigDecimal("12"), null, null, null);
         inboundService.create(new InboundCreateDTO(whId, "V10 备货", List.of(inLine),
                 null, null, LocalDate.now(), null, null, null, null, null), "v10_test");
 
         // 出库 5 件,税率空 → 税额 0,金额 = 5 × 12 = 60
         OutboundLineDTO outLine = new OutboundLineDTO(item.getId(), new BigDecimal("5"), null,
-                null, null, new BigDecimal("12"), null, null);
+                null, null, new BigDecimal("12"), null, null, null);
         OutboundDocCreatedVO out = outboundService.create(new OutboundCreateDTO(whId, "V10 出库",
                 List.of(outLine), null, null, LocalDate.now(), null, null, null,
                 "销售出库", "经办小李"), "v10_test");
@@ -228,7 +228,7 @@ class FieldExtension2Test {
                 LocalDate.now(), supplierId, userId, null, null, null, null,
                 new BigDecimal("50.00"), "USD", new BigDecimal("7.200000"), "V10 采购",
                 List.of(new PurchaseOrderLineDTO(item.getId(), new BigDecimal("10"), null,
-                        new BigDecimal("100"), new BigDecimal("13"), null))), "v10_test");
+                        new BigDecimal("100"), null, new BigDecimal("13"), null))), "v10_test");
         assertNotNull(vo.id());
         assertEquals("USD", vo.currencyCode());
         assertEquals(0, new BigDecimal("50.00").compareTo(new BigDecimal(vo.discountAmount())));

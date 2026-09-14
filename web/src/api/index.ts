@@ -200,7 +200,8 @@ export interface PurchaseCreatePayload {
     itemId: number;
     orderedQty: number;
     expectedDeliveryDate?: string;
-    unitPrice: number;
+    unitPrice?: number;
+    taxPrice?: number;
     taxRate?: number;
     lineRemark?: string;
   }>;
@@ -224,7 +225,8 @@ export interface SalesCreatePayload {
     itemId: number;
     orderedQty: number;
     customerDeliveryDate?: string;
-    unitPrice: number;
+    unitPrice?: number;
+    taxPrice?: number;
     taxRate?: number;
     lineRemark?: string;
   }>;

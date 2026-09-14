@@ -187,6 +187,7 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
             PurchaseOrderItemVO ref = refItems.get(line.purchaseOrderItemId());
             BigDecimal unitPrice = ref.unitPrice() == null ? BigDecimal.ZERO : ref.unitPrice();
             BigDecimal taxRate = ref.taxRate() == null ? BigDecimal.ZERO : ref.taxRate();
+            BigDecimal taxPrice = ref.taxPrice() == null ? BigDecimal.ZERO : ref.taxPrice();
             BigDecimal amount = MoneyUtils.amountOf(line.quantity(), unitPrice);
             BigDecimal tax = MoneyUtils.taxOf(amount, taxRate);
             PurchaseReturnItemDO item = new PurchaseReturnItemDO();
@@ -198,6 +199,7 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
             item.setUnit(ref.unit());
             item.setQuantity(line.quantity());
             item.setUnitPrice(unitPrice);
+            item.setTaxPrice(taxPrice);
             item.setTaxRate(taxRate);
             item.setAmount(amount);
             item.setTaxAmount(tax);
@@ -213,8 +215,9 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
             PurchaseOrderItemVO ref = refItems.get(line.purchaseOrderItemId());
             BigDecimal unitPrice = ref.unitPrice() == null ? BigDecimal.ZERO : ref.unitPrice();
             BigDecimal taxRate = ref.taxRate() == null ? BigDecimal.ZERO : ref.taxRate();
+            BigDecimal taxPrice = ref.taxPrice() == null ? BigDecimal.ZERO : ref.taxPrice();
             return new OutboundLineDTO(ref.itemId(), line.quantity(), null, line.locationId(),
-                    line.serialNos(), unitPrice, taxRate, null);
+                    line.serialNos(), unitPrice, taxRate, null, null);
         }).toList();
         OutboundDocCreatedVO outDoc = outboundService.create(new OutboundCreateDTO(
                 dto.warehouseId(), dto.remark(), outLines,
@@ -350,7 +353,7 @@ public class PurchaseReturnServiceImpl implements PurchaseReturnService {
         return new PurchaseReturnItemVO(item.getId(), item.getDocId(), item.getLineNo(),
                 item.getPurchaseOrderItemId(), item.getItemId(), item.getSpecSnapshot(),
                 item.getUnit(), QtyUtils.toContractString(item.getQuantity()),
-                item.getUnitPrice(), item.getTaxRate(),
+                item.getUnitPrice(), item.getTaxPrice(), item.getTaxRate(),
                 QtyUtils.toContractString(item.getAmount()),
                 QtyUtils.toContractString(item.getTaxAmount()),
                 QtyUtils.toContractString(item.getTaxInclusiveTotal()));

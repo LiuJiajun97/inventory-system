@@ -37,6 +37,9 @@ public class InboundDocItemDO {
 
     /** 入库不含税单价(采购到货携带订单行单价,可空)。 */
     private BigDecimal unitPrice;
+
+    /** 含税单价(V20,与 unit_price 二选一录入;服务端价税重算后落库)。 */
+    private BigDecimal taxPrice;
     /** 税率(百分数,可空)。 */
     private BigDecimal taxRate;
     /** 批次号(新批次或已有批次,可空)。 */

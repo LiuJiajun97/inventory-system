@@ -74,6 +74,7 @@ export interface PurchaseOrderLine {
   returnedQty: string;
   expectedDeliveryDate?: string | null;
   unitPrice: string;
+  taxPrice: string;
   taxRate: string;
   amount: string;
   taxAmount: string;
@@ -123,6 +124,7 @@ export interface SalesOrderLine {
   returnedQty: string;
   customerDeliveryDate?: string | null;
   unitPrice: string;
+  taxPrice: string;
   taxRate: string;
   amount: string;
   taxAmount: string;
@@ -319,6 +321,7 @@ export interface PurchaseReturnLine {
   unit: string;
   quantity: string;
   unitPrice: string;
+  taxPrice: string;
   taxRate: string;
   amount: string;
   taxAmount: string;
@@ -351,6 +354,7 @@ export interface SalesReturnLine {
   unit: string;
   quantity: string;
   unitPrice: string;
+  taxPrice: string;
   taxRate: string;
   amount: string;
   taxAmount: string;
@@ -429,6 +433,7 @@ export interface DocLine {
   actualQty?: string | null;
   diffQty?: string | null;
   unitPrice?: string | null;
+  taxPrice?: string | null; // V23 含税单价(后端 DocLine VO 已返回,可空)
   taxRate?: string | null;
   amount?: string | null;
   taxAmount?: string | null;

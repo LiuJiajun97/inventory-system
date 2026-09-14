@@ -162,7 +162,7 @@ public class OpeningStockServiceImpl implements OpeningStockService {
             totalQty = totalQty.add(line.quantity());
             inboundLines.add(new InboundLineDTO(line.itemId(), line.quantity(), line.batchNo(),
                     line.productionDate(), line.expiryDate(), null, line.locationId(), null,
-                    line.unitPrice(), null, null));
+                    line.unitPrice(), null, null, null));
         }
         doc.setTotalQty(totalQty);
         openingStockDocMapper.insert(doc);

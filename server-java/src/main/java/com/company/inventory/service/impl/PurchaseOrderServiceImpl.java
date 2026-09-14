@@ -399,9 +399,16 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                 throw new BizException("物品不存在: id=" + line.itemId());
             }
             BigDecimal rate = line.taxRate() == null ? DEFAULT_TAX_RATE : line.taxRate();
-            BigDecimal amount = MoneyUtils.amountOf(line.orderedQty(), line.unitPrice());
-            BigDecimal tax = MoneyUtils.taxOf(amount, rate);
-            BigDecimal inclusive = MoneyUtils.inclusiveOf(amount, tax);
+            // V20:不含税单价/含税单价二选一,unitPrice 有值走正算,否则走含税反算;都缺报错
+            if (line.unitPrice() == null && line.taxPrice() == null) {
+                throw new BizException("第 " + (i + 1) + " 行:不含税单价与含税单价必填其一");
+            }
+            MoneyUtils.LineMoney lm = line.unitPrice() != null
+                    ? MoneyUtils.fromExclusiveUnit(line.orderedQty(), line.unitPrice(), rate)
+                    : MoneyUtils.fromInclusiveUnit(line.orderedQty(), line.taxPrice(), rate);
+            BigDecimal amount = lm.amount();
+            BigDecimal tax = lm.tax();
+            BigDecimal inclusive = lm.inclusive();
             totalAmount = totalAmount.add(amount);
             totalTax = totalTax.add(tax);
             totalInclusive = totalInclusive.add(inclusive);
@@ -415,7 +422,8 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
             oi.setOrderedQty(line.orderedQty());
             oi.setArrivedQty(BigDecimal.ZERO);
             oi.setExpectedDeliveryDate(line.expectedDeliveryDate());
-            oi.setUnitPrice(line.unitPrice());
+            oi.setUnitPrice(lm.unitPrice());
+            oi.setTaxPrice(lm.taxPrice());
             oi.setTaxRate(rate);
             oi.setAmount(amount);
             oi.setTaxAmount(tax);
@@ -543,7 +551,7 @@ public class PurchaseOrderServiceImpl implements PurchaseOrderService {
                         QtyUtils.toContractString(line.getOrderedQty()),
                         QtyUtils.toContractString(line.getArrivedQty()),
                         QtyUtils.toContractString(line.getReturnedQty()),
-                        line.getExpectedDeliveryDate(), line.getUnitPrice(), line.getTaxRate(),
+                        line.getExpectedDeliveryDate(), line.getUnitPrice(), line.getTaxPrice(), line.getTaxRate(),
                         QtyUtils.toContractString(line.getAmount()),
                         QtyUtils.toContractString(line.getTaxAmount()),
                         QtyUtils.toContractString(line.getTaxInclusiveTotal()),
