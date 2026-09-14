@@ -3,7 +3,7 @@
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable、单据表单页 ProForm 表头)。
 > 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占/退货/期初/报表 + 基础出入库,22 个 Controller,前端 34 个页面(27 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **200 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初 + 4 V15 报表中心 + 3 V16 操作日志 + 6 V17 单据明细行 + 12 V18 三单匹配/结算域 + 1 V19 盘点防重复生成 + 1 V19b 序列号仓盘点调整 + 11 V20 库存成本移动均价报表 + 3 V20 数据权限按 id 补 403),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **208 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初 + 4 V15 报表中心 + 3 V16 操作日志 + 6 V17 单据明细行 + 12 V18 三单匹配/结算域 + 1 V19 盘点防重复生成 + 1 V19b 序列号仓盘点调整 + 11 V20 库存成本移动均价报表 + 3 V20 数据权限按 id 补 403 + 6 V23 MoneyUtils 价税工具 + 2 V23 含税路径),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ---
@@ -68,7 +68,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8081)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 200 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 208 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -221,6 +221,7 @@ RBAC 批 2(V8 起):用户 API 多角色化(`POST /users` 传 `roleIds` 必填;`P
 36. **仪表盘+报表图表化(V22 批次 B)**:新增唯一依赖 `@ant-design/charts` 2.6.7。仪表盘:数字卡 28px 加粗 + count-up 进入动画 + 本月/上月环比(基于 /transactions 前端按月聚合);图表区三列 = 近 30 天出入库趋势折线(按日聚合 changeQty)+ 各仓库存金额占比环图(/reports/cost 按 warehouseName 聚合 amount)+ 待办卡(临期/低库存/待审批,点击跳预警页)。报表中心三 Tab 图表在上表格在下:进销存月报柱状(逐月入/出量)、库龄环图(ageBucket 段)、成本报表物品金额 Top10 横条;采购/销售对账 Tab 行结构不适合图表不加。图表数据全部来自现有接口前端聚合(后端零改动),实测 pageSize 上限 200,`utils/fetchAllPages.ts` 按 200/页循环拉全量。
 37. **仪表盘待办跳转修正(待审批拆分为五类单据)**:原「待审批单据」合计行统一跳预警页(无关联,误跳转)。改为:待审批拆成「待审批 · 采购订单/销售订单/调拨单/盘点单/库存调整」五行(各自计数,跳对应列表页 ?status=pending 预置状态筛选);临期/低库存跳预警页 ?tab=expiry/low 预置 tab。5 个单据列表页(采购/销售/调拨/盘点/调整)与预警页接 useSearchParams:列表页 ProTable params 带 urlStatus 并入请求(页内手动筛选可覆盖),预警页按 ?tab=low 初始化 tab。待办卡内容区定高 260(与图表卡同高)、行数多时内部滚动,不撑高卡片(7 行后仍与图表卡齐平 323px)。库存 Top 10 数量列改单行内联(数字左+迷你条右),行高 53→45,与最近流水卡等高(均 495px)。
 38. **入库/出库主表补单据日期列**(2026-09-14):主表原来只有"创建时间",用户反馈看不出单据日期;主表在供应商/客户后加"单据日期"(`docDate`),与明细视图的行级"日期"区分;scroll.x 1480→1590。
+39. **价税六列全铺+含税单价落库(V23,对齐金蝶/SAP 口径,StockCoreService/StockMapper.xml 零改动)**:6 张带价行表(采购/销售订单、采购/销售退货、入/出库行)新增 `tax_price` NUMERIC 列(V20 迁移,存量按 不含税×(1+税率/100) 回填)。口径:金额=数量×不含税单价、税额=金额×税率、含税金额=金额+税额;录入两单价二选一(前端各建页两列都可填+金额三列实时预览 `utils/lineMoney.ts` 与后端同口径),服务端**不含税优先**、只填含税时反算(含税金额=数量×含税单价,金额=含税金额÷(1+税率),不含税单价=金额÷数量),双缺 400"不含税单价与含税单价必填其一";退货继承源订单行 tax_price 快照(前端不传);入库/出库有源继承源单、无源与订单同口径二选一。`MoneyUtils` 加 `LineMoney` record + `fromExclusiveUnit`/`fromInclusiveUnit`(4 位 HALF_UP,税额用差值算法防双舍入误差)。展示:新建/表单 6 页六列(不含税单价|含税单价|税率|不含税金额|税额|含税金额),列表行表/详情弹窗/打印版同步补"含税单价"列;详情弹窗列宽压缩进 960 不溢出(订单 1030→868/退货 980→863)+ `scroll: max-content` 兜底,裸 ID 列改可读名称,退货/出入库详情头部"价税合计"改明细含税合计求和(原传不含税总额与明细打架)。测试 200→208(MoneyUtilsTest 6 + 含税路径集成 2,原 200 零删)。
 
 
 ---
@@ -248,7 +249,7 @@ inventory-system/
 │   ├── src/main/resources/
 │   │   ├── application.yml    8081 / 5433 / JWT / jackson(Asia/Shanghai)
 │   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,V11__return,V12__import_export,V13__opening_stock,V15__report_menu,V16__operation_log,seed}.sql
-│   └── src/test/java/         29 个测试类,200 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心/V16 操作日志/V17 单据明细行/V18 三单匹配+结算域/V19 盘点防重复生成/V19b 序列号仓盘点调整/V20 库存成本报表)
+│   └── src/test/java/         30 个测试类,208 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心/V16 操作日志/V17 单据明细行/V18 三单匹配+结算域/V19 盘点防重复生成/V19b 序列号仓盘点调整/V20 库存成本报表/V23 价税工具+含税路径)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/
