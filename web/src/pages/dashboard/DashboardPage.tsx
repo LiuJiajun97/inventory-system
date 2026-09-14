@@ -486,8 +486,12 @@ export function DashboardPage() {
           </ChartCard>
         </Col>
         <Col xs={24} md={8}>
-          <Card size="small" title="待办" style={{ height: "100%" }}>
-            <List
+          {/* 高度由内容定(头38+内容260+边距≈323,与图表卡一致);不写 height:100%——
+             图表卡带 marginBottom:16 会把 Row 撑到 339,100% 会被拉高 16px */}
+          <Card size="small" title="待办">
+            {/* 内容区与图表卡同高(260),行数多时内部滚动,不撑高卡片 */}
+            <div style={{ height: 260, overflowY: "auto", paddingRight: 4 }}>
+              <List
               size="small"
               dataSource={[
                 {
@@ -573,7 +577,8 @@ export function DashboardPage() {
                   </List.Item>
                 </Link>
               )}
-            />
+              />
+            </div>
           </Card>
         </Col>
       </Row>
