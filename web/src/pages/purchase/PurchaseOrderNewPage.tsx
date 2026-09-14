@@ -2,9 +2,9 @@
 // 服务端重算价税三列,前端仅展示输入;行级:物品/数量/单价/税率
 // 选物品后自动带出默认税率(联动走数据流,不依赖 setFields)
 
-import { useEffect, useState } from "react";
-import { Button } from "antd";
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import { useEffect, useState, type ComponentProps } from "react";
+import { Button, InputNumber, Tooltip } from "antd";
+import { ArrowLeftOutlined, ExclamationCircleFilled } from "@ant-design/icons";
 import {
   EditableProTable,
   ProCard,
@@ -23,7 +23,7 @@ import { itemApi, purchaseApi, supplierApi, userApi } from "../../api";
 import type { Item, UserInfo } from "../../types";
 import type { Supplier } from "../../types/phase1";
 import { fmtMoney } from "../../utils/format";
-import { previewLineMoney } from "../../utils/lineMoney";
+import { priceMismatchHint, previewLineMoney, recalcPricePair } from "../../utils/lineMoney";
 
 interface LineRow {
   key: number;
@@ -38,6 +38,28 @@ interface LineRow {
 }
 
 let lineSeq = 2;
+
+// V23.1:含税单价输入框,与不含税单价按税率推算不一致时在输入框右侧同行渲染小图标 + Tooltip 悬浮展示完整文案
+// value/onChange 由行表单 Form.Item 注入,unitPrice/taxRate 由列 renderFormItem 从行记录带入
+function TaxPriceField(props: ComponentProps<typeof InputNumber> & {
+  unitPrice?: number;
+  taxRate?: number;
+}) {
+  const { unitPrice, taxRate, value, ...inputProps } = props;
+  const hint = priceMismatchHint(unitPrice, value == null ? undefined : Number(value), taxRate);
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", width: "100%" }}>
+      <InputNumber {...inputProps} value={value} style={{ width: "calc(100% - 22px)" }} />
+      {hint != null ? (
+        <Tooltip title={hint}>
+          <ExclamationCircleFilled
+            style={{ color: "#fa8c16", fontSize: 14, marginLeft: 6, cursor: "help" }}
+          />
+        </Tooltip>
+      ) : null}
+    </span>
+  );
+}
 
 export function PurchaseOrderNewPage() {
   const navigate = useNavigate();
@@ -121,7 +143,8 @@ export function PurchaseOrderNewPage() {
   // EditableProTable 受控 value 驱动,控件随 data 刷新,
   // 不依赖 form.setFields(外部 setFields 不会触发已挂载控件重渲染)
   const handleLinesChange = (values: readonly LineRow[]) => {
-    const merged: LineRow[] = values.map((row) => {
+    const merged: LineRow[] = values.map((row, idx) => {
+      const prev = data[idx];
       let next = { ...row };
       if (row.itemId != null) {
         const item = items.find((i) => i.id === row.itemId);
@@ -132,6 +155,21 @@ export function PurchaseOrderNewPage() {
         // 联动 2(V10):选物品且单价未填且物品有参考采购价 → 预填(仅预填,用户可改)
         if (next.unitPrice == null && item?.referencePurchasePrice != null) {
           next.unitPrice = Number(item.referencePurchasePrice);
+        }
+      }
+      // V23.1:双单价双向联动——按用户刚改的字段重算另一个(最后修改的字段是主字段);
+      // 清空某框时 recalcPricePair 返回空对象不动另一个(否则无法清空重填)
+      if (next.taxRate != null) {
+        const changed: "unit" | "tax" | "rate" | null =
+          prev?.unitPrice !== next.unitPrice
+            ? "unit"
+            : prev?.taxPrice !== next.taxPrice
+              ? "tax"
+              : prev?.taxRate !== next.taxRate
+                ? "rate"
+                : null;
+        if (changed) {
+          next = { ...next, ...recalcPricePair(next.unitPrice, next.taxPrice, next.taxRate, changed) };
         }
       }
       return next;
@@ -193,11 +231,21 @@ export function PurchaseOrderNewPage() {
     },
     {
       // V20 含税单价:与不含税单价二选一(都填时服务端按不含税优先)
+      // V23.1:自定义 renderFormItem,输入框右侧同行按行实时值渲染同值提示小图标 + Tooltip(纯展示,不阻断提交);
+      // 行值变化走受控 data 刷新,cell 随表单行级 shouldUpdate 重渲染,提示始终反映当前行值
       title: "含税单价",
       dataIndex: "taxPrice",
       width: 120,
       valueType: "digit",
-      fieldProps: { min: 0, step: 0.01 },
+      renderFormItem: (_schema, config) => (
+        <TaxPriceField
+          min={0}
+          step={0.01}
+          style={{ width: "100%" }}
+          unitPrice={config.record?.unitPrice}
+          taxRate={config.record?.taxRate}
+        />
+      ),
     },
     {
       title: "税率(%)",

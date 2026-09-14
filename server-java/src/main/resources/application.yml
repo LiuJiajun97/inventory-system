@@ -1,7 +1,7 @@
 # 库存管理系统 Java 后端配置
-# 端口 8081(Fastify 版 8080 并存);PG 复用 5433 的 inventory 库
+# 端口 8888(用户 8081 另有用途,2026-09-14 迁出);PG 复用 5433 的 inventory 库
 server:
-  port: 8081
+  port: 8888
 
 spring:
   application:
@@ -38,7 +38,7 @@ springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
-    # 与 Fastify 版一致:swagger-ui 挂 /docs
+    # swagger-ui 挂 /docs
     path: /docs
     doc-expansion: list
     deep-linking: true

@@ -12,6 +12,7 @@ import {
   message,
   Select,
   Table,
+  Tooltip,
 } from "antd";
 import {
   ProCard,
@@ -22,7 +23,7 @@ import {
   ProFormText,
   ProFormTextArea,
 } from "@ant-design/pro-components";
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, ExclamationCircleFilled } from "@ant-design/icons";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import dayjs, { type Dayjs } from "dayjs";
 import { itemApi, salesApi, customerApi, userApi, warehouseApi } from "../../api";
@@ -30,7 +31,7 @@ import type { Warehouse } from "../../types";
 import type { Item, UserInfo } from "../../types";
 import type { Customer } from "../../types/phase1";
 import { fmtMoney } from "../../utils/format";
-import { previewLineMoney } from "../../utils/lineMoney";
+import { priceMismatchHint, previewLineMoney, recalcPricePair } from "../../utils/lineMoney";
 
 interface LineRow {
   key: number;
@@ -130,7 +131,13 @@ export function SalesOrderNewPage() {
           l.unitPrice == null && it?.referenceSalePrice != null
             ? Number(it.referenceSalePrice)
             : l.unitPrice;
-        return { ...l, itemId, taxRate: it ? Number(it.defaultTaxRate ?? 13) : l.taxRate, unitPrice };
+        // V23.1:预填了不含税 → 按带出的税率联动含税(与手动填不含税同口径)
+        const taxRate = it ? Number(it.defaultTaxRate ?? 13) : l.taxRate;
+        const taxPrice =
+          unitPrice != null
+            ? recalcPricePair(unitPrice, l.taxPrice, taxRate, "unit").taxPrice ?? l.taxPrice
+            : l.taxPrice;
+        return { ...l, itemId, taxRate, unitPrice, taxPrice };
       }),
     );
   };
@@ -238,27 +245,44 @@ export function SalesOrderNewPage() {
           step={0.01}
           style={{ width: "100%" }}
           value={l.unitPrice}
-          onChange={(v) =>
-            setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, unitPrice: v ?? undefined } : x)))
-          }
+          onChange={(v) => {
+            // V23.1:改不含税 → 实时联动重算含税(清空不触发)
+            const next = recalcPricePair(v ?? undefined, l.taxPrice, l.taxRate, "unit");
+            setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, unitPrice: v ?? undefined, ...next } : x)));
+          }}
         />
       ),
     },
     {
       // V20 含税单价:与不含税单价二选一(都填时服务端按不含税优先)
+      // V23.1:两单价按税率推算不一致时输入框右侧同行加小图标 + Tooltip 悬浮展示完整文案(纯展示,不阻断提交)
       title: "含税单价",
       width: 120,
-      render: (_v: unknown, l: LineRow) => (
-        <InputNumber
-          min={0}
-          step={0.01}
-          style={{ width: "100%" }}
-          value={l.taxPrice}
-          onChange={(v) =>
-            setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, taxPrice: v ?? undefined } : x)))
-          }
-        />
-      ),
+      render: (_v: unknown, l: LineRow) => {
+        const hint = priceMismatchHint(l.unitPrice, l.taxPrice, l.taxRate);
+        return (
+          <span style={{ display: "inline-flex", alignItems: "center", width: "100%" }}>
+            <InputNumber
+              min={0}
+              step={0.01}
+              style={{ width: "calc(100% - 22px)" }}
+              value={l.taxPrice}
+              onChange={(v) => {
+                // V23.1:改含税 → 实时联动重算不含税(清空不触发)
+                const next = recalcPricePair(l.unitPrice, v ?? undefined, l.taxRate, "tax");
+                setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, taxPrice: v ?? undefined, ...next } : x)));
+              }}
+            />
+            {hint != null ? (
+              <Tooltip title={hint}>
+                <ExclamationCircleFilled
+                  style={{ color: "#fa8c16", fontSize: 14, marginLeft: 6, cursor: "help" }}
+                />
+              </Tooltip>
+            ) : null}
+          </span>
+        );
+      },
     },
     {
       // V20 金额三列:只读预览(与后端同口径),提交后以服务端重算为准
@@ -301,10 +325,12 @@ export function SalesOrderNewPage() {
           step={0.01}
           style={{ width: "100%" }}
           value={l.taxRate}
-          onChange={(v) =>
-            setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, taxRate: v ?? undefined } : x)))
-          }
-        />
+          onChange={(v) => {
+            // V23.1:改税率 → 按不含税正算联动含税(与后端同口径),只填了含税则反算
+            const next = v != null ? recalcPricePair(l.unitPrice, l.taxPrice, v, "rate") : {};
+            setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, taxRate: v ?? undefined, ...next } : x)));
+          }}
+          />
       ),
     },
     {
