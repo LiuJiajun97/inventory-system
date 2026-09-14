@@ -316,6 +316,13 @@ const request = async (params: {
       render: (_v, r) => r.supplierName ?? "-",
     },
     {
+      // 单据日期(明细视图同名列为行级日期,主表为单头日期)
+      title: "单据日期",
+      dataIndex: "docDate",
+      width: 110,
+      search: false,
+    },
+    {
       title: "物品摘要",
       width: 240,
       ellipsis: true,
@@ -379,7 +386,7 @@ const request = async (params: {
           />
         }
         options={false}
-        scroll={{ x: 1480 }}
+        scroll={{ x: 1590 }}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
