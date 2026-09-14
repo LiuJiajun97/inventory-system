@@ -21,10 +21,10 @@ IDEA 没开或通道不通时,退回下面命令。
 bash ../scripts/mvn.sh test               # 后端测试(当前 208 条,必须全绿)
 bash ../scripts/mvn.sh checkstyle:check   # checkstyle(必须 0 违规)
 bash ../scripts/mvn.sh package            # 构建
-bash ../scripts/mvn.sh spring-boot:run    # 启动后端(8081)
+bash ../scripts/mvn.sh spring-boot:run    # 启动后端(8888)
 
 # 前端(web 下)
-npm run dev                            # dev(5173,代理 /api → 8081)
+npm run dev                            # dev(5173,代理 /api → 8888)
 npm run build                          # 构建(必须 0 错)
 
 # 数据库(docker 容器 inventory-postgres,端口 5433,库 inventory,用户 inv)
@@ -36,9 +36,9 @@ docker compose up -d                   # 起 PG
 
 ## 运行环境
 
-- 后端 8081、前端 5173 通常由 IDEA 运行配置在跑,**禁止另起实例**(会撞端口)。
+- 后端 8888、前端 5173 通常由 IDEA 运行配置在跑,**禁止另起实例**(会撞端口)。
   前端只改 web 代码时靠 HMR,无需重启;**后端 Java 改动必须重启后端才生效**,标准流程(全走 IDEA MCP):
-  1) `netstat -ano | grep :8081` 找 java PID;2) `execute_terminal_command` 在 IDE 集成终端跑 `taskkill /F /PID <pid>`;
+  1) `netstat -ano | grep :8888` 找 java PID;2) `execute_terminal_command` 在 IDE 集成终端跑 `taskkill /F /PID <pid>`;
   3) `execute_run_configuration` 跑 `InventoryApplication`(IDEA 无独立 stop 工具,`execute_run_configuration` 不会自动停旧实例)
 - PG:容器 `inventory-postgres`,端口 5433,库 `inventory`(生产)/`inventory_test`(测试)
 - 账号:admin/admin123、zhangsan/zhang123(operator)、lisi/lisi123(viewer)
@@ -89,9 +89,9 @@ docker compose up -d                   # 起 PG
 
 ## 踩坑备忘
 
-- 杀后端:`netstat -ano | grep 8081` 找 java PID 强杀,杀 mvn 壳不够;
+- 杀后端:`netstat -ano | grep 8888` 找 java PID 强杀,杀 mvn 壳不够;
   正常启停一律走 IDEA 运行配置(InventoryApplication / web-前端(Vite)),别命令行另起实例
 - 统计测试数用 `grep -cE "@Test\b"`,别 grep `@Test`(@TestInstance 会多算)
-- curl 直连 8081 带 Authorization 会被本机代理吞成假 401;验证接口走 python urllib 或浏览器 fetch
+- curl 直连 8888 带 Authorization 会被本机代理吞成假 401;验证接口走 python urllib 或浏览器 fetch
 - 改实体/接口后同步 `web/src/types/phase1.ts` 与 `web/src/api/index.ts`
 - 派任务:任务书放 `.tmp/TASK-*.md`,完工报告放 `.tmp/*-report.md`(改动清单/实测测试数/验证证据/遗留)
