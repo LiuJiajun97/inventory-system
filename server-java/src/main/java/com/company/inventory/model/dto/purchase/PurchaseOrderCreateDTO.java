@@ -1,6 +1,8 @@
 package com.company.inventory.model.dto.purchase;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -32,6 +34,8 @@ public record PurchaseOrderCreateDTO(
         @Positive(message = "供应商 ID 必须为正数") Long supplierId,
         @NotNull(message = "采购员 ID 必填")
         @Positive(message = "采购员 ID 必须为正数") Long buyerId,
+        @DecimalMin(value = "0.0", message = "超收比例不能为负")
+        @DecimalMax(value = "1.0", message = "超收比例必须≤1(小数口径,0.1=10%)")
         BigDecimal allowOverReceiptRate,
         String contractNo,
         BigDecimal freight,

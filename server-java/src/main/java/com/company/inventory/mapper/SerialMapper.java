@@ -43,4 +43,17 @@ public interface SerialMapper extends BaseMapper<SerialDO> {
      */
     int transferWarehouse(@Param("itemId") Long itemId, @Param("serialNo") String serialNo,
             @Param("fromWarehouseId") Long fromWarehouseId, @Param("toWarehouseId") Long toWarehouseId);
+
+    /**
+     * 退货回流:条件回置序列号入库(仅 out 状态才回置,原子操作)。
+     *
+     * <p>影响行数 0 表示该序列号不是 out 状态(需走新建入库,撞唯一键由 DB 约束兜底)。</p>
+     *
+     * @param itemId      物品 ID
+     * @param serialNo    序列号
+     * @param warehouseId 仓库 ID
+     * @return 影响行数(0 或 1)
+     */
+    int markBackInStock(@Param("itemId") Long itemId, @Param("serialNo") String serialNo,
+            @Param("warehouseId") Long warehouseId);
 }

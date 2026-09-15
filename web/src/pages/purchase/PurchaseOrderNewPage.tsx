@@ -90,7 +90,8 @@ export function PurchaseOrderNewPage() {
           docDate: dayjs(doc.docDate),
           supplierId: doc.supplierId,
           buyerId: doc.buyerId,
-          allowOverReceiptRate: Number(doc.allowOverReceiptRate),
+          // 服务端小数口径(0.1=10%)→ UI 百分数回填
+          allowOverReceiptRate: Number(doc.allowOverReceiptRate) * 100,
           contractNo: doc.contractNo ?? undefined,
           freight: doc.freight == null ? undefined : Number(doc.freight),
           shippingAddress: doc.shippingAddress ?? undefined,
@@ -338,7 +339,8 @@ export function PurchaseOrderNewPage() {
         docDate: (values.docDate as Dayjs).format("YYYY-MM-DD"),
         supplierId: values.supplierId as number,
         buyerId: values.buyerId as number,
-        allowOverReceiptRate: (values.allowOverReceiptRate as number) ?? 0,
+        // UI 百分数(0~100)→ 提交服务端小数口径(0.1=10%)
+        allowOverReceiptRate: ((values.allowOverReceiptRate as number) ?? 0) / 100,
         contractNo: values.contractNo as string | undefined,
         freight: values.freight as number | undefined,
         shippingAddress: values.shippingAddress as string | undefined,
@@ -430,7 +432,7 @@ export function PurchaseOrderNewPage() {
             initialValue={0}
             min={0}
             max={100}
-            fieldProps={{ step: 0.1 }}
+            fieldProps={{ step: 1 }}
             tooltip="到货量上限 = 订购量 × (1 + 比例)"
           />
           {/* V9 通用字段(可空):合同号/运费/交货地址 */}

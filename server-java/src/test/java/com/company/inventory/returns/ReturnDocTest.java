@@ -62,6 +62,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -444,6 +445,58 @@ class ReturnDocTest {
         PageResult<SalesReturnVO> sAll = salesReturnService.list(sQuery);
         assertTrue(sAll.total() >= 1);
         assertEquals(sQuery.getPage(), sAll.page());
+    }
+
+    /**
+     * 用例 9:序列号退货回流——已出库序列号经销售退货入库回置 in_stock,
+     * 无 (item_id, serial_no) 唯一键冲突(修复前 insert 撞唯一键 400 必挂)。
+     */
+    @Test
+    void salesReturnSerialReflow() {
+        String sn = "REFLOW-SN-X";
+        // 1) 序列号仓手工入库 SN-X(in_stock)
+        inboundService.create(new InboundCreateDTO(serialWarehouseId, "回流测试备货",
+                List.of(new InboundLineDTO(itemId, new BigDecimal("1"), null, null, null,
+                        null, null, List.of(sn), null, null, null, null)),
+                null, null, LocalDate.now()), "ret_creator");
+        // 2) 建单审批销售订单(序列号仓)
+        CustomerDO customer = new CustomerDO();
+        customer.setCustomerCode("RT-CK" + (seq++));
+        customer.setCustomerName("序列回流客户");
+        customer.setStatus(1);
+        customerMapper.insert(customer);
+        SalesOrderVO order = salesOrderService.create(new SalesOrderCreateDTO(
+                LocalDate.now(), customer.getId(), creatorUserId, serialWarehouseId, "序列回流",
+                List.of(new SalesOrderLineDTO(itemId, new BigDecimal("1"), null,
+                        new BigDecimal("20.00"), null, new BigDecimal("13.00"), null))), "ret_creator");
+        salesOrderService.submit(order.id(), "ret_creator");
+        order = salesOrderService.approve(order.id(), "ret_approver");
+        long lineId = order.items().get(0).id();
+        // 3) 带序列号发货 → SN-X 变 out
+        outboundService.create(new OutboundCreateDTO(serialWarehouseId, "回流测试发货",
+                List.of(new OutboundLineDTO(itemId, new BigDecimal("1"), null, null,
+                        List.of(sn), null, null, null, lineId)),
+                "sales", order.id(), LocalDate.now()), "ret_creator");
+        SerialDO outSn = serialMapper.selectOne(new LambdaQueryWrapper<SerialDO>()
+                .eq(SerialDO::getSerialNo, sn));
+        assertNotNull(outSn);
+        assertEquals("out", outSn.getStatus());
+        // 4) 销售退货把 SN-X 退回(修复前此处 insert 撞唯一键 400)
+        SalesReturnCreatedVO vo = salesReturnService.create(
+                new SalesReturnCreateDTO(order.id(), serialWarehouseId, LocalDate.now(), "序列回流退货",
+                        List.of(new SalesReturnLineDTO(lineId, new BigDecimal("1"),
+                                null, null, null, null, List.of(sn)))), "ret_creator");
+        assertNotNull(vo.id());
+        assertTrue(vo.inDocNo().startsWith("RK-"), "联动入库单号应以 RK- 开头: " + vo.inDocNo());
+        // 5) 台账:SN-X 回置 in_stock,仓库=序列号仓,outbound_time 清空,库存 1
+        SerialDO back = serialMapper.selectOne(new LambdaQueryWrapper<SerialDO>()
+                .eq(SerialDO::getSerialNo, sn));
+        assertNotNull(back);
+        assertEquals("in_stock", back.getStatus());
+        assertEquals(serialWarehouseId, back.getWarehouseId());
+        assertNotNull(back.getInboundTime());
+        assertNull(back.getOutboundTime());
+        assertEquals(0, new BigDecimal("1").compareTo(stockQty(serialWarehouseId)));
     }
 
     /**

@@ -30,7 +30,7 @@
     <suppress files="[\\/]TransferServiceImpl\.java" checks="ParameterNumberCheck" lines="93-99"/>
     <!-- StockCoreService.insertTransaction 为 8/9 参私有方法(与 StockTransaction 字段一一对应,
          属核心业务落库路径,不改签名),精确豁免 ParameterNumberCheck(仅限两重载签名行区间) -->
-    <suppress files="[\\/]StockCoreService\.java" checks="ParameterNumberCheck" lines="844-890"/>
+    <suppress files="[\\/]StockCoreService\.java" checks="ParameterNumberCheck" lines="850-896"/>
     <!-- V9/V10 兼容旧签名构造器(既有测试/调用不动,参数数等于旧签名),精确豁免(仅限签名行区间) -->
     <suppress files="[\\/]SupplierCreateDTO\.java" checks="ParameterNumberCheck" lines="45-55"/>
     <suppress files="[\\/]SupplierUpdateDTO\.java" checks="ParameterNumberCheck" lines="43-53"/>
@@ -40,7 +40,7 @@
     <suppress files="[\\/]ItemUpdateDTO\.java" checks="ParameterNumberCheck" lines="43-52"/>
     <suppress files="[\\/]InboundCreateDTO\.java" checks="ParameterNumberCheck" lines="50-53"/>
     <suppress files="[\\/]OutboundCreateDTO\.java" checks="ParameterNumberCheck" lines="50-53"/>
-    <suppress files="[\\/]PurchaseOrderCreateDTO\.java" checks="ParameterNumberCheck" lines="55-58"/>
+    <suppress files="[\\/]PurchaseOrderCreateDTO\.java" checks="ParameterNumberCheck" lines="57-60"/>
     <suppress files="[\\/]SalesOrderCreateDTO\.java" checks="ParameterNumberCheck" lines="56-59"/>
     <suppress files="[\\/]WarehouseVO\.java" checks="ParameterNumberCheck" lines="26-29"/>
     <!-- V13/V18 单据号服务构造器:新增期初/发票/付款收款 Mapper 后 12 个依赖注入,属 Spring 构造器注入 -->

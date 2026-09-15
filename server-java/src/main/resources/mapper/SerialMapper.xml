@@ -25,4 +25,16 @@
           AND warehouse_id = #{fromWarehouseId}
     </update>
 
+    <!-- 退货回流:条件回置序列号入库(仅 out 状态才回置,原子操作) -->
+    <update id="markBackInStock">
+        UPDATE serial
+        SET status = 'in_stock',
+            warehouse_id = #{warehouseId},
+            inbound_time = CURRENT_TIMESTAMP,
+            outbound_time = NULL
+        WHERE item_id = #{itemId}
+          AND serial_no = #{serialNo}
+          AND status = 'out'
+    </update>
+
 </mapper>

@@ -221,6 +221,12 @@ public class StockCoreService {
             if (Boolean.TRUE.equals(warehouse.getEnableSerial())
                     && line.getSerialNos() != null && !line.getSerialNos().isEmpty()) {
                 for (String sn : line.getSerialNos()) {
+                    // 退货回流:已出库序列号先条件回置入库,失败(影响 0 行)才新建;
+                    // 既非 out 又已存在的号撞唯一键,由 DB 约束兜底
+                    int back = serialMapper.markBackInStock(line.getItemId(), sn, request.getWarehouseId());
+                    if (back > 0) {
+                        continue;
+                    }
                     SerialDO serial = new SerialDO();
                     serial.setItemId(line.getItemId());
                     serial.setSerialNo(sn);

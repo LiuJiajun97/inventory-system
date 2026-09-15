@@ -443,7 +443,7 @@ const request = async (params: {
             <Descriptions column={3} bordered size="small">
               <Descriptions.Item label="下单日期">{fmtDate(detail.docDate)}</Descriptions.Item>
               <Descriptions.Item label="超收比例(%)">
-                {Number(detail.allowOverReceiptRate).toFixed(2)}
+                {(Number(detail.allowOverReceiptRate) * 100).toFixed(2)}
               </Descriptions.Item>
               <Descriptions.Item label="金额">{fmtMoney(detail.totalAmount)}</Descriptions.Item>
               <Descriptions.Item label="税额">{fmtMoney(detail.totalTaxAmount)}</Descriptions.Item>

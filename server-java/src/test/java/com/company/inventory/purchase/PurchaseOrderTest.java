@@ -30,14 +30,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -47,7 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * @author inventory
  */
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:postgresql://127.0.0.1:5433/inventory_test",
@@ -83,6 +92,9 @@ class PurchaseOrderTest {
     /** JDBC */
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    /** REST 模板(校验口径 HTTP 层断言用) */
+    @Autowired
+    private TestRestTemplate rest;
 
     /** 制单人 */
     private long creatorUserId;
@@ -146,6 +158,14 @@ class PurchaseOrderTest {
 
         creatorUserId = insertUser("po_creator", "制单人", "operator");
         approverUserId = insertUser("po_approver", "审批人", "admin");
+        // HTTP 登录用户(真实 BCrypt 密码,供 Bean Validation 口径测试走接口)
+        UserDO httpUser = new UserDO();
+        httpUser.setUsername("po_http");
+        httpUser.setPasswordHash(new BCryptPasswordEncoder(4).encode("po123"));
+        httpUser.setName("HTTP 测试人");
+        httpUser.setRole("operator");
+        httpUser.setStatus(1);
+        userMapper.insert(httpUser);
     }
 
     /**
@@ -453,6 +473,35 @@ class PurchaseOrderTest {
     }
 
     /**
+     * 用例 18:超收比例口径校验——小数口径 0.10 创建成功;百分数口径 10(前端旧 bug 传值)
+     * 被 Bean Validation 拒绝 400,message 为校验文案而非 DB numeric(5,4) 溢出的“操作冲突”。
+     */
+    @Test
+    void overReceiptRateScaleValidation() {
+        // 小数口径 0.10 → 创建成功
+        PurchaseOrderVO ok = createOrderWithRate("10", "0.10");
+        assertNotNull(ok.id());
+        assertEquals(0, new BigDecimal("0.10").compareTo(ok.allowOverReceiptRate()));
+        // 百分数口径 10 → HTTP 400 校验拒绝
+        String token = httpLogin("po_http", "po123");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        String body = "{\"docDate\":\"2026-01-01\",\"supplierId\":" + supplierId
+                + ",\"buyerId\":" + creatorUserId
+                + ",\"allowOverReceiptRate\":10,"
+                + "\"items\":[{\"itemId\":" + itemId + ",\"orderedQty\":1,"
+                + "\"unitPrice\":10,\"taxRate\":13}]}";
+        ResponseEntity<Map> res = rest.exchange("/api/v1/purchase-orders", HttpMethod.POST,
+                new HttpEntity<>(body, headers), Map.class);
+        assertEquals(400, res.getStatusCode().value());
+        Map<String, Object> json = res.getBody();
+        String message = json == null ? "" : String.valueOf(json.get("message"));
+        assertTrue(message.contains("超收比例"), "应为超收比例校验拒绝: " + message);
+        assertFalse(message.contains("操作冲突"), "不应为 DB 溢出冲突: " + message);
+    }
+
+    /**
      * 新建单行采购订单(默认不超收,税率 13)。
      *
      * @param qty   数量
@@ -537,6 +586,25 @@ class PurchaseOrderTest {
         user.setStatus(1);
         userMapper.insert(user);
         return user.getId();
+    }
+
+    /**
+     * 登录并返回 token。
+     *
+     * @param username 用户名
+     * @param password 密码
+     * @return token
+     */
+    @SuppressWarnings("unchecked")
+    private String httpLogin(String username, String password) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String body = "{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}";
+        ResponseEntity<Map> res = rest.exchange("/api/v1/auth/login", HttpMethod.POST,
+                new HttpEntity<>(body, headers), Map.class);
+        assertEquals(200, res.getStatusCode().value());
+        Map<String, Object> json = res.getBody();
+        return json == null ? null : String.valueOf(json.get("token"));
     }
 
     /**
