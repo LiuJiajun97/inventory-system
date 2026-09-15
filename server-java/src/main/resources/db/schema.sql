@@ -339,6 +339,7 @@ CREATE TABLE IF NOT EXISTS transfer_doc_item (
 );
 
 -- ---------- 3.5 盘点 / 调整 ----------
+CREATE TABLE IF NOT EXISTS stocktake_doc (
     id           SERIAL PRIMARY KEY,
     doc_no      TEXT NOT NULL,
     doc_date    DATE NOT NULL,
@@ -370,6 +371,7 @@ CREATE TABLE IF NOT EXISTS stocktake_doc_item (
     diff_qty      NUMERIC(18, 4),
     creator      VARCHAR(64)
 );
+CREATE TABLE IF NOT EXISTS stock_adjust_doc (
     id           SERIAL PRIMARY KEY,
     doc_no      TEXT NOT NULL,
     doc_date    DATE NOT NULL,

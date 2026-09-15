@@ -13,8 +13,6 @@ services:
       interval: 2s
       timeout: 5s
       retries: 15
+    # 2026-09-14 起数据目录挂 D:\docker\pgdata(原命名 volume 随电脑重启丢失过一次业务数据)
     volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
+      - D:\docker\pgdata:/var/lib/postgresql/data
