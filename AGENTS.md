@@ -18,7 +18,7 @@ IDEA 没开或通道不通时,退回下面命令。
 
 ```bash
 # 构建/测试(必须在 server-java/ 下跑,Maven 必须经包装脚本,根目录直接跑报 no POM)
-bash ../scripts/mvn.sh test               # 后端测试(当前 208 条,必须全绿)
+bash ../scripts/mvn.sh test               # 后端测试(当前 210 条,必须全绿)
 bash ../scripts/mvn.sh checkstyle:check   # checkstyle(必须 0 违规)
 bash ../scripts/mvn.sh package            # 构建
 bash ../scripts/mvn.sh spring-boot:run    # 启动后端(8888)
@@ -40,7 +40,7 @@ docker compose up -d                   # 起 PG
   前端只改 web 代码时靠 HMR,无需重启;**后端 Java 改动必须重启后端才生效**,标准流程(全走 IDEA MCP):
   1) `netstat -ano | grep :8888` 找 java PID;2) `execute_terminal_command` 在 IDE 集成终端跑 `taskkill /F /PID <pid>`;
   3) `execute_run_configuration` 跑 `InventoryApplication`(IDEA 无独立 stop 工具,`execute_run_configuration` 不会自动停旧实例)
-- PG:容器 `inventory-postgres`,端口 5433,库 `inventory`(生产)/`inventory_test`(测试)
+- PG:容器 `inventory-postgres`,端口 5433,库 `inventory`(开发)/`inventory_test`(测试);需要种子数据时重放 `server-java/src/main/resources/db/seed.sql`
 - 账号:admin/admin123、zhangsan/zhang123(operator)、lisi/lisi123(viewer)
 - shell 为 git-bash(MSYS);给原生工具的 Windows 路径用 `C:/...` 正斜杠
 
@@ -66,10 +66,10 @@ docker compose up -d                   # 起 PG
 - 列表状态筛选:`useSearchParams` + ProTable `params` 接 URL 参数(如 `/purchase-orders?status=pending`),页内手动改筛选仍可覆盖
 - 交互:可回退/草稿态操作去确认弹层;不可逆/动库存操作保留确认
 
-## 数据状态(生产库 inventory)
+## 数据状态(开发库 inventory)
 
-- 保留验收数据:PGTEST-001(客户)/PGSUP-01(供应商)/PGCUS-01/CG-20260911-0007 等,用户明确不清数据,**看到库里数据不许顺手删**
-- E2E/测试不清生产库数据;测试一律走 `inventory_test` 库且自包含(自建自清)
+- 测试一律走 `inventory_test` 库且自包含(自建自清);E2E 不清数据。2026-09-15 用户拍板恢复独立测试库(先合并开发单库后嫌乱)
+- 2026-09-14 重启事故后库已重建:原保留验收数据(PGTEST-001/PGSUP-01/PGCUS-01/CG-20260911-0007 等)不可恢复;重建后仅 schema + 种子(3 仓/4 物/3 用户),现开发库另有一套 2026-09-15 全链路仿真数据(采购/销售/退货/盘点/结算各单据)
 
 ## 前端验证标准
 
