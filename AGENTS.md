@@ -11,10 +11,7 @@
 
 ## 常用命令
 
-**优先走 IDEA MCP 通道**(IDEA 开着时):IDE 侧的编译(`build_project`)、运行(`execute_run_configuration`
-跑 InventoryApplication / web-前端(Vite))、git(`git_status`/`get_repositories`)、
-数据库(`execute_sql_query`/`preview_table_data`)、重构(`rename_refactoring`)、调试(xdebug 系列)。
-IDEA 没开或通道不通时,退回下面命令。
+建议用 IDE 的运行配置启动前后端(见 `.idea/runConfigurations/` 与下文),避免命令行另起实例撞端口。
 
 ```bash
 # 构建/测试(必须在 server-java/ 下跑,Maven 必须经包装脚本,根目录直接跑报 no POM)
@@ -28,21 +25,19 @@ npm run dev                            # dev(5173,代理 /api → 8888)
 npm run build                          # 构建(必须 0 错)
 
 # 数据库(docker 容器 inventory-postgres,端口 5433,库 inventory,用户 inv)
-docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/schema.sql
 docker compose up -d                   # 起 PG
+docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/schema.sql
 ```
 
 完工前必须跑:三件套(test/checkstyle/package)+ `npm run build`,数字写实测值。
 
 ## 运行环境
 
-- 后端 8888、前端 5173 通常由 IDEA 运行配置在跑,**禁止另起实例**(会撞端口)。
-  前端只改 web 代码时靠 HMR,无需重启;**后端 Java 改动必须重启后端才生效**,标准流程(全走 IDEA MCP):
-  1) `netstat -ano | grep :8888` 找 java PID;2) `execute_terminal_command` 在 IDE 集成终端跑 `taskkill /F /PID <pid>`;
-  3) `execute_run_configuration` 跑 `InventoryApplication`(IDEA 无独立 stop 工具,`execute_run_configuration` 不会自动停旧实例)
+- 后端 8888、前端 5173,**禁止同时多实例**(会撞端口)。
+  前端只改 web 代码时靠 HMR,无需重启;**后端 Java 改动必须重启后端才生效**,标准流程:
+  1) 按端口 8888 找到 java 进程;2) 结束进程;3) 用 IDE 运行配置(InventoryApplication)或 `bash scripts/mvn.sh spring-boot:run` 重启
 - PG:容器 `inventory-postgres`,端口 5433,库 `inventory`(开发)/`inventory_test`(测试);需要种子数据时重放 `server-java/src/main/resources/db/seed.sql`
 - 账号:admin/admin123、zhangsan/zhang123(operator)、lisi/lisi123(viewer)
-- shell 为 git-bash(MSYS);给原生工具的 Windows 路径用 `C:/...` 正斜杠
 
 ## 架构约定
 
@@ -89,9 +84,9 @@ docker compose up -d                   # 起 PG
 
 ## 踩坑备忘
 
-- 杀后端:`netstat -ano | grep 8888` 找 java PID 强杀,杀 mvn 壳不够;
-  正常启停一律走 IDEA 运行配置(InventoryApplication / web-前端(Vite)),别命令行另起实例
+- 重启后端要按端口(8888)找 java 进程并结束,只杀 maven 壳不够;
+  正常启停建议走 IDE 运行配置(InventoryApplication / web-前端(Vite)),别命令行另起实例撞端口
+- Windows(MSYS/git-bash)下直接 `mvn` 有 classworlds 路径 bug,一律走 `scripts/mvn.sh` 包装脚本
 - 统计测试数用 `grep -cE "@Test\b"`,别 grep `@Test`(@TestInstance 会多算)
-- curl 直连 8888 带 Authorization 会被本机代理吞成假 401;验证接口走 python urllib 或浏览器 fetch
+- 本机有 HTTP 代理时 curl 带 Authorization 可能拿到假 401;验证接口走 python urllib 或浏览器 fetch
 - 改实体/接口后同步 `web/src/types/phase1.ts` 与 `web/src/api/index.ts`
-- 派任务:任务书放 `.tmp/TASK-*.md`,完工报告放 `.tmp/*-report.md`(改动清单/实测测试数/验证证据/遗留)

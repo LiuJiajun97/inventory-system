@@ -13,6 +13,7 @@ services:
       interval: 2s
       timeout: 5s
       retries: 15
-    # 2026-09-14 起数据目录挂 D:\docker\pgdata(原命名 volume 随电脑重启丢失过一次业务数据)
+    # 数据目录用本地绑定挂载(而非命名 volume):命名 volume 在部分平台/场景下会随容器环境重建而丢失,
+    # 本地目录持久化更可靠。路径请按本机环境修改(目录不存在时 Docker 会自动创建)。
     volumes:
       - D:\docker\pgdata:/var/lib/postgresql/data
