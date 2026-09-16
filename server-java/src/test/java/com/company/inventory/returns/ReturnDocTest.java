@@ -31,6 +31,8 @@ import com.company.inventory.mapper.StockMapper;
 import com.company.inventory.mapper.SupplierMapper;
 import com.company.inventory.mapper.UserMapper;
 import com.company.inventory.mapper.WarehouseMapper;
+import com.company.inventory.model.query.InboundDocQuery;
+import com.company.inventory.model.query.OutboundDocQuery;
 import com.company.inventory.model.query.PurchaseReturnQuery;
 import com.company.inventory.model.query.SalesReturnQuery;
 import com.company.inventory.service.InboundService;
@@ -39,6 +41,8 @@ import com.company.inventory.service.PurchaseOrderService;
 import com.company.inventory.service.PurchaseReturnService;
 import com.company.inventory.service.SalesOrderService;
 import com.company.inventory.service.SalesReturnService;
+import com.company.inventory.model.vo.inbound.InboundDocVO;
+import com.company.inventory.model.vo.outbound.OutboundDocVO;
 import com.company.inventory.model.vo.purchase.PurchaseOrderVO;
 import com.company.inventory.model.vo.returns.PurchaseReturnCreatedVO;
 import com.company.inventory.model.vo.returns.PurchaseReturnVO;
@@ -61,6 +65,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -500,6 +505,106 @@ class ReturnDocTest {
     }
 
     /**
+     * 用例 10:入库列表关联单号按 refType 分表回填(撞号回归)。
+     * 造 refType=sales_return 的入库单(销售退货过账联动),再造同号采购订单制造撞号:
+     * 修复前入库端无脑查采购订单表,会把 refDocNo 回填成同号采购订单的 CG 号;
+     * 修复后必须按 refType=sales_return 查销售退货表,回填 XT 号与客户名。
+     */
+    @Test
+    void inboundListRefNoFollowsRefType() {
+        // 1) 已审批已发货的销售订单(自造客户,名称用于断言对端名)
+        manualInbound(warehouseId, "10");
+        CustomerDO customer = new CustomerDO();
+        customer.setCustomerCode("RT-CK" + (seq++));
+        customer.setCustomerName("撞号测试客户");
+        customer.setStatus(1);
+        customerMapper.insert(customer);
+        SalesOrderVO so = salesOrderService.create(new SalesOrderCreateDTO(
+                LocalDate.now(), customer.getId(), creatorUserId, warehouseId, "撞号测试",
+                List.of(new SalesOrderLineDTO(itemId, new BigDecimal("10"), null,
+                        new BigDecimal("30.00"), null, new BigDecimal("13.00"), null))), "ret_creator");
+        salesOrderService.submit(so.id(), "ret_creator");
+        so = salesOrderService.approve(so.id(), "ret_approver");
+        long soLineId = so.items().get(0).id();
+        outboundService.create(new OutboundCreateDTO(warehouseId, "撞号测试发货",
+                List.of(new OutboundLineDTO(itemId, new BigDecimal("10"), null, null,
+                        null, null, null, null, soLineId)),
+                "sales", so.id(), LocalDate.now()), "ret_creator");
+        // 2) 销售退货过账 → 联动入库单 ref_type=sales_return,ref_doc_id=退货单 ID
+        SalesReturnCreatedVO ret = salesReturnService.create(new SalesReturnCreateDTO(
+                so.id(), warehouseId, LocalDate.now(), "撞号测试销退",
+                List.of(new SalesReturnLineDTO(soLineId, new BigDecimal("2"),
+                        null, null, null, null, null))), "ret_creator");
+        long returnId = ret.id();
+        assertTrue(ret.docNo().startsWith("XT-"), "退货单号应以 XT- 开头: " + ret.docNo());
+        // 3) 造同号采购订单(自增 id 撞号场景;行只增不删,循环必然命中)
+        while (countByRefId(returnId) == 0L) {
+            createPurchaseOrder("1", "1.00", "0");
+        }
+        String clashDocNo = jdbcTemplate.queryForObject(
+                "SELECT doc_no FROM purchase_order WHERE id = ?", String.class, returnId);
+        assertTrue(clashDocNo.startsWith("CG-"), "撞号采购订单号应以 CG- 开头: " + clashDocNo);
+        // 4) 入库列表 VO:关联单号必须是退货单 XT 号、对端名是客户名,而不是同号采购订单
+        InboundDocQuery query = new InboundDocQuery();
+        query.setDocNo(ret.inDocNo());
+        PageResult<InboundDocVO> page = inboundService.list(query);
+        assertEquals(1, page.rows().size());
+        InboundDocVO in = page.rows().get(0);
+        assertEquals("sales_return", in.refType());
+        assertEquals(Long.valueOf(returnId), in.refDocId());
+        assertEquals(ret.docNo(), in.refDocNo());
+        assertNotEquals(clashDocNo, in.refDocNo(), "不应回填成同号采购订单号");
+        assertEquals("撞号测试客户", in.supplierName(), "对端名应为销售订单的客户名");
+    }
+
+    /**
+     * 用例 11:出库列表关联单号按 refType 分表回填(撞号回归,入库用例 10 的镜像)。
+     * 造 refType=purchase_return 的出库单(采购退货过账联动),再造同号销售订单制造撞号:
+     * 修复前出库端无脑查销售订单表,会把 refDocNo 回填成同号销售订单的 XS 号;
+     * 修复后必须按 refType=purchase_return 查采购退货表,回填 CT 号与供应商名。
+     */
+    @Test
+    void outboundListRefNoFollowsRefType() {
+        // 1) 已审批采购订单并全额到货(可退量 = 10)
+        PurchaseOrderVO order = approvedPurchaseOrder("10", "20.00", "13.00");
+        arrive(order, warehouseId, "10", null);
+        long lineId = order.items().get(0).id();
+        // 2) 采购退货过账 → 联动出库单 ref_type=purchase_return,ref_doc_id=退货单 ID
+        PurchaseReturnCreatedVO ret = purchaseReturnService.create(new PurchaseReturnCreateDTO(
+                order.id(), warehouseId, LocalDate.now(), "撞号测试采退",
+                List.of(new PurchaseReturnLineDTO(lineId, new BigDecimal("3"), null, null))),
+                "ret_creator");
+        long returnId = ret.id();
+        assertTrue(ret.docNo().startsWith("CT-"), "退货单号应以 CT- 开头: " + ret.docNo());
+        // 3) 造同号销售订单(自增 id 撞号场景;行只增不删,循环必然命中)
+        while (countSalesOrderByRefId(returnId) == 0L) {
+            CustomerDO customer = new CustomerDO();
+            customer.setCustomerCode("RT-CK" + (seq++));
+            customer.setCustomerName("撞号测试销单客户");
+            customer.setStatus(1);
+            customerMapper.insert(customer);
+            salesOrderService.create(new SalesOrderCreateDTO(
+                    LocalDate.now(), customer.getId(), creatorUserId, warehouseId, "撞号测试销单",
+                    List.of(new SalesOrderLineDTO(itemId, new BigDecimal("1"), null,
+                            new BigDecimal("1.00"), null, new BigDecimal("0.00"), null))), "ret_creator");
+        }
+        String clashDocNo = jdbcTemplate.queryForObject(
+                "SELECT doc_no FROM sales_order WHERE id = ?", String.class, returnId);
+        assertTrue(clashDocNo.startsWith("XS-"), "撞号销售订单号应以 XS- 开头: " + clashDocNo);
+        // 4) 出库列表 VO:关联单号必须是退货单 CT 号、对端名是供应商名,而不是同号销售订单
+        OutboundDocQuery query = new OutboundDocQuery();
+        query.setDocNo(ret.outDocNo());
+        PageResult<OutboundDocVO> page = outboundService.list(query);
+        assertEquals(1, page.rows().size());
+        OutboundDocVO out = page.rows().get(0);
+        assertEquals("purchase_return", out.refType());
+        assertEquals(Long.valueOf(returnId), out.refDocId());
+        assertEquals(ret.docNo(), out.refDocNo());
+        assertNotEquals(clashDocNo, out.refDocNo(), "不应回填成同号销售订单号");
+        assertEquals("退货测试供应商", out.customerName(), "对端名应为原采购订单的供应商名");
+    }
+
+    /**
      * 新建并审批通过采购订单(单价/税率/超收比例 0)。
      *
      * @param qty   订购数量
@@ -592,6 +697,28 @@ class ReturnDocTest {
                         null, null, null, null, lineId)),
                 "sales", vo.id(), LocalDate.now()), "ret_creator");
         return salesOrderService.get(vo.id());
+    }
+
+    /**
+     * 采购订单表指定 id 行数(造撞号用)。
+     *
+     * @param id 目标 ID
+     * @return 行数
+     */
+    private long countByRefId(long id) {
+        return jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM purchase_order WHERE id = ?", Long.class, id);
+    }
+
+    /**
+     * 销售订单表指定 id 行数(造撞号用)。
+     *
+     * @param id 目标 ID
+     * @return 行数
+     */
+    private long countSalesOrderByRefId(long id) {
+        return jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM sales_order WHERE id = ?", Long.class, id);
     }
 
     /**

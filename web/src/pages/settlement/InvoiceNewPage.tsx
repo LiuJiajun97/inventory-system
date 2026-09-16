@@ -46,6 +46,10 @@ export function InvoiceNewPage() {
   const [rows, setRows] = useState<LineRow[]>([]);
   const [remark, setRemark] = useState<string | undefined>(undefined);
   const [editHead, setEditHead] = useState<Invoice | null>(null);
+  // 发票状态机 draft/confirmed/mismatch/voided:confirmed/voided 为终态只读(回填表单无保存入口)
+  const [readonly, setReadonly] = useState(false);
+  // 发票日期受控(只读回填用)
+  const [invoiceDateVal, setInvoiceDateVal] = useState<Dayjs | null>(null);
 
   useEffect(() => {
     loadParties(invoiceType);
@@ -71,14 +75,12 @@ export function InvoiceNewPage() {
     invoiceApi
       .get(Number(id))
       .then((inv) => {
-        if (inv.status !== "draft" && inv.status !== "mismatch") {
-          message.warning("仅草稿/差异发票可编辑");
-          navigate("/invoices");
-          return;
-        }
+        // confirmed/voided 终态:不再跳转列表,改为只读回填(隐藏保存 + 禁用控件)
+        setReadonly(inv.status !== "draft" && inv.status !== "mismatch");
         setEditHead(inv);
         setInvoiceType(inv.invoiceType);
         setPartyId(inv.partyId);
+        setInvoiceDateVal(dayjs(inv.invoiceDate));
         setRemark(inv.remark ?? undefined);
         setRows(
           (inv.items ?? []).map((it) => ({
@@ -168,7 +170,7 @@ export function InvoiceNewPage() {
         return message.warning(`行 ${r.itemCode || r.itemName}:开票额必须${r.locked ? "为负数" : "为正数"}`);
       }
     }
-    const date = dayjs(form.getFieldValue("invoiceDate") ?? editHead?.invoiceDate ?? new Date()).format(
+    const date = dayjs(invoiceDateVal ?? form.getFieldValue("invoiceDate") ?? editHead?.invoiceDate ?? new Date()).format(
       "YYYY-MM-DD",
     );
     setSubmitting(true);
@@ -241,6 +243,7 @@ export function InvoiceNewPage() {
             max={r.locked ? 0 : undefined}
             step={1}
             value={r.invoicedAmount}
+            disabled={readonly}
             onChange={(v) => updateRow(r.key, { invoicedAmount: v == null ? undefined : Number(v) })}
           />
           {r.invoicedAmount != null && Math.abs(Number(r.invoicedAmount) - r.srcAmount) > 0.01 && (
@@ -253,7 +256,9 @@ export function InvoiceNewPage() {
       title: "操作",
       width: 60,
       render: (_v, r) =>
-        r.locked ? (
+        readonly ? (
+          <span>-</span>
+        ) : r.locked ? (
           <span style={{ color: "#9ca3af", fontSize: 12 }}>源锁定</span>
         ) : (
           <a style={{ color: "#dc2626" }} onClick={() => removeRow(r.key)}>删除</a>
@@ -296,6 +301,7 @@ export function InvoiceNewPage() {
                     placeholder={invoiceType ? "选择对方" : "先选发票类型"}
                     value={partyId}
                     options={parties}
+                    disabled={readonly}
                     onChange={setPartyId}
                   />
                 </Form.Item>
@@ -304,8 +310,13 @@ export function InvoiceNewPage() {
                 <Form.Item label="发票日期" required>
                   <DatePicker
                     style={{ width: "100%" }}
+                    value={invoiceDateVal ?? undefined}
                     defaultValue={dayjs()}
-                    onChange={(v: Dayjs | null) => form.setFieldValue("invoiceDate", v ?? undefined)}
+                    disabled={readonly}
+                    onChange={(v: Dayjs | null) => {
+                      setInvoiceDateVal(v);
+                      form.setFieldValue("invoiceDate", v ?? undefined);
+                    }}
                   />
                 </Form.Item>
               </Col>
@@ -367,9 +378,13 @@ export function InvoiceNewPage() {
           </div>
           <div className="doc-form-footer-main">
             <Space>
-              <Button type="primary" loading={submitting} onClick={() => void onSubmit()} icon={<PlusOutlined />}>
-                {editing ? "保存" : "登记发票"}
-              </Button>
+              {readonly ? (
+                <Button onClick={() => navigate("/invoices")}>返回</Button>
+              ) : (
+                <Button type="primary" loading={submitting} onClick={() => void onSubmit()} icon={<PlusOutlined />}>
+                  {editing ? "保存" : "登记发票"}
+                </Button>
+              )}
             </Space>
           </div>
         </div>

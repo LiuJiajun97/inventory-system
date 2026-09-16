@@ -208,7 +208,7 @@ export default function App() {
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="inbound" element={<InboundListPage />} />
                 <Route
-                  path="inbound/new"
+                  path="inbound/new/:id?"
                   element={
                     <RequireAuth>
                       <InboundFormPage />
@@ -217,7 +217,7 @@ export default function App() {
                 />
                 <Route path="outbound" element={<OutboundListPage />} />
                 <Route
-                  path="outbound/new"
+                  path="outbound/new/:id?"
                   element={
                     <RequireAuth>
                       <OutboundFormPage />
@@ -228,7 +228,7 @@ export default function App() {
                 <Route path="transactions" element={<TransactionQueryPage />} />
                 <Route path="opening" element={<OpeningStockListPage />} />
                 <Route
-                  path="opening/new"
+                  path="opening/new/:id?"
                   element={
                     <RequireAuth>
                       <OpeningStockNewPage />
@@ -248,7 +248,7 @@ export default function App() {
                 />
                 <Route path="purchase-returns" element={<PurchaseReturnListPage />} />
                 <Route
-                  path="purchase-returns/new"
+                  path="purchase-returns/new/:id?"
                   element={
                     <RequireAuth>
                       <PurchaseReturnNewPage />
@@ -266,7 +266,7 @@ export default function App() {
                 />
                 <Route path="sales-returns" element={<SalesReturnListPage />} />
                 <Route
-                  path="sales-returns/new"
+                  path="sales-returns/new/:id?"
                   element={
                     <RequireAuth>
                       <SalesReturnNewPage />
@@ -291,7 +291,7 @@ export default function App() {
                 <Route path="settlement/ar" element={<LedgerPage key="ar" mode="ar" />} />
                 <Route path="payments" element={<PaymentListPage key="payment" mode="payment" />} />
                 <Route
-                  path="payments/new"
+                  path="payments/new/:id?"
                   element={
                     <RequireAuth>
                       <PaymentNewPage key="payment-new" mode="payment" />
@@ -300,7 +300,7 @@ export default function App() {
                 />
                 <Route path="receipts" element={<PaymentListPage key="receipt" mode="receipt" />} />
                 <Route
-                  path="receipts/new"
+                  path="receipts/new/:id?"
                   element={
                     <RequireAuth>
                       <PaymentNewPage key="receipt-new" mode="receipt" />

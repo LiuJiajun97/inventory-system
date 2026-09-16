@@ -22,7 +22,7 @@ import java.math.BigDecimal;
  * @author inventory
  */
 public record OutboundDocItemVO(Long id, Long docId, Long itemId, String quantity,
-        Long batchId, Long locationId, String serialNos, BigDecimal unitPrice, Long refLineId,
+        Long batchId, String batchNo, Long locationId, String serialNos, BigDecimal unitPrice, Long refLineId,
         BigDecimal taxRate, Integer lineNo, BigDecimal amount, BigDecimal taxAmount,
         BigDecimal taxInclusiveTotal,
         // V20 含税单价(增量,落库值,非推导)

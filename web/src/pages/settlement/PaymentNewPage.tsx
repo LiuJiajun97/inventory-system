@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Form, Row, Col, Select, Input, InputNumber, Button, Table, DatePicker, App } from "antd";
 import { PlusOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { ProCard } from "@ant-design/pro-components";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { type Dayjs } from "dayjs";
 import { paymentApi, supplierApi, customerApi } from "../../api";
@@ -28,6 +28,10 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  // 路由 /payments|receipts/new/:id? 携带 id 时为只读详情模式(复用新建表单回填)
+  const { id: viewIdParam } = useParams<{ id?: string }>();
+  const readonly = viewIdParam != null;
+  const viewId = readonly ? Number(viewIdParam) : null;
 
   const [parties, setParties] = useState<{ label: string; value: number }[]>([]);
   const [partyId, setPartyId] = useState<number | undefined>();
@@ -36,6 +40,8 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
   const [submitting, setSubmitting] = useState(false);
   const [rows, setRows] = useState<LineRow[]>([]);
   const [remark, setRemark] = useState<string | undefined>(undefined);
+  // 日期受控(只读回填用)
+  const [payDateVal, setPayDateVal] = useState<Dayjs | null>(null);
 
   useEffect(() => {
     if (isPayment) {
@@ -52,7 +58,7 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
   }, [isPayment]);
 
   useEffect(() => {
-    if (!partyId) {
+    if (readonly || !partyId) {
       setCandidates([]);
       return;
     }
@@ -62,7 +68,42 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
       .then(setCandidates)
       .catch(() => undefined)
       .finally(() => setLoading(false));
-  }, [mode, partyId]);
+  }, [mode, partyId, readonly]);
+
+  // 只读详情:GET 回填表头 + 核销行(历史核销行无剩余可核/票额等字段,只展示发票号+核销额)
+  useEffect(() => {
+    if (viewId == null) return;
+    let cancelled = false;
+    paymentApi
+      .get(viewId)
+      .then((d) => {
+        if (cancelled) return;
+        setPartyId(d.partyId);
+        setPayDateVal(d.payDate ? dayjs(d.payDate) : null);
+        setRemark(d.remark ?? undefined);
+        setRows(
+          (d.lines ?? []).map((l) => ({
+            key: l.invoiceId,
+            invoiceId: l.invoiceId,
+            docNo: l.invoiceNo ?? String(l.invoiceId),
+            invoiceDate: "",
+            totalAmount: 0,
+            settledAmount: 0,
+            remaining: 0,
+            amount: Number(l.amount),
+          })),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        message.error(`加载${isPayment ? "付款" : "收款"}单详情失败`);
+        navigate(isPayment ? "/payments" : "/receipts");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewId]);
 
   const onCheck = (keys: React.Key[]) => {
     const checked = new Set(keys.map((k) => String(k)));
@@ -100,7 +141,7 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
         return message.warning(`发票 ${r.docNo}:核销额 ${r.amount} 超过剩余可核 ${r.remaining.toFixed(2)}`);
       }
     }
-    const date = dayjs(form.getFieldValue("payDate") ?? new Date()).format("YYYY-MM-DD");
+    const date = dayjs(payDateVal ?? form.getFieldValue("payDate") ?? new Date()).format("YYYY-MM-DD");
     setSubmitting(true);
     try {
       await paymentApi.create({
@@ -163,18 +204,25 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
     },
   ];
 
+  const readonlyLineColumns: ColumnsType<LineRow> = [
+    { title: "发票号", dataIndex: "docNo", width: 190, render: (v) => <span style={{ fontFamily: "monospace", fontSize: 12 }}>{v}</span> },
+    { title: "核销额", dataIndex: "amount", align: "right", className: "num-cell", render: (v) => fmtMoney(v) },
+  ];
+
   return (
     <>
       <div className="doc-page-head">
         <Link className="doc-page-back" to={isPayment ? "/payments" : "/receipts"}>
           <ArrowLeftOutlined /> 返回列表
         </Link>
-        <h1 className="doc-page-title">{isPayment ? "新建付款单" : "新建收款单"}</h1>
+        <h1 className="doc-page-title">
+          {readonly ? (isPayment ? "付款单详情" : "收款单详情") : isPayment ? "新建付款单" : "新建收款单"}
+        </h1>
       </div>
 
       <ProCard bodyStyle={{ padding: 0 }}>
         <div className="doc-form-body">
-          <Form form={form} layout="vertical">
+          <Form form={form} layout="vertical" disabled={readonly}>
             <Row gutter={16}>
               <Col span={6}>
                 <Form.Item label={isPayment ? "供应商" : "客户"} required>
@@ -184,6 +232,7 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
                     placeholder="选择对方"
                     value={partyId}
                     options={parties}
+                    disabled={readonly}
                     onChange={setPartyId}
                   />
                 </Form.Item>
@@ -192,8 +241,13 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
                 <Form.Item label="日期" required>
                   <DatePicker
                     style={{ width: "100%" }}
+                    value={payDateVal ?? undefined}
                     defaultValue={dayjs()}
-                    onChange={(v: Dayjs | null) => form.setFieldValue("payDate", v ?? undefined)}
+                    disabled={readonly}
+                    onChange={(v: Dayjs | null) => {
+                      setPayDateVal(v);
+                      form.setFieldValue("payDate", v ?? undefined);
+                    }}
                   />
                 </Form.Item>
               </Col>
@@ -205,24 +259,28 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
             </Row>
           </Form>
 
-          <div className="doc-form-section-title">
-            可核销发票{partyId ? "(已确认正票,含部分核销剩余)" : "(先选对方)"}
-          </div>
-          <Table
-            rowKey="invoiceId"
-            size="small"
-            rowSelection={{
-              type: "checkbox",
-              selectedRowKeys: rows.map((r) => r.key),
-              onChange: onCheck,
-            }}
-            columns={candidateColumns}
-            dataSource={candidates}
-            loading={loading}
-            pagination={false}
-            scroll={{ x: 700, y: 220 }}
-            locale={{ emptyText: partyId ? "该对方暂无可核销发票" : "选择对方后加载" }}
-          />
+          {!readonly && (
+            <>
+              <div className="doc-form-section-title">
+                可核销发票{partyId ? "(已确认正票,含部分核销剩余)" : "(先选对方)"}
+              </div>
+              <Table
+                rowKey="invoiceId"
+                size="small"
+                rowSelection={{
+                  type: "checkbox",
+                  selectedRowKeys: rows.map((r) => r.key),
+                  onChange: onCheck,
+                }}
+                columns={candidateColumns}
+                dataSource={candidates}
+                loading={loading}
+                pagination={false}
+                scroll={{ x: 700, y: 220 }}
+                locale={{ emptyText: partyId ? "该对方暂无可核销发票" : "选择对方后加载" }}
+              />
+            </>
+          )}
 
           <div className="doc-form-section-title" style={{ marginTop: 12 }}>
             核销行
@@ -230,10 +288,10 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
           <Table
             rowKey="key"
             size="small"
-            columns={lineColumns}
+            columns={readonly ? readonlyLineColumns : lineColumns}
             dataSource={rows}
             pagination={false}
-            locale={{ emptyText: "勾选上方发票后自动生成核销行" }}
+            locale={{ emptyText: readonly ? "暂无核销行" : "勾选上方发票后自动生成核销行" }}
           />
         </div>
 
@@ -245,12 +303,18 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
                 <span className="doc-form-footer-muted">合计核销 {fmtMoney(total)}</span>
               )}
             </div>
-            <Button onClick={() => navigate(isPayment ? "/payments" : "/receipts")}>取消</Button>
+            {!readonly && (
+              <Button onClick={() => navigate(isPayment ? "/payments" : "/receipts")}>取消</Button>
+            )}
           </div>
           <div className="doc-form-footer-main">
-            <Button type="primary" loading={submitting} onClick={() => void onSubmit()} icon={<PlusOutlined />}>
-              {isPayment ? "提交付款" : "提交收款"}
-            </Button>
+            {readonly ? (
+              <Button onClick={() => navigate(isPayment ? "/payments" : "/receipts")}>返回</Button>
+            ) : (
+              <Button type="primary" loading={submitting} onClick={() => void onSubmit()} icon={<PlusOutlined />}>
+                {isPayment ? "提交付款" : "提交收款"}
+              </Button>
+            )}
           </div>
         </div>
       </ProCard>

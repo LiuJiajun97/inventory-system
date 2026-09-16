@@ -5,7 +5,7 @@ import { useEffect, useRef, useState , useMemo} from "react";
 import { Button, Descriptions, Modal, Segmented, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { outboundApi, warehouseApi } from "../../api";
 import { ExportButton } from "../../components/ExportButton";
@@ -15,6 +15,7 @@ import type { DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import { fmtDateTime, REF_TYPE_LABEL, fmtMoney, fmtQty } from "../../utils/format";
+import { refDocHref } from "../../utils/refDocLink";
 import { EmptyHint } from "../../components/EmptyHint";
 import { DocDetailHeader, DocAuditLine } from "../../components/DocDetailSections";
 import { StatusTag } from "../../components/StatusTag";
@@ -37,6 +38,25 @@ function parseSerials(v?: string | null): string {
   }
 }
 
+// 关联单号单元格:未知 refType 不跳转时渲染纯文本,无关联显示 "-"
+function RefDocNoLink({
+  refType,
+  refDocNo,
+}: {
+  refType?: string | null;
+  refDocNo?: string | null;
+}) {
+  if (!refDocNo) return <span>-</span>;
+  const href = refDocHref(refType, refDocNo);
+  return href ? (
+    <Link to={href} style={{ fontFamily: "monospace", fontSize: 13 }}>
+      {refDocNo}
+    </Link>
+  ) : (
+    <span style={{ fontFamily: "monospace", fontSize: 13 }}>{refDocNo}</span>
+  );
+}
+
 export function OutboundListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<OutboundDoc | null>(null);
@@ -45,6 +65,7 @@ export function OutboundListPage() {
   const [printOpen, setPrintOpen] = useState(false);
   const { itemText, locText } = usePrintNameMaps(); // V14 打印:ID→可读文本映射
   const actionRef = useRef<ActionType>();
+  const navigate = useNavigate();
   // C3 顶栏仓库快捷切换:表单未选仓库时并入请求参数(表单值优先)
   const scopeWarehouseId = useScopeWarehouseId();
   // 顶栏仓库范围切换后自动刷新表格(scope 并入请求参数;首次挂载由 ProTable 自触发,不重复)
@@ -260,7 +281,9 @@ const request = async (params: {
       width: 220,
       fieldProps: { placeholder: "出库单号", allowClear: true },
       render: (_v, r) => (
-        <span style={{ fontFamily: "monospace", fontSize: 13 }}>{r.docNo}</span>
+        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => navigate("/outbound/new/" + r.id)}>
+          {r.docNo}
+        </a>
       ),
     },
     {
@@ -309,14 +332,18 @@ const request = async (params: {
         String(r.warehouseId),
     },
     {
-      title: "关联单据",
-      width: 150,
+      title: "关联类型",
+      dataIndex: "refType",
+      width: 90,
       search: false,
-      render: (_v, r) => {
-        if (!r.refDocNo) return "-";
-        const label = r.refType ? REF_TYPE_LABEL[r.refType] : undefined;
-        return label ? `${label} ${r.refDocNo}` : r.refDocNo;
-      },
+      render: (_v, r) => (r.refType ? REF_TYPE_LABEL[r.refType] ?? r.refType : "-"),
+    },
+    {
+      title: "关联单号",
+      dataIndex: "refDocNo",
+      width: 170,
+      search: false,
+      render: (_v, r) => <RefDocNoLink refType={r.refType} refDocNo={r.refDocNo} />,
     },
     {
       title: "客户",
@@ -366,10 +393,14 @@ const request = async (params: {
     },
     {
       title: "操作",
-      width: 80,
+      width: 150,
       fixed: "right" as const,
       search: false,
-      render: (_v, row) => <a onClick={() => setDetail(row)}>查看详情</a>,
+      render: (_v, row) => (
+        <Space size="small">
+          <a onClick={() => setDetail(row)}>查看</a>
+        </Space>
+      ),
     },
   ];
 
@@ -395,7 +426,7 @@ const request = async (params: {
           />
         }
         options={false}
-        scroll={{ x: 1590 }}
+        scroll={{ x: 1700 }}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
@@ -450,6 +481,12 @@ const request = async (params: {
               <Descriptions.Item label="运费">
                 {fmtMoney(detail.freight)}
               </Descriptions.Item>
+              <Descriptions.Item label="关联类型">
+                {detail.refType ? REF_TYPE_LABEL[detail.refType] ?? detail.refType : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="关联单号">
+                <RefDocNoLink refType={detail.refType} refDocNo={detail.refDocNo} />
+              </Descriptions.Item>
               <Descriptions.Item label="备注" span={2}>
                 {detail.remark ?? "-"}
               </Descriptions.Item>
@@ -478,7 +515,13 @@ const request = async (params: {
                   className: "num-cell",
                   render: (v: string | number) => fmtQty(v),
                 },
-                { title: "批次", dataIndex: "batchId", width: 150 },
+                {
+                  title: "批次",
+                  dataIndex: "batchNo",
+                  width: 150,
+                  ellipsis: true,
+                  render: (v?: string | null) => v ?? "-",
+                },
                 {
                   title: "库位",
                   dataIndex: "locationId",

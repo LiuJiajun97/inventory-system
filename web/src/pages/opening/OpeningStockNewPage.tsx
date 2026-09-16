@@ -18,7 +18,7 @@ import {
   ProFormTextArea,
 } from "@ant-design/pro-components";
 import type { ProColumns } from "@ant-design/pro-components";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import dayjs, { type Dayjs } from "dayjs";
 import { itemApi, openingApi, warehouseApi } from "../../api";
 import type { Item, Location, Warehouse } from "../../types";
@@ -42,14 +42,20 @@ const toDay = (v?: Dayjs | string): string | undefined =>
 export function OpeningStockNewPage() {
   const navigate = useNavigate();
   const { message } = App.useApp();
+  // 路由 /opening/new/:id? 携带 id 时为只读详情模式(复用新建表单回填)
+  const { id: viewIdParam } = useParams<{ id?: string }>();
+  const readonly = viewIdParam != null;
+  const viewId = readonly ? Number(viewIdParam) : null;
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [openedItemIds, setOpenedItemIds] = useState<Set<number>>(new Set());
   // 当前选中仓库(驱动批次/库位必填与下拉数据)
   const [currentWh, setCurrentWh] = useState<Warehouse | null>(null);
-  const [data, setData] = useState<LineRow[]>([{ key: 1 }]);
-  const [editableKeys, setEditableKeys] = useState<React.Key[]>([1]);
+  // 只读详情:表头仓库 id(等仓库列表加载完成后驱动 loadWhContext)
+  const [headWhId, setHeadWhId] = useState<number | undefined>();
+  const [data, setData] = useState<LineRow[]>(readonly ? [] : [{ key: 1 }]);
+  const [editableKeys, setEditableKeys] = useState<React.Key[]>(readonly ? [] : [1]);
   const [saving, setSaving] = useState(false);
   const [headerForm] = ProForm.useForm();
   const [lineForm] = ProForm.useForm();
@@ -64,6 +70,53 @@ export function OpeningStockNewPage() {
       .then((r) => setItems(r.rows))
       .catch(() => undefined);
   }, []);
+
+  // 只读详情:GET 回填表头 + 明细行(行 key 用 1..n)
+  useEffect(() => {
+    if (viewId == null) return;
+    let cancelled = false;
+    openingApi
+      .get(viewId)
+      .then((d) => {
+        if (cancelled) return;
+        setHeadWhId(d.warehouseId);
+        headerForm.setFieldsValue({
+          warehouseId: d.warehouseId,
+          docDate: dayjs(d.docDate),
+          remark: d.remark ?? undefined,
+        });
+        setData(
+          (d.items ?? []).map((it, i) => ({
+            key: i + 1,
+            itemId: it.itemId,
+            quantity: Number(it.quantity),
+            unitPrice: it.unitPrice == null ? undefined : Number(it.unitPrice),
+            batchNo: it.batchNo ?? undefined,
+            productionDate: it.productionDate ?? undefined,
+            expiryDate: it.expiryDate ?? undefined,
+            locationId: it.locationId ?? undefined,
+          })),
+        );
+        setEditableKeys([]);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        message.error("加载期初单详情失败");
+        navigate("/opening");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewId]);
+
+  // 只读详情:仓库列表加载完成后补驱动 loadWhContext(加载 currentWh/库位/已期初过滤)
+  useEffect(() => {
+    if (readonly && warehouses.length > 0 && headWhId != null) {
+      loadWhContext(headWhId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [warehouses, headWhId]);
 
   // 切换仓库:加载该仓"已期初物品"(下拉过滤)与库位下拉,后端校验为准
   const loadWhContext = (whId: number | undefined) => {
@@ -203,17 +256,20 @@ export function OpeningStockNewPage() {
           : undefined,
       });
     }
-    // 显式操作列:EditableProTable 自动 option 列在 scroll 布局下不渲染 td,与入库/销售页同款显式删除
-    cols.push({
-      title: "操作",
-      width: 80,
-      editable: false,
-      render: (_v: unknown, r: LineRow) => (
-        <a onClick={() => removeLine(r.key)}>删除</a>
-      ),
-    });
+    // 显式操作列:EditableProTable 自动 option 列在 scroll 布局下不渲染 td,与入库/销售页同款显式删除;
+    // 只读详情不渲染删除列
+    if (!readonly) {
+      cols.push({
+        title: "操作",
+        width: 80,
+        editable: false,
+        render: (_v: unknown, r: LineRow) => (
+          <a onClick={() => removeLine(r.key)}>删除</a>
+        ),
+      });
+    }
     return cols;
-  }, [items, itemOptions, batchRequired, locationRequired, currentWh, locations, removeLine]);
+  }, [items, itemOptions, batchRequired, locationRequired, currentWh, locations, removeLine, readonly]);
 
   const onSubmit = async () => {
     let values: Record<string, unknown>;
@@ -275,7 +331,7 @@ export function OpeningStockNewPage() {
         <Link className="doc-page-back" to="/opening">
           <ArrowLeftOutlined /> 返回列表
         </Link>
-        <h1 className="doc-page-title">新建期初单</h1>
+        <h1 className="doc-page-title">{readonly ? "期初单详情" : "新建期初单"}</h1>
       </div>
 
       {/* 单卡片布局:表头 + 明细 + 底部固定操作条 */}
@@ -286,6 +342,7 @@ export function OpeningStockNewPage() {
             layout="vertical"
             grid
             submitter={false}
+            disabled={readonly}
           >
             <ProFormDatePicker
               name="docDate"
@@ -336,25 +393,33 @@ export function OpeningStockNewPage() {
               // 行删除走显式操作列(removeLine),自动 option 列在 scroll 布局下不渲染 body 已弃用
             }}
           />
-          {/* 添加行按钮:明细表正下方,左对齐 */}
-          <div className="doc-form-line-adder">
-            <Button onClick={addLine}>添加行</Button>
-          </div>
+          {/* 添加行按钮:明细表正下方,左对齐(只读详情不渲染) */}
+          {!readonly && (
+            <div className="doc-form-line-adder">
+              <Button onClick={addLine}>添加行</Button>
+            </div>
+          )}
         </div>
         {/* 底部固定操作条:左摘要,中间主按钮居中 */}
         <div className="doc-form-footer">
           <div className="doc-form-footer-left">
             <div className="doc-form-footer-summary">
               共 {data.length} 行明细
-              <span className="doc-form-footer-muted">
-                提交后即时过账生成期初入库单,失败整单回滚
-              </span>
+              {!readonly && (
+                <span className="doc-form-footer-muted">
+                  提交后即时过账生成期初入库单,失败整单回滚
+                </span>
+              )}
             </div>
           </div>
           <div className="doc-form-footer-main">
-            <Button type="primary" loading={saving} onClick={onSubmit}>
-              提交并过账
-            </Button>
+            {readonly ? (
+              <Button onClick={() => navigate("/opening")}>返回</Button>
+            ) : (
+              <Button type="primary" loading={saving} onClick={onSubmit}>
+                提交并过账
+              </Button>
+            )}
           </div>
         </div>
       </ProCard>

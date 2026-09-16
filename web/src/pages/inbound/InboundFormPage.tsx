@@ -21,7 +21,7 @@ import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, ArrowLeftOutlined } f
 import { fmtMoney } from "../../utils/format";
 import { previewLineMoney } from "../../utils/lineMoney";
 import { ProCard } from "@ant-design/pro-components";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import dayjs from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 import { inboundApi, itemApi, purchaseApi, warehouseApi } from "../../api";
@@ -45,11 +45,26 @@ interface Line {
   taxPrice?: number;
 }
 
+// 详情 VO 的 serialNos 是 JSON 字符串,解析为数组回填表单行
+function parseSerials(s?: string | null): string[] | undefined {
+  if (!s) return undefined;
+  try {
+    const arr = JSON.parse(s);
+    return Array.isArray(arr) ? (arr as string[]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function InboundFormPage() {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const { message } = App.useApp();
   const user = getUser();
+  // 路由 /inbound/new/:id? 携带 id 时为只读详情模式(复用新建表单回填)
+  const { id: viewIdParam } = useParams<{ id?: string }>();
+  const readonly = viewIdParam != null;
+  const viewId = readonly ? Number(viewIdParam) : null;
 
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -57,7 +72,7 @@ export function InboundFormPage() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [refOrderId, setRefOrderId] = useState<number | undefined>();
   const [warehouseId, setWarehouseId] = useState<number | undefined>();
-  const [lines, setLines] = useState<Line[]>([{}]);
+  const [lines, setLines] = useState<Line[]>(readonly ? [] : [{}]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -84,6 +99,51 @@ export function InboundFormPage() {
       setLocations([]);
     }
   }, [warehouseId]);
+
+  // 只读详情:GET 回填表头 + 明细行(行 key 用 1..n,与表单行数组下标一致)
+  useEffect(() => {
+    if (viewId == null) return;
+    let cancelled = false;
+    inboundApi
+      .get(viewId)
+      .then((d) => {
+        if (cancelled) return;
+        setWarehouseId(d.warehouseId);
+        form.setFieldsValue({
+          carrier: d.carrier ?? undefined,
+          vehicleNo: d.vehicleNo ?? undefined,
+          freight: d.freight == null ? undefined : Number(d.freight),
+          docType: d.docType ?? undefined,
+          handler: d.handler ?? undefined,
+          remark: d.remark ?? undefined,
+        });
+        // 关联采购单:仅 purchase 类型回填;选项列表只含待审批/已审批单,已完成单可能显示为原始 id
+        if (d.refType === "purchase" && d.refDocId != null) setRefOrderId(d.refDocId);
+        setLines(
+          (d.items ?? []).map((it) => ({
+            itemId: it.itemId,
+            qty: Number(it.quantity),
+            batchNo: it.batchNo ?? undefined,
+            productionDate: it.productionDate ?? undefined,
+            expiryDate: it.expiryDate ?? undefined,
+            locationId: it.locationId ?? undefined,
+            serialNos: parseSerials(it.serialNos),
+            // supplier/refLineId 详情 VO 不返回,无法回填
+            unitPrice: it.unitPrice == null ? undefined : Number(it.unitPrice),
+            taxPrice: it.taxPrice == null ? undefined : Number(it.taxPrice),
+          })),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        message.error("加载入库单详情失败");
+        navigate("/inbound");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewId]);
 
   const currentWarehouse = warehouses.find((w) => w.id === warehouseId);
 
@@ -209,6 +269,7 @@ export function InboundFormPage() {
           placeholder="选择物品"
           style={{ width: "100%" }}
           value={r.line.itemId}
+          disabled={readonly}
           options={items.map((it) => ({
             label: `${it.itemCode} - ${it.itemName}`,
             value: it.id,
@@ -227,6 +288,7 @@ export function InboundFormPage() {
           precision={0}
           style={{ width: "100%" }}
           value={r.line.qty}
+          disabled={readonly}
           onChange={(v) =>
             updateLine(r.idx, "qty", v == null ? undefined : Number(v))
           }
@@ -243,6 +305,7 @@ export function InboundFormPage() {
           step={0.01}
           style={{ width: "100%" }}
           value={r.line.unitPrice}
+          disabled={readonly}
           onChange={(v) => updateLine(r.idx, "unitPrice", v == null ? undefined : Number(v))}
         />
       ),
@@ -257,6 +320,7 @@ export function InboundFormPage() {
           step={0.01}
           style={{ width: "100%" }}
           value={r.line.taxPrice}
+          disabled={readonly}
           onChange={(v) => updateLine(r.idx, "taxPrice", v == null ? undefined : Number(v))}
         />
       ),
@@ -303,6 +367,7 @@ export function InboundFormPage() {
           <Input
             placeholder="留空自动建批"
             value={r.line.batchNo}
+            disabled={readonly}
             onChange={(e) => updateLine(r.idx, "batchNo", e.target.value)}
           />
         ) : (
@@ -317,6 +382,7 @@ export function InboundFormPage() {
           <DatePicker
             style={{ width: "100%" }}
             value={r.line.expiryDate ? dayjs(r.line.expiryDate) : null}
+            disabled={readonly}
             onChange={(d) =>
               updateLine(
                 r.idx,
@@ -339,6 +405,7 @@ export function InboundFormPage() {
             placeholder="选择库位"
             style={{ width: "100%" }}
             value={r.line.locationId}
+            disabled={readonly}
             options={locations.map((l) => ({
               label: l.locationCode,
               value: l.id,
@@ -366,6 +433,7 @@ export function InboundFormPage() {
               placeholder="输入序列号后回车"
               style={{ width: "100%" }}
               value={serials}
+              disabled={readonly}
               onChange={(v) => updateLine(r.idx, "serialNos", v)}
               tokenSeparators={[",", " ", "\n"]}
             />
@@ -380,19 +448,24 @@ export function InboundFormPage() {
         );
       },
     },
-    {
-      title: "操作",
-      width: 50,
-      render: (_v, r) => (
-        <Button
-          danger
-          type="link"
-          icon={<DeleteOutlined />}
-          onClick={() => removeLine(r.idx)}
-          disabled={lines.length <= 1}
-        />
-      ),
-    },
+    // 只读详情不渲染删除操作列
+    ...(readonly
+      ? []
+      : [
+          {
+            title: "操作",
+            width: 50,
+            render: (_v: unknown, r: { idx: number; line: Line }) => (
+              <Button
+                danger
+                type="link"
+                icon={<DeleteOutlined />}
+                onClick={() => removeLine(r.idx)}
+                disabled={lines.length <= 1}
+              />
+            ),
+          },
+        ]),
   ];
 
   return (
@@ -402,20 +475,21 @@ export function InboundFormPage() {
         <Link className="doc-page-back" to="/inbound">
           <ArrowLeftOutlined /> 返回列表
         </Link>
-        <h1 className="doc-page-title">新建入库单</h1>
+        <h1 className="doc-page-title">{readonly ? "入库单详情" : "新建入库单"}</h1>
       </div>
 
       {/* 单卡片布局:表头 + 明细 + 底部固定操作条 */}
       <ProCard bodyStyle={{ padding: 0 }}>
         <div className="doc-form-body">
           {/* 表头:统一 grid + md 宽度,四列对齐 */}
-          <Form form={form} layout="vertical" requiredMark={false}>
+          <Form form={form} layout="vertical" requiredMark={false} disabled={readonly}>
             <Row gutter={16}>
               <Col span={6}>
                 <Form.Item label="仓库" required>
                   <Select
                     placeholder="选择仓库"
                     value={warehouseId}
+                    disabled={readonly}
                     options={warehouses.map((w) => ({
                       label: `${w.warehouseCode} - ${w.warehouseName}`,
                       value: w.id,
@@ -435,6 +509,7 @@ export function InboundFormPage() {
                     optionFilterProp="label"
                     placeholder="可选,选后加载订单行模板"
                     value={refOrderId}
+                    disabled={readonly}
                     options={purchaseOrders.map((o) => ({
                       label: `${o.docNo} (${o.status === "pending" ? "待审批" : "已审批"})`,
                       value: o.id,
@@ -509,23 +584,29 @@ export function InboundFormPage() {
             size="small"
             scroll={{ x: 1300 }}
           />
-          {/* 添加行按钮:明细表正下方,左对齐 */}
-          <div className="doc-form-line-adder">
-            <Button icon={<PlusOutlined />} onClick={addLine}>
-              添加行
-            </Button>
-          </div>
+          {/* 添加行按钮:明细表正下方,左对齐(只读详情不渲染) */}
+          {!readonly && (
+            <div className="doc-form-line-adder">
+              <Button icon={<PlusOutlined />} onClick={addLine}>
+                添加行
+              </Button>
+            </div>
+          )}
         </div>
         {/* 底部固定操作条:左 摘要+取消,中间提交按钮居中 */}
         <div className="doc-form-footer">
           <div className="doc-form-footer-left">
             <div className="doc-form-footer-summary">共 {lines.length} 行明细</div>
-            <Button onClick={() => navigate("/inbound")}>取消</Button>
+            {!readonly && <Button onClick={() => navigate("/inbound")}>取消</Button>}
           </div>
           <div className="doc-form-footer-main">
-            <Button type="primary" loading={submitting} onClick={onSubmit}>
-              提交入库
-            </Button>
+            {readonly ? (
+              <Button onClick={() => navigate("/inbound")}>返回</Button>
+            ) : (
+              <Button type="primary" loading={submitting} onClick={onSubmit}>
+                提交入库
+              </Button>
+            )}
           </div>
         </div>
       </ProCard>

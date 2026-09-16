@@ -50,6 +50,8 @@ export function TransferPage() {
   const [createOpen, setCreateOpen] = useState(false);
   // 非空为编辑模式(草稿/已驳回单),Drawer 复用新建表单
   const [editId, setEditId] = useState<number | null>(null);
+  // 单号列点终态单:复用同一 Drawer 的只读模式(隐藏保存 + 禁用控件)
+  const [drawerReadonly, setDrawerReadonly] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<TransferDoc | null>(null);
   // V17 主表/明细视图切换(组件内状态,默认主表)
   const [viewMode, setViewMode] = useState<"main" | "line">("main");
@@ -282,11 +284,13 @@ export function TransferPage() {
     setToLocations([]);
     setDocDate(dayjs());
     setEditId(null);
+    setDrawerReadonly(false);
     setCreateOpen(true);
   };
 
   // 编辑:GET 详情回填表头 + 行明细(行 key 用 1..n,与新建的自增 key 规则一致)
   const openEdit = (row: TransferDoc) => {
+    setDrawerReadonly(false);
     transferApi
       .get(row.id)
       .then((doc) => {
@@ -308,6 +312,12 @@ export function TransferPage() {
         setCreateOpen(true);
       })
       .catch(() => undefined);
+  };
+
+  // 单号列点终态单:同样回填,但 Drawer 走只读模式(先 openEdit 置 false,后设 true,最终态为只读)
+  const openReadonly = (row: TransferDoc) => {
+    openEdit(row);
+    setDrawerReadonly(true);
   };
 
   const onCreate = async () => {
@@ -376,9 +386,12 @@ export function TransferPage() {
       dataIndex: "docNo",
       width: 160,
       fieldProps: { placeholder: "单号", allowClear: true },
-      render: (_v, row) => (
-        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => setDetail(row)}>
-          {row.docNo}
+      render: (_v, r) => (
+        <a
+          style={{ fontFamily: "monospace", fontSize: 13 }}
+          onClick={() => (r.status === "draft" || r.status === "rejected" ? openEdit(r) : openReadonly(r))}
+        >
+          {r.docNo}
         </a>
       ),
     },
@@ -448,7 +461,7 @@ export function TransferPage() {
     { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true, search: false },
     {
       title: "操作",
-      width: 220,
+      width: 290,
       fixed: "right" as const,
       search: false,
       render: (_v, row) => {
@@ -495,6 +508,8 @@ export function TransferPage() {
             );
           }
         }
+        // 查看入口:操作列"查看"弹详情弹窗;单号列点击进编辑 Drawer(终态为只读 Drawer)
+        btns.push(<a key="detail" onClick={() => setDetail(row)}>查看</a>);
         return <Space size={12}>{btns.length ? btns : <span style={{ color: "#999" }}>-</span>}</Space>;
       },
     },
@@ -550,33 +565,39 @@ export function TransferPage() {
       />
 
       <Drawer
-        title={editId != null ? "编辑调拨单" : "新建调拨单"}
+        title={drawerReadonly ? "调拨单详情" : editId != null ? "编辑调拨单" : "新建调拨单"}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         width={860}
         // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
         styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
-        // 统一底部操作条:次按钮"取消" + 主按钮(文案保持现状,loading 态保留)
+        // 统一底部操作条:只读仅"关闭";编辑/新建为次按钮"取消" + 主按钮
         footer={
           <div
             className="drawer-footer"
             style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
           >
             <Space>
-              <Button onClick={() => setCreateOpen(false)}>取消</Button>
-              <Button type="primary" loading={saving} onClick={onCreate}>
-                {editId != null ? "保存" : "保存为草稿"}
-              </Button>
+              {drawerReadonly ? (
+                <Button onClick={() => setCreateOpen(false)}>关闭</Button>
+              ) : (
+                <>
+                  <Button onClick={() => setCreateOpen(false)}>取消</Button>
+                  <Button type="primary" loading={saving} onClick={onCreate}>
+                    {editId != null ? "保存" : "保存为草稿"}
+                  </Button>
+                </>
+              )}
             </Space>
           </div>
         }
       >
-        <Form form={createForm} layout="vertical" requiredMark={false}>
+        <Form form={createForm} layout="vertical" requiredMark={false} disabled={drawerReadonly}>
           {/* 表头字段两列对齐(统一规格:两列上限);行明细 Table 不包 Col,联动零改动 */}
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item label="调拨日期">
-                <DatePicker value={docDate} onChange={(d) => setDocDate(d ?? dayjs())} style={{ width: "100%" }} />
+                <DatePicker value={docDate} onChange={(d) => setDocDate(d ?? dayjs())} style={{ width: "100%" }} disabled={drawerReadonly} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -586,6 +607,7 @@ export function TransferPage() {
                   style={{ width: "100%" }}
                   options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
                   value={fromWh}
+                  disabled={drawerReadonly}
                   onChange={setFromWh}
                 />
               </Form.Item>
@@ -599,6 +621,7 @@ export function TransferPage() {
                   style={{ width: "100%" }}
                   options={warehouses.map((w) => ({ label: w.warehouseName, value: w.id }))}
                   value={toWh}
+                  disabled={drawerReadonly}
                   onChange={setToWh}
                 />
               </Form.Item>
@@ -636,6 +659,7 @@ export function TransferPage() {
                   style={{ width: "100%" }}
                   options={itemOptions}
                   value={l.itemId}
+                  disabled={drawerReadonly}
                   onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, itemId: v } : x)))}
                 />
               ),
@@ -649,6 +673,7 @@ export function TransferPage() {
                   step={1}
                   style={{ width: "100%" }}
                   value={l.qty}
+                  disabled={drawerReadonly}
                   onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, qty: v ?? undefined } : x)))}
                 />
               ),
@@ -662,6 +687,7 @@ export function TransferPage() {
                   step={0.01}
                   style={{ width: "100%" }}
                   value={l.unitPrice}
+                  disabled={drawerReadonly}
                   onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, unitPrice: v ?? undefined } : x)))}
                 />
               ),
@@ -676,6 +702,7 @@ export function TransferPage() {
                     placeholder="必填"
                     style={{ width: "100%" }}
                     value={l.fromLocationId}
+                    disabled={drawerReadonly}
                     options={fromLocations.map((x) => ({ label: x.locationCode, value: x.id }))}
                     onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, fromLocationId: v } : x)))}
                   />
@@ -693,6 +720,7 @@ export function TransferPage() {
                     placeholder="必填"
                     style={{ width: "100%" }}
                     value={l.toLocationId}
+                    disabled={drawerReadonly}
                     options={toLocations.map((x) => ({ label: x.locationCode, value: x.id }))}
                     onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, toLocationId: v } : x)))}
                   />
@@ -708,6 +736,7 @@ export function TransferPage() {
                 <Input
                   placeholder="可选"
                   value={l.vehicleNo}
+                  disabled={drawerReadonly}
                   onChange={(e) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, vehicleNo: e.target.value || undefined } : x)))}
                 />
               ),
@@ -715,19 +744,24 @@ export function TransferPage() {
             {
               title: "",
               width: 60,
-              render: (_v: unknown, l) => (
-                <a onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : ls))}>
-                  删除
-                </a>
-              ),
+              render: (_v: unknown, l) =>
+                drawerReadonly ? (
+                  <span>-</span>
+                ) : (
+                  <a onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : ls))}>
+                    删除
+                  </a>
+                ),
             },
           ]}
         />
-        <Space style={{ marginTop: 12 }}>
-          <Button onClick={() => setLines((ls) => [...ls, { key: Math.max(...ls.map((x) => x.key)) + 1 }])}>
-            添加行
-          </Button>
-        </Space>
+        {!drawerReadonly && (
+          <Space style={{ marginTop: 12 }}>
+            <Button onClick={() => setLines((ls) => [...ls, { key: Math.max(...ls.map((x) => x.key)) + 1 }])}>
+              添加行
+            </Button>
+          </Space>
+        )}
       </Drawer>
 
       <Modal

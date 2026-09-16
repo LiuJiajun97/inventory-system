@@ -72,6 +72,10 @@ export function PurchaseOrderListPage() {
   const [searchParams] = useSearchParams();
 
   const urlStatus = searchParams.get("status") || undefined;
+  // 出入库"关联单号"带 ?docNo= 跳转过来:预填筛选并(仅一条结果时)自动开详情
+  const urlDocNo = searchParams.get("docNo") || undefined;
+  // 自动开详情防重复触发标志(每页生命周期内只触发一次)
+  const autoOpened = useRef(false);
 
 
 const request = async (params: {
@@ -98,6 +102,11 @@ const request = async (params: {
       page: params.current ?? 1,
       pageSize: params.pageSize ?? 20,
     });
+    // 关联单号跳转且仅命中一条时自动开详情(只触发一次,不影响其他筛选)
+    if (urlDocNo && res.total === 1 && res.rows.length === 1 && !autoOpened.current) {
+      autoOpened.current = true;
+      setDetail(res.rows[0]);
+    }
     return { data: res.rows, success: true, total: res.total };
   };
 
@@ -261,9 +270,9 @@ const request = async (params: {
       dataIndex: "docNo",
       width: 160,
       fieldProps: { placeholder: "订单号", allowClear: true },
-      render: (_v, row) => (
-        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => setDetail(row)}>
-          {row.docNo}
+      render: (_v, r) => (
+        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => navigate("/purchase-orders/new/" + r.id)}>
+          {r.docNo}
         </a>
       ),
     },
@@ -310,7 +319,7 @@ const request = async (params: {
     },
     {
       title: "操作",
-      width: 260,
+      width: 330,
       fixed: "right" as const,
       search: false,
       render: (_v, row) => {
@@ -369,6 +378,8 @@ const request = async (params: {
             );
           }
         }
+        // 查看入口:操作列"查看"弹详情弹窗;单号列点击进页面级只读查看页
+        btns.push(<a key="detail" onClick={() => setDetail(row)}>查看</a>);
         return <Space size={12}>{btns.length ? btns : <span style={{ color: "#999" }}>-</span>}</Space>;
       },
     },
@@ -378,7 +389,8 @@ const request = async (params: {
     <>
       <ProTable<PurchaseOrder>
 
-      params={{ status: urlStatus }}
+      params={{ status: urlStatus, docNo: urlDocNo }}
+      form={{ initialValues: { docNo: urlDocNo } }}
       rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无采购订单" /> }}
         actionRef={actionRef}
@@ -470,12 +482,12 @@ const request = async (params: {
                 { title: "规格快照", dataIndex: "specSnapshot", width: 70, render: (v) => v ?? "-" },
                 { title: "订购量", dataIndex: "orderedQty", width: 66, align: "right", className: "num-cell" },
                 { title: "已到货", dataIndex: "arrivedQty", width: 66, align: "right", className: "num-cell" },
-                { title: "不含税单价", dataIndex: "unitPrice", width: 84, align: "right", className: "num-cell" },
+                { title: "不含税单价", dataIndex: "unitPrice", width: 84, align: "right", className: "num-cell", render: (_v, r) => fmtMoney(r.unitPrice) },
                 { title: "含税单价", dataIndex: "taxPrice", width: 84, align: "right", className: "num-cell", render: (_v, r) => fmtMoney(r.taxPrice) },
                 { title: "税率(%)", dataIndex: "taxRate", width: 60, align: "right", className: "num-cell" },
-                { title: "金额", dataIndex: "amount", width: 84, align: "right", className: "num-cell" },
-                { title: "税额", dataIndex: "taxAmount", width: 72, align: "right", className: "num-cell" },
-                { title: "价税合计", dataIndex: "taxInclusiveTotal", width: 84, align: "right", className: "num-cell" },
+                { title: "金额", dataIndex: "amount", width: 84, align: "right", className: "num-cell", render: (_v, r) => fmtMoney(r.amount) },
+                { title: "税额", dataIndex: "taxAmount", width: 72, align: "right", className: "num-cell", render: (_v, r) => fmtMoney(r.taxAmount) },
+                { title: "价税合计", dataIndex: "taxInclusiveTotal", width: 84, align: "right", className: "num-cell", render: (_v, r) => <b>{fmtMoney(r.taxInclusiveTotal)}</b> },
                 {
                   title: "行状态",
                   dataIndex: "closed",

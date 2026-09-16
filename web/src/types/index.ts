@@ -168,6 +168,8 @@ export interface OutboundDocItem {
   itemId: number;
   quantity: string | number;
   batchId: number;
+  /** 批次号(服务端经批次表回填,仅展示用)。 */
+  batchNo?: string | null;
   locationId: number;
   serialNos?: string | null;
   unitPrice?: string | number | null;

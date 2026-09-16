@@ -4,7 +4,7 @@
 // + 差异生成调整单(盘盈/盘亏各一张)+ 状态机操作
 
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
@@ -83,6 +83,7 @@ export function StocktakePage() {
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
     // 支持 URL 带 ?status= 直达(仪表盘待办"待审批"跳转预置筛选)
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const urlStatus = searchParams.get("status") || undefined;
 
   const request = async (params: {
@@ -275,9 +276,10 @@ export function StocktakePage() {
       dataIndex: "docNo",
       width: 160,
       fieldProps: { placeholder: "单号", allowClear: true },
-      render: (_v, row) => (
-        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => setDetail(row)}>
-          {row.docNo}
+      render: (_v, r) => (
+        // 盘点单无新建/编辑表单页,单号列点击直接开整单详情弹窗(与操作列"查看"同一弹窗,列表行已含 items)
+        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => setDetail(r)}>
+          {r.docNo}
         </a>
       ),
     },
@@ -312,7 +314,7 @@ export function StocktakePage() {
     { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true, search: false },
     {
       title: "操作",
-      width: 300,
+      width: 370,
       fixed: "right" as const,
       search: false,
       render: (_v, row) => {
@@ -375,6 +377,8 @@ export function StocktakePage() {
             );
           }
         }
+        // 查看入口:操作列"查看"弹详情弹窗;单号列点击进页面级只读查看页
+        btns.push(<a key="detail" onClick={() => setDetail(row)}>查看</a>);
         return <Space size={10}>{btns.length ? btns : <span style={{ color: "#999" }}>-</span>}</Space>;
       },
     },

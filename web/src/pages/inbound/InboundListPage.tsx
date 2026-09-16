@@ -7,7 +7,7 @@ import { useEffect, useRef, useState , useMemo} from "react";
 import { Button, Descriptions, Modal, Segmented, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { inboundApi, warehouseApi } from "../../api";
 import { ExportButton } from "../../components/ExportButton";
@@ -17,6 +17,7 @@ import type { DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import { fmtDateTime, REF_TYPE_LABEL, fmtMoney, fmtQty } from "../../utils/format";
+import { refDocHref } from "../../utils/refDocLink";
 import { EmptyHint } from "../../components/EmptyHint";
 import { DocDetailHeader, DocAuditLine } from "../../components/DocDetailSections";
 import { StatusTag } from "../../components/StatusTag";
@@ -39,6 +40,25 @@ function parseSerials(v?: string | null): string {
   }
 }
 
+// 关联单号单元格:未知 refType 不跳转时渲染纯文本,无关联显示 "-"
+function RefDocNoLink({
+  refType,
+  refDocNo,
+}: {
+  refType?: string | null;
+  refDocNo?: string | null;
+}) {
+  if (!refDocNo) return <span>-</span>;
+  const href = refDocHref(refType, refDocNo);
+  return href ? (
+    <Link to={href} style={{ fontFamily: "monospace", fontSize: 13 }}>
+      {refDocNo}
+    </Link>
+  ) : (
+    <span style={{ fontFamily: "monospace", fontSize: 13 }}>{refDocNo}</span>
+  );
+}
+
 export function InboundListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [detail, setDetail] = useState<InboundDoc | null>(null);
@@ -57,6 +77,7 @@ export function InboundListPage() {
   }, [scopeWarehouseId]);
 
   const { hasPerm } = usePermission();  const canExport = hasPerm("inbound:export");
+  const navigate = useNavigate();
   const location = useLocation();
 
   // 仓库下拉数据源(异步加载,仅用于筛选项)
@@ -268,7 +289,9 @@ const request = async (params: {
       width: 220,
       fieldProps: { placeholder: "入库单号", allowClear: true },
       render: (_v, r) => (
-        <span style={{ fontFamily: "monospace", fontSize: 13 }}>{r.docNo}</span>
+        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => navigate("/inbound/new/" + r.id)}>
+          {r.docNo}
+        </a>
       ),
     },
     {
@@ -313,14 +336,18 @@ const request = async (params: {
       search: false,
     },
     {
-      title: "关联单据",
-      width: 150,
+      title: "关联类型",
+      dataIndex: "refType",
+      width: 90,
       search: false,
-      render: (_v, r) => {
-        if (!r.refDocNo) return "-";
-        const label = r.refType ? REF_TYPE_LABEL[r.refType] : undefined;
-        return label ? `${label} ${r.refDocNo}` : r.refDocNo;
-      },
+      render: (_v, r) => (r.refType ? REF_TYPE_LABEL[r.refType] ?? r.refType : "-"),
+    },
+    {
+      title: "关联单号",
+      dataIndex: "refDocNo",
+      width: 170,
+      search: false,
+      render: (_v, r) => <RefDocNoLink refType={r.refType} refDocNo={r.refDocNo} />,
     },
     {
       title: "供应商",
@@ -371,10 +398,14 @@ const request = async (params: {
     },
     {
       title: "操作",
-      width: 80,
+      width: 150,
       fixed: "right" as const,
       search: false,
-      render: (_v, row) => <a onClick={() => setDetail(row)}>查看详情</a>,
+      render: (_v, row) => (
+        <Space size="small">
+          <a onClick={() => setDetail(row)}>查看</a>
+        </Space>
+      ),
     },
   ];
 
@@ -400,7 +431,7 @@ const request = async (params: {
           />
         }
         options={false}
-        scroll={{ x: 1590 }}
+        scroll={{ x: 1700 }}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,
@@ -454,6 +485,12 @@ const request = async (params: {
               <Descriptions.Item label="车牌">{detail.vehicleNo ?? "-"}</Descriptions.Item>
               <Descriptions.Item label="运费">
                 {fmtMoney(detail.freight)}
+              </Descriptions.Item>
+              <Descriptions.Item label="关联类型">
+                {detail.refType ? REF_TYPE_LABEL[detail.refType] ?? detail.refType : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="关联单号">
+                <RefDocNoLink refType={detail.refType} refDocNo={detail.refDocNo} />
               </Descriptions.Item>
               <Descriptions.Item label="备注" span={2}>
                 {detail.remark ?? "-"}

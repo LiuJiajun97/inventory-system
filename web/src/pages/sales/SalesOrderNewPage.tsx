@@ -47,6 +47,11 @@ interface LineRow {
 
 let lineSeq = 1;
 
+// 可编辑状态:与后端 PUT 口径一致(仅草稿/已驳回可保存,其余终态只读)
+function isEditable(status: string): boolean {
+  return status === "draft" || status === "rejected";
+}
+
 export function SalesOrderNewPage() {
   const navigate = useNavigate();
   const { id: editIdParam } = useParams<{ id?: string }>();
@@ -59,6 +64,9 @@ export function SalesOrderNewPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [lines, setLines] = useState<LineRow[]>([{ key: lineSeq++ }]);
   const [saving, setSaving] = useState(false);
+  // 编辑单据状态:非 draft/rejected(后端 PUT 拒绝态)为终态只读
+  const [docStatus, setDocStatus] = useState<string | undefined>();
+  const readonly = editId != null && docStatus != null && !isEditable(docStatus);
   const [form] = ProForm.useForm();
 
   useEffect(() => {
@@ -87,6 +95,7 @@ export function SalesOrderNewPage() {
       .get(editId)
       .then((doc) => {
         setDocNo(doc.docNo);
+        setDocStatus(doc.status);
         form.setFieldsValue({
           docDate: dayjs(doc.docDate),
           customerId: doc.customerId,
@@ -204,6 +213,7 @@ export function SalesOrderNewPage() {
           style={{ width: "100%" }}
           options={itemOptions}
           value={l.itemId}
+          disabled={readonly}
           onChange={(v) => onItemChange(l.key, v)}
         />
       ),
@@ -217,6 +227,7 @@ export function SalesOrderNewPage() {
           step={1}
           style={{ width: "100%" }}
           value={l.orderedQty}
+          disabled={readonly}
           onChange={(v) =>
             setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, orderedQty: v ?? undefined } : x)))
           }
@@ -230,6 +241,7 @@ export function SalesOrderNewPage() {
         <DatePicker
           style={{ width: "100%" }}
           value={l.customerDeliveryDate}
+          disabled={readonly}
           onChange={(d) =>
             setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, customerDeliveryDate: d ?? undefined } : x)))
           }
@@ -245,6 +257,7 @@ export function SalesOrderNewPage() {
           step={0.01}
           style={{ width: "100%" }}
           value={l.unitPrice}
+          disabled={readonly}
           onChange={(v) => {
             // V23.1:改不含税 → 实时联动重算含税(清空不触发)
             const next = recalcPricePair(v ?? undefined, l.taxPrice, l.taxRate, "unit");
@@ -267,6 +280,7 @@ export function SalesOrderNewPage() {
               step={0.01}
               style={{ width: "calc(100% - 22px)" }}
               value={l.taxPrice}
+              disabled={readonly}
               onChange={(v) => {
                 // V23.1:改含税 → 实时联动重算不含税(清空不触发)
                 const next = recalcPricePair(l.unitPrice, v ?? undefined, l.taxRate, "tax");
@@ -325,6 +339,7 @@ export function SalesOrderNewPage() {
           step={0.01}
           style={{ width: "100%" }}
           value={l.taxRate}
+          disabled={readonly}
           onChange={(v) => {
             // V23.1:改税率 → 按不含税正算联动含税(与后端同口径),只填了含税则反算
             const next = v != null ? recalcPricePair(l.unitPrice, l.taxPrice, v, "rate") : {};
@@ -338,23 +353,29 @@ export function SalesOrderNewPage() {
       render: (_v: unknown, l: LineRow) => (
         <Input
           value={l.lineRemark}
+          disabled={readonly}
           onChange={(e) =>
             setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, lineRemark: e.target.value } : x)))
           }
         />
       ),
     },
-    {
-      title: "",
-      width: 60,
-      render: (_v: unknown, l: LineRow) => (
-        <a
-          onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : ls))}
-        >
-          删除
-        </a>
-      ),
-    },
+    // 终态只读不渲染删除列
+    ...(readonly
+      ? []
+      : [
+          {
+            title: "",
+            width: 60,
+            render: (_v: unknown, l: LineRow) => (
+              <a
+                onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : ls))}
+              >
+                删除
+              </a>
+            ),
+          },
+        ]),
   ];
 
   return (
@@ -374,7 +395,7 @@ export function SalesOrderNewPage() {
       <ProCard bodyStyle={{ padding: 0 }}>
         <div className="doc-form-body">
           {/* 表头:统一 grid + md 宽度,四列对齐 */}
-          <ProForm form={form} layout="vertical" grid submitter={false}>
+          <ProForm form={form} layout="vertical" grid submitter={false} disabled={readonly}>
             <ProFormDatePicker
               name="docDate"
               label="开单日期"
@@ -471,10 +492,12 @@ export function SalesOrderNewPage() {
             columns={lineColumns}
             scroll={{ x: 1560, y: "calc(100vh - 520px)" }}
           />
-          {/* 添加行按钮:明细表正下方,左对齐 */}
-          <div className="doc-form-line-adder">
-            <Button onClick={() => setLines((ls) => [...ls, { key: lineSeq++ }])}>添加行</Button>
-          </div>
+          {/* 添加行按钮:明细表正下方,左对齐(终态只读不渲染) */}
+          {!readonly && (
+            <div className="doc-form-line-adder">
+              <Button onClick={() => setLines((ls) => [...ls, { key: lineSeq++ }])}>添加行</Button>
+            </div>
+          )}
         </div>
         {/* 底部固定操作条:左摘要,中间主按钮居中 */}
         <div className="doc-form-footer">
@@ -485,9 +508,13 @@ export function SalesOrderNewPage() {
             </div>
           </div>
           <div className="doc-form-footer-main">
-            <Button type="primary" loading={saving} onClick={onSubmit}>
-              {editId != null ? "保存" : "保存为草稿"}
-            </Button>
+            {readonly ? (
+              <Button onClick={() => navigate("/sales-orders")}>返回</Button>
+            ) : (
+              <Button type="primary" loading={saving} onClick={onSubmit}>
+                {editId != null ? "保存" : "保存为草稿"}
+              </Button>
+            )}
           </div>
         </div>
       </ProCard>

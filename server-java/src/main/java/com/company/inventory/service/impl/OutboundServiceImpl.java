@@ -14,14 +14,24 @@ import com.company.inventory.model.dto.stock.StockOpRequest;
 import com.company.inventory.model.entity.customer.CustomerDO;
 import com.company.inventory.model.entity.outbound.OutboundDocDO;
 import com.company.inventory.model.entity.outbound.OutboundDocItemDO;
+import com.company.inventory.model.entity.purchase.PurchaseOrderDO;
+import com.company.inventory.model.entity.returns.PurchaseReturnDO;
+import com.company.inventory.model.entity.returns.SalesReturnDO;
 import com.company.inventory.model.entity.sales.SalesOrderDO;
+import com.company.inventory.model.entity.stock.BatchDO;
 import com.company.inventory.model.entity.stock.SerialDO;
+import com.company.inventory.model.entity.supplier.SupplierDO;
 import com.company.inventory.model.entity.warehouse.WarehouseDO;
+import com.company.inventory.mapper.BatchMapper;
 import com.company.inventory.mapper.CustomerMapper;
 import com.company.inventory.mapper.OutboundDocItemMapper;
 import com.company.inventory.mapper.OutboundDocMapper;
+import com.company.inventory.mapper.PurchaseOrderMapper;
+import com.company.inventory.mapper.PurchaseReturnMapper;
 import com.company.inventory.mapper.SalesOrderMapper;
+import com.company.inventory.mapper.SalesReturnMapper;
 import com.company.inventory.mapper.SerialMapper;
+import com.company.inventory.mapper.SupplierMapper;
 import com.company.inventory.mapper.WarehouseMapper;
 import com.company.inventory.model.query.OutboundDocQuery;
 import com.company.inventory.service.DocNoService;
@@ -50,11 +60,13 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -89,24 +101,39 @@ public class OutboundServiceImpl implements OutboundService {
     private final SalesOrderMapper salesOrderMapper;
     /** 客户 Mapper(列表展示关联客户)。 */
     private final CustomerMapper customerMapper;
+    /** 销售退货单 Mapper(列表展示 refType=sales_return 关联单号)。 */
+    private final SalesReturnMapper salesReturnMapper;
+    /** 采购退货单 Mapper(列表展示 refType=purchase_return 关联单号)。 */
+    private final PurchaseReturnMapper purchaseReturnMapper;
+    /** 采购订单 Mapper(采购退货对端供应商名溯源)。 */
+    private final PurchaseOrderMapper purchaseOrderMapper;
+    /** 供应商 Mapper(列表展示采购退货对端供应商名)。 */
+    private final SupplierMapper supplierMapper;
     /** 序列号 Mapper(V9 追溯链补写)。 */
     private final SerialMapper serialMapper;
+    /** 批次 Mapper(列表/详情行展示批次号,出库行表只存 batch_id 快照)。 */
+    private final BatchMapper batchMapper;
     /** JSON 序列化(serialNos 列存 JSON 数组字符串)。 */
     private final ObjectMapper objectMapper;
 
     /**
      * 构造服务。
      *
-     * @param outboundDocMapper     单据 Mapper
-     * @param outboundDocItemMapper 单据行 Mapper
-     * @param warehouseMapper       仓库 Mapper
-     * @param stockCoreService      库存核心服务
-     * @param docNoService          单据号服务
-     * @param salesOrderService     销售订单服务
-     * @param salesOrderMapper      销售订单 Mapper
-     * @param customerMapper        客户 Mapper
-     * @param serialMapper          序列号 Mapper
-     * @param objectMapper          JSON 序列化器
+     * @param outboundDocMapper      单据 Mapper
+     * @param outboundDocItemMapper  单据行 Mapper
+     * @param warehouseMapper        仓库 Mapper
+     * @param stockCoreService       库存核心服务
+     * @param docNoService           单据号服务
+     * @param salesOrderService      销售订单服务
+     * @param salesOrderMapper       销售订单 Mapper
+     * @param customerMapper         客户 Mapper
+     * @param salesReturnMapper      销售退货单 Mapper
+     * @param purchaseReturnMapper   采购退货单 Mapper
+     * @param purchaseOrderMapper    采购订单 Mapper
+     * @param supplierMapper         供应商 Mapper
+     * @param serialMapper           序列号 Mapper
+     * @param batchMapper            批次 Mapper(行展示批次号)
+     * @param objectMapper           JSON 序列化器
      */
     public OutboundServiceImpl(OutboundDocMapper outboundDocMapper,
                                OutboundDocItemMapper outboundDocItemMapper,
@@ -116,7 +143,12 @@ public class OutboundServiceImpl implements OutboundService {
                                SalesOrderService salesOrderService,
                                SalesOrderMapper salesOrderMapper,
                                CustomerMapper customerMapper,
+                               SalesReturnMapper salesReturnMapper,
+                               PurchaseReturnMapper purchaseReturnMapper,
+                               PurchaseOrderMapper purchaseOrderMapper,
+                               SupplierMapper supplierMapper,
                                SerialMapper serialMapper,
+                               BatchMapper batchMapper,
                                ObjectMapper objectMapper) {
         this.outboundDocMapper = outboundDocMapper;
         this.outboundDocItemMapper = outboundDocItemMapper;
@@ -126,7 +158,12 @@ public class OutboundServiceImpl implements OutboundService {
         this.salesOrderService = salesOrderService;
         this.salesOrderMapper = salesOrderMapper;
         this.customerMapper = customerMapper;
+        this.salesReturnMapper = salesReturnMapper;
+        this.purchaseReturnMapper = purchaseReturnMapper;
+        this.purchaseOrderMapper = purchaseOrderMapper;
+        this.supplierMapper = supplierMapper;
         this.serialMapper = serialMapper;
+        this.batchMapper = batchMapper;
         this.objectMapper = objectMapper;
     }
 
@@ -317,7 +354,10 @@ public class OutboundServiceImpl implements OutboundService {
     }
 
     /**
-     * 批量组装单据 VO(仓库 + 单据行 + 关联销售订单/客户)。
+     * 批量组装单据 VO(仓库 + 单据行 + 按 refType 分表回填关联单号/对端名)。
+     *
+     * <p>各关联表自增 id 相互独立,refDocId 必须按 refType 查对应表,否则撞号时
+     * 会回填成别的单据的单号与对端名。</p>
      *
      * @param docs 单据列表
      * @return VO 列表
@@ -327,8 +367,14 @@ public class OutboundServiceImpl implements OutboundService {
                 .collect(Collectors.toCollection(HashSet::new));
         Set<Long> docIds = docs.stream().map(OutboundDocDO::getId)
                 .collect(Collectors.toCollection(HashSet::new));
-        Set<Long> refOrderIds = docs.stream().map(OutboundDocDO::getRefDocId)
-                .filter(Objects::nonNull).collect(Collectors.toCollection(HashSet::new));
+        // 关联单 id 按 refType 分组(不同表自增 id 独立,查错表会回填串号)
+        Map<String, Set<Long>> refIdsByType = new HashMap<>();
+        for (OutboundDocDO doc : docs) {
+            if (doc.getRefType() != null && doc.getRefDocId() != null) {
+                refIdsByType.computeIfAbsent(doc.getRefType(), t -> new HashSet<>())
+                        .add(doc.getRefDocId());
+            }
+        }
 
         // 空集合防护:selectByIds 空集会生成非法 SQL "IN ( )"
         Map<Long, WarehouseVO> whMap = (whIds.isEmpty() ? List.<WarehouseDO>of()
@@ -340,29 +386,85 @@ public class OutboundServiceImpl implements OutboundService {
                         .orderByAsc(OutboundDocItemDO::getId));
         Map<Long, List<OutboundDocItemDO>> itemMap = allItems.stream()
                 .collect(Collectors.groupingBy(OutboundDocItemDO::getDocId));
-        Map<Long, SalesOrderDO> refOrderMap = (refOrderIds.isEmpty()
-                ? List.<SalesOrderDO>of() : salesOrderMapper.selectByIds(refOrderIds))
-                        .stream().collect(Collectors.toMap(SalesOrderDO::getId, o -> o));
-        Set<Long> customerIds = refOrderMap.values().stream()
-                .map(SalesOrderDO::getCustomerId).collect(Collectors.toCollection(HashSet::new));
-        Map<Long, CustomerDO> customerMap = (customerIds.isEmpty() ? List.<CustomerDO>of()
-                : customerMapper.selectByIds(customerIds)).stream()
-                .collect(Collectors.toMap(CustomerDO::getId, c -> c));
+        // 批次批查(出库行表只存 batch_id,批次号经批次表回填展示;空集合防护)
+        Set<Long> batchIds = allItems.stream().map(OutboundDocItemDO::getBatchId)
+                .filter(Objects::nonNull).collect(Collectors.toCollection(HashSet::new));
+        Map<Long, String> batchNoMap = (batchIds.isEmpty() ? List.<BatchDO>of()
+                : batchMapper.selectByIds(batchIds)).stream()
+                .collect(Collectors.toMap(BatchDO::getId, BatchDO::getBatchNo));
+
+        // 退货单先查(取其原订单 id 与直挂订单合并成一次批查)
+        Set<Long> srIds = refIdsByType.getOrDefault(ErrorCode.REF_TYPE_SALES_RETURN, Set.of());
+        Map<Long, SalesReturnDO> salesReturnMap = toIdMap(srIds.isEmpty()
+                ? List.of() : salesReturnMapper.selectByIds(srIds), SalesReturnDO::getId);
+        Set<Long> prIds = refIdsByType.getOrDefault(ErrorCode.REF_TYPE_PURCHASE_RETURN, Set.of());
+        Map<Long, PurchaseReturnDO> purchaseReturnMap = toIdMap(prIds.isEmpty()
+                ? List.of() : purchaseReturnMapper.selectByIds(prIds), PurchaseReturnDO::getId);
+        // 销售订单批查:直挂 refType=sales + 销售退货原销售订单(对端客户名溯源)
+        Set<Long> salesOrderIds = new HashSet<>(
+                refIdsByType.getOrDefault(ErrorCode.REF_TYPE_SALES, Set.of()));
+        for (SalesReturnDO sr : salesReturnMap.values()) {
+            if (sr.getSalesOrderId() != null) {
+                salesOrderIds.add(sr.getSalesOrderId());
+            }
+        }
+        Map<Long, SalesOrderDO> salesOrderMap = toIdMap(salesOrderIds.isEmpty()
+                ? List.of() : salesOrderMapper.selectByIds(salesOrderIds), SalesOrderDO::getId);
+        // 采购订单批查:采购退货原采购订单(对端供应商名溯源)
+        Set<Long> purchaseOrderIds = new HashSet<>();
+        for (PurchaseReturnDO pr : purchaseReturnMap.values()) {
+            if (pr.getPurchaseOrderId() != null) {
+                purchaseOrderIds.add(pr.getPurchaseOrderId());
+            }
+        }
+        Map<Long, PurchaseOrderDO> purchaseOrderMap = toIdMap(purchaseOrderIds.isEmpty()
+                ? List.of() : purchaseOrderMapper.selectByIds(purchaseOrderIds),
+                PurchaseOrderDO::getId);
+        // 客户/供应商名批查
+        Set<Long> customerIds = salesOrderMap.values().stream()
+                .map(SalesOrderDO::getCustomerId).filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+        Map<Long, CustomerDO> customerMap = toIdMap(customerIds.isEmpty() ? List.of()
+                : customerMapper.selectByIds(customerIds), CustomerDO::getId);
+        Set<Long> supplierIds = purchaseOrderMap.values().stream()
+                .map(PurchaseOrderDO::getSupplierId).filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+        Map<Long, SupplierDO> supplierMap = toIdMap(supplierIds.isEmpty() ? List.of()
+                : supplierMapper.selectByIds(supplierIds), SupplierDO::getId);
 
         List<OutboundDocVO> vos = new ArrayList<>();
         for (OutboundDocDO doc : docs) {
             List<OutboundDocItemDO> items = itemMap.getOrDefault(doc.getId(), List.of());
-            List<OutboundDocItemVO> itemVos = items.stream().map(this::toItemVO).toList();
-            SalesOrderDO refOrder = doc.getRefDocId() == null ? null
-                    : refOrderMap.get(doc.getRefDocId());
-            String customerName = refOrder == null ? null
-                    : customerMap.get(refOrder.getCustomerId()) == null ? null
-                    : customerMap.get(refOrder.getCustomerId()).getCustomerName();
+            List<OutboundDocItemVO> itemVos = items.stream()
+                    .map(item -> toItemVO(item, batchNoMap)).toList();
+            String refDocNo;
+            String refPartner;
+            Long refDocId = doc.getRefDocId();
+            String refType = doc.getRefType();
+            if (ErrorCode.REF_TYPE_SALES.equals(refType) && refDocId != null) {
+                SalesOrderDO so = salesOrderMap.get(refDocId);
+                refDocNo = so == null ? null : so.getDocNo();
+                refPartner = so == null ? null : customerNameOf(customerMap, so.getCustomerId());
+            } else if (ErrorCode.REF_TYPE_SALES_RETURN.equals(refType) && refDocId != null) {
+                SalesReturnDO sr = salesReturnMap.get(refDocId);
+                refDocNo = sr == null ? null : sr.getDocNo();
+                SalesOrderDO so = sr == null || sr.getSalesOrderId() == null ? null
+                        : salesOrderMap.get(sr.getSalesOrderId());
+                refPartner = so == null ? null : customerNameOf(customerMap, so.getCustomerId());
+            } else if (ErrorCode.REF_TYPE_PURCHASE_RETURN.equals(refType) && refDocId != null) {
+                PurchaseReturnDO pr = purchaseReturnMap.get(refDocId);
+                refDocNo = pr == null ? null : pr.getDocNo();
+                PurchaseOrderDO po = pr == null || pr.getPurchaseOrderId() == null ? null
+                        : purchaseOrderMap.get(pr.getPurchaseOrderId());
+                refPartner = po == null ? null : supplierNameOf(supplierMap, po.getSupplierId());
+            } else {
+                refDocNo = null;
+                refPartner = null;
+            }
             vos.add(new OutboundDocVO(doc.getId(), doc.getDocNo(), doc.getWarehouseId(),
                     doc.getStatus(), doc.getRemark(), doc.getCreator(), doc.getCreatedAt(),
                     whMap.get(doc.getWarehouseId()), itemVos,
-                    doc.getRefType(), doc.getRefDocId(),
-                    refOrder == null ? null : refOrder.getDocNo(), customerName,
+                    doc.getRefType(), doc.getRefDocId(), refDocNo, refPartner,
                     doc.getDocDate(), doc.getCarrier(), doc.getVehicleNo(),
                     doc.getFreight() == null ? null
                             : QtyUtils.toContractString(doc.getFreight()),
@@ -394,12 +496,14 @@ public class OutboundServiceImpl implements OutboundService {
     /**
      * 实体转单据行 VO。
      *
-     * @param item 实体
+     * @param item       实体
+     * @param batchNoMap 批次 id→批次号映射(行表只存 batch_id,批次号经此回填)
      * @return VO
      */
-    private OutboundDocItemVO toItemVO(OutboundDocItemDO item) {
+    private OutboundDocItemVO toItemVO(OutboundDocItemDO item, Map<Long, String> batchNoMap) {
         return new OutboundDocItemVO(item.getId(), item.getDocId(), item.getItemId(),
                 QtyUtils.toContractString(item.getQuantity()), item.getBatchId(),
+                batchNoMap.get(item.getBatchId()),
                 item.getLocationId(), item.getSerialNos(), item.getUnitPrice(),
                 item.getRefLineId(), item.getTaxRate(), item.getLineNo(), item.getAmount(),
                 item.getTaxAmount(), item.getTaxInclusiveTotal(), item.getTaxPrice());
@@ -471,5 +575,47 @@ public class OutboundServiceImpl implements OutboundService {
                 warehouse.getEnableBatch(), warehouse.getEnableExpiry(),
                 warehouse.getEnableSerial(), warehouse.getEnableLocation(),
                 warehouse.getStatus(), warehouse.getCreatedAt());
+    }
+
+    /**
+     * 实体列表转 id 索引 Map。
+     *
+     * @param <T>      实体类型
+     * @param rows     实体列表
+     * @param idGetter 取 id 函数
+     * @return id 索引 Map
+     */
+    private <T> Map<Long, T> toIdMap(List<T> rows, Function<T, Long> idGetter) {
+        return rows.stream().collect(Collectors.toMap(idGetter, r -> r));
+    }
+
+    /**
+     * 供应商名安全取值。
+     *
+     * @param supplierMap 供应商索引
+     * @param supplierId  供应商 ID(可空)
+     * @return 供应商名或 null
+     */
+    private String supplierNameOf(Map<Long, SupplierDO> supplierMap, Long supplierId) {
+        if (supplierId == null) {
+            return null;
+        }
+        SupplierDO s = supplierMap.get(supplierId);
+        return s == null ? null : s.getSupplierName();
+    }
+
+    /**
+     * 客户名安全取值。
+     *
+     * @param customerMap 客户索引
+     * @param customerId  客户 ID(可空)
+     * @return 客户名或 null
+     */
+    private String customerNameOf(Map<Long, CustomerDO> customerMap, Long customerId) {
+        if (customerId == null) {
+            return null;
+        }
+        CustomerDO c = customerMap.get(customerId);
+        return c == null ? null : c.getCustomerName();
     }
 }

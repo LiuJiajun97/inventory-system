@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Descriptions, Modal, Space, Table, Tag, App } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { paymentApi, supplierApi, customerApi } from "../../api";
 import type { PaymentDoc } from "../../types/phase1";
@@ -26,6 +26,7 @@ export function PaymentListPage({ mode }: { mode: "payment" | "receipt" }) {
   const actionRef = useRef<ActionType>();
   const { hasPerm } = usePermission();
   const location = useLocation();
+  const navigate = useNavigate();
   const { message, modal } = App.useApp();
   const createPerm = isPayment ? "payments:create" : "receipts:create";
   const voidPerm = isPayment ? "payments:void" : "receipts:void";
@@ -94,7 +95,10 @@ export function PaymentListPage({ mode }: { mode: "payment" | "receipt" }) {
       width: 190,
       fieldProps: { placeholder: isPayment ? "付款单号" : "收款单号", allowClear: true },
       render: (_v, r) => (
-        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => void openDetail(r.id)}>
+        <a
+          style={{ fontFamily: "monospace", fontSize: 13 }}
+          onClick={() => navigate((isPayment ? "/payments/new/" : "/receipts/new/") + r.id)}
+        >
           {r.docNo}
         </a>
       ),
@@ -164,7 +168,7 @@ export function PaymentListPage({ mode }: { mode: "payment" | "receipt" }) {
     },
     {
       title: "操作",
-      width: 120,
+      width: 170,
       fixed: "right" as const,
       search: false,
       render: (_v, row) => (

@@ -3,7 +3,7 @@
 // gain 盘盈入库 / loss 盘亏出库;审批即执行库存动作;盘点差异生成 + 手工调整共用
 
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Segmented, Select, Space, Table, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
@@ -45,6 +45,8 @@ export function AdjustPage() {
   const [createOpen, setCreateOpen] = useState(false);
   // 非空为编辑模式(草稿/已驳回单),Drawer 复用新建表单
   const [editId, setEditId] = useState<number | null>(null);
+  // 单号列点终态单:复用同一 Drawer 的只读模式(隐藏保存 + 禁用控件)
+  const [drawerReadonly, setDrawerReadonly] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<StockAdjustDoc | null>(null);
   // V17 主表/明细视图切换(组件内状态,默认主表)
   const [viewMode, setViewMode] = useState<"main" | "line">("main");
@@ -82,6 +84,7 @@ export function AdjustPage() {
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
     // 支持 URL 带 ?status= 直达(仪表盘待办"待审批"跳转预置筛选)
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
     const urlStatus = searchParams.get("status") || undefined;
 
   const request = async (params: {
@@ -218,11 +221,13 @@ export function AdjustPage() {
     setAdjustType("loss");
     setLines([{ key: 1 }]);
     setEditId(null);
+    setDrawerReadonly(false);
     setCreateOpen(true);
   };
 
   // 编辑:GET 详情回填表头 + 行明细(行 key 用 1..n;批次/库位原样保留不展示编辑)
   const openEdit = (row: StockAdjustDoc) => {
+    setDrawerReadonly(false);
     adjustApi
       .get(row.id)
       .then((doc) => {
@@ -246,6 +251,12 @@ export function AdjustPage() {
         setCreateOpen(true);
       })
       .catch(() => undefined);
+  };
+
+  // 单号列点终态单:同样回填,但 Drawer 走只读模式(先 openEdit 置 false,后设 true,最终态为只读)
+  const openReadonly = (row: StockAdjustDoc) => {
+    openEdit(row);
+    setDrawerReadonly(true);
   };
 
   const onCreate = async () => {
@@ -298,9 +309,12 @@ export function AdjustPage() {
       dataIndex: "docNo",
       width: 160,
       fieldProps: { placeholder: "单号", allowClear: true },
-      render: (_v, row) => (
-        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => setDetail(row)}>
-          {row.docNo}
+      render: (_v, r) => (
+        <a
+          style={{ fontFamily: "monospace", fontSize: 13 }}
+          onClick={() => (r.status === "draft" || r.status === "rejected" ? openEdit(r) : openReadonly(r))}
+        >
+          {r.docNo}
         </a>
       ),
     },
@@ -359,7 +373,7 @@ export function AdjustPage() {
     { title: "创建人", dataIndex: "creator", width: 90, ellipsis: true, search: false },
     {
       title: "操作",
-      width: 220,
+      width: 290,
       fixed: "right" as const,
       search: false,
       render: (_v, row) => {
@@ -406,6 +420,8 @@ export function AdjustPage() {
             );
           }
         }
+        // 查看入口:操作列"查看"弹详情弹窗;单号列点击进编辑 Drawer(终态为只读 Drawer)
+        btns.push(<a key="detail" onClick={() => setDetail(row)}>查看</a>);
         return <Space size={12}>{btns.length ? btns : <span style={{ color: "#999" }}>-</span>}</Space>;
       },
     },
@@ -461,28 +477,34 @@ export function AdjustPage() {
       />
 
       <Drawer
-        title={editId != null ? "编辑库存调整单" : "新建库存调整单"}
+        title={drawerReadonly ? "库存调整单详情" : editId != null ? "编辑库存调整单" : "新建库存调整单"}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         width={860}
         // 去掉 Drawer footer 默认内边距/边框,由 .drawer-footer 统一控制
         styles={{ footer: { padding: "0 16px", borderTop: "none" } }}
-        // 统一底部操作条:次按钮"取消" + 主按钮(文案保持现状,loading 态保留)
+        // 统一底部操作条:只读仅"关闭";编辑/新建为次按钮"取消" + 主按钮
         footer={
           <div
             className="drawer-footer"
             style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
           >
             <Space>
-              <Button onClick={() => setCreateOpen(false)}>取消</Button>
-              <Button type="primary" loading={saving} onClick={onCreate}>
-                {editId != null ? "保存" : "保存为草稿"}
-              </Button>
+              {drawerReadonly ? (
+                <Button onClick={() => setCreateOpen(false)}>关闭</Button>
+              ) : (
+                <>
+                  <Button onClick={() => setCreateOpen(false)}>取消</Button>
+                  <Button type="primary" loading={saving} onClick={onCreate}>
+                    {editId != null ? "保存" : "保存为草稿"}
+                  </Button>
+                </>
+              )}
             </Space>
           </div>
         }
       >
-        <Form form={createForm} layout="vertical" requiredMark={false}>
+        <Form form={createForm} layout="vertical" requiredMark={false} disabled={drawerReadonly}>
           {/* 表头字段两列对齐(统一规格:两列上限);行明细 Table 不包 Col,零改动 */}
           <Row gutter={16}>
             <Col span={12}>
@@ -491,6 +513,7 @@ export function AdjustPage() {
                   value={adjustType}
                   onChange={setAdjustType}
                   style={{ width: "100%" }}
+                  disabled={drawerReadonly}
                   options={[
                     { label: "盘盈(入库)", value: "gain" },
                     { label: "盘亏(出库)", value: "loss" },
@@ -543,6 +566,7 @@ export function AdjustPage() {
                   style={{ width: "100%" }}
                   options={itemOptions}
                   value={l.itemId}
+                  disabled={drawerReadonly}
                   onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, itemId: v } : x)))}
                 />
               ),
@@ -556,6 +580,7 @@ export function AdjustPage() {
                   step={1}
                   style={{ width: "100%" }}
                   value={l.qty}
+                  disabled={drawerReadonly}
                   onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, qty: v ?? undefined } : x)))}
                 />
               ),
@@ -569,6 +594,7 @@ export function AdjustPage() {
                   step={0.01}
                   style={{ width: "100%" }}
                   value={l.unitPrice}
+                  disabled={drawerReadonly}
                   onChange={(v) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, unitPrice: v ?? undefined } : x)))}
                 />
               ),
@@ -579,6 +605,7 @@ export function AdjustPage() {
                 <Input
                   value={l.reason}
                   placeholder="如:破损报废"
+                  disabled={drawerReadonly}
                   onChange={(e) => setLines((ls) => ls.map((x) => (x.key === l.key ? { ...x, reason: e.target.value } : x)))}
                 />
               ),
@@ -586,19 +613,24 @@ export function AdjustPage() {
             {
               title: "",
               width: 60,
-              render: (_v: unknown, l) => (
-                <a onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : ls))}>
-                  删除
-                </a>
-              ),
+              render: (_v: unknown, l) =>
+                drawerReadonly ? (
+                  <span>-</span>
+                ) : (
+                  <a onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : ls))}>
+                    删除
+                  </a>
+                ),
             },
           ]}
         />
-        <Space style={{ marginTop: 12 }}>
-          <Button onClick={() => setLines((ls) => [...ls, { key: Math.max(...ls.map((x) => x.key)) + 1 }])}>
-            添加行
-          </Button>
-        </Space>
+        {!drawerReadonly && (
+          <Space style={{ marginTop: 12 }}>
+            <Button onClick={() => setLines((ls) => [...ls, { key: Math.max(...ls.map((x) => x.key)) + 1 }])}>
+              添加行
+            </Button>
+          </Space>
+        )}
       </Drawer>
 
       <Modal

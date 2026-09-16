@@ -4,10 +4,10 @@
 // 查看详情 Modal(960 + .doc-detail-modal 紧凑)展示行明细(物品/批次/数量/单价/效期/库位)
 
 import { useEffect, useRef, useState } from "react";
-import { Button, Descriptions, Modal, Segmented, Table, Tag } from "antd";
+import { Button, Descriptions, Modal, Segmented, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
 import { openingApi, warehouseApi } from "../../api";
 import type { OpeningStockDoc, OpeningStockDocItem, Warehouse } from "../../types";
@@ -33,6 +33,11 @@ export function OpeningStockListPage() {
   const [viewMode, setViewMode] = useState<"main" | "line">("main");
   const [printOpen, setPrintOpen] = useState(false);
   const actionRef = useRef<ActionType>();
+  // 出入库"关联单号"带 ?docNo= 跳转过来:预填筛选并(仅一条结果时)自动开详情
+  const [searchParams] = useSearchParams();
+  const urlDocNo = searchParams.get("docNo") || undefined;
+  // 自动开详情防重复触发标志(每页生命周期内只触发一次)
+  const autoOpened = useRef(false);
   // C3 顶栏仓库快捷切换:表单未选仓库时并入请求参数(表单值优先)
   const scopeWarehouseId = useScopeWarehouseId();
   // 顶栏仓库范围切换后自动刷新表格(scope 并入请求参数;首次挂载由 ProTable 自触发,不重复)
@@ -43,6 +48,7 @@ export function OpeningStockListPage() {
   }, [scopeWarehouseId]);
 
   const { hasPerm } = usePermission();
+  const navigate = useNavigate();
   const location = useLocation();
 
   // 仓库下拉数据源(异步加载,仅用于筛选项)
@@ -78,6 +84,11 @@ export function OpeningStockListPage() {
       pageSize: params.pageSize ?? 20,
     });
     // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
+    // 关联单号跳转且仅命中一条时自动开详情(只触发一次,不影响其他筛选)
+    if (urlDocNo && res.total === 1 && res.rows.length === 1 && !autoOpened.current) {
+      autoOpened.current = true;
+      setDetail(res.rows[0]);
+    }
     return { data: res.rows, success: true, total: res.total };
   };
 
@@ -210,7 +221,9 @@ export function OpeningStockListPage() {
       width: 220,
       fieldProps: { placeholder: "期初单号", allowClear: true },
       render: (_v, r) => (
-        <span style={{ fontFamily: "monospace", fontSize: 13 }}>{r.docNo}</span>
+        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => navigate("/opening/new/" + r.id)}>
+          {r.docNo}
+        </a>
       ),
     },
     {
@@ -296,16 +309,22 @@ export function OpeningStockListPage() {
     },
     {
       title: "操作",
-      width: 80,
+      width: 150,
       fixed: "right" as const,
       search: false,
-      render: (_v, row) => <a onClick={() => setDetail(row)}>查看</a>,
+      render: (_v, row) => (
+        <Space size="small">
+          <a onClick={() => setDetail(row)}>查看</a>
+        </Space>
+      ),
     },
   ];
 
   return (
     <>
       <ProTable<OpeningStockDoc>
+        params={{ docNo: urlDocNo }}
+        form={{ initialValues: { docNo: urlDocNo } }}
         rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无期初库存单" /> }}
         actionRef={actionRef}

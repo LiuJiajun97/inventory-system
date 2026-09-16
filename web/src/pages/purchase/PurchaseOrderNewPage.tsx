@@ -39,6 +39,11 @@ interface LineRow {
 
 let lineSeq = 2;
 
+// 可编辑状态:与后端 PUT 口径一致(仅草稿/已驳回可保存,其余终态只读)
+function isEditable(status: string): boolean {
+  return status === "draft" || status === "rejected";
+}
+
 // V23.1:含税单价输入框,与不含税单价按税率推算不一致时在输入框右侧同行渲染小图标 + Tooltip 悬浮展示完整文案
 // value/onChange 由行表单 Form.Item 注入,unitPrice/taxRate 由列 renderFormItem 从行记录带入
 function TaxPriceField(props: ComponentProps<typeof InputNumber> & {
@@ -76,6 +81,9 @@ export function PurchaseOrderNewPage() {
   // 可编辑行(受控):初始行即处于编辑态
   const [editableKeys, setEditableKeys] = useState<React.Key[]>([1]);
   const [saving, setSaving] = useState(false);
+  // 编辑单据状态:非 draft/rejected(后端 PUT 拒绝态)为终态只读
+  const [docStatus, setDocStatus] = useState<string | undefined>();
+  const readonly = editId != null && docStatus != null && !isEditable(docStatus);
   const [headerForm] = ProForm.useForm();
   const [lineForm] = ProForm.useForm();
 
@@ -86,6 +94,9 @@ export function PurchaseOrderNewPage() {
       .get(editId)
       .then((doc) => {
         setDocNo(doc.docNo);
+        setDocStatus(doc.status);
+        // 终态(pending/approved/completed/closed/voided):行不进编辑态,只展示
+        const ro = !isEditable(doc.status);
         headerForm.setFieldsValue({
           docDate: dayjs(doc.docDate),
           supplierId: doc.supplierId,
@@ -112,7 +123,7 @@ export function PurchaseOrderNewPage() {
           lineRemark: l.lineRemark ?? undefined,
         }));
         setData(rows);
-        setEditableKeys(rows.map((r) => r.key));
+        setEditableKeys(ro ? [] : rows.map((r) => r.key));
         // 防止新建时"添加行"自增 key 与回填行 key 冲突
         lineSeq = Math.max(lineSeq, rows.length + 1);
       })
@@ -243,6 +254,7 @@ export function PurchaseOrderNewPage() {
           min={0}
           step={0.01}
           style={{ width: "100%" }}
+          disabled={readonly}
           unitPrice={config.record?.unitPrice}
           taxRate={config.record?.taxRate}
         />
@@ -297,16 +309,21 @@ export function PurchaseOrderNewPage() {
       dataIndex: "lineRemark",
       valueType: "text",
     },
-    {
-      // 显式操作列:EditableProTable 自动 option 列在 scroll 布局下不渲染 td,与入库/销售页同款显式删除;
-      // editable: false 使操作列不参与行表单(否则删除按钮被 Form.Item 包裹,空行无法点删)
-      title: "操作",
-      width: 80,
-      editable: false,
-      render: (_v: unknown, r: LineRow) => (
-        <a onClick={() => removeLine(r.key)}>删除</a>
-      ),
-    },
+    // 显式操作列:EditableProTable 自动 option 列在 scroll 布局下不渲染 td,与入库/销售页同款显式删除;
+    // editable: false 使操作列不参与行表单(否则删除按钮被 Form.Item 包裹,空行无法点删);
+    // 终态只读不渲染删除列
+    ...(readonly
+      ? []
+      : ([
+          {
+            title: "操作",
+            width: 80,
+            editable: false as const,
+            render: (_v: unknown, r: LineRow) => (
+              <a onClick={() => removeLine(r.key)}>删除</a>
+            ),
+          },
+        ] as ProColumns<LineRow>[])),
   ];
 
   const onSubmit = async () => {
@@ -398,6 +415,7 @@ export function PurchaseOrderNewPage() {
           layout="vertical"
           grid
           submitter={false}
+          disabled={readonly}
         >
           <ProFormDatePicker
             name="docDate"
@@ -506,10 +524,12 @@ export function PurchaseOrderNewPage() {
             // 行删除走显式操作列(removeLine),自动 option 列在 scroll 布局下不渲染 body 已弃用
           }}
         />
-        {/* 添加行按钮:明细表正下方,左对齐 */}
-        <div className="doc-form-line-adder">
-          <Button onClick={addLine}>添加行</Button>
-        </div>
+        {/* 添加行按钮:明细表正下方,左对齐(终态只读不渲染) */}
+        {!readonly && (
+          <div className="doc-form-line-adder">
+            <Button onClick={addLine}>添加行</Button>
+          </div>
+        )}
         </div>
         {/* 底部固定操作条:左摘要,中间主按钮居中 */}
         <div className="doc-form-footer">
@@ -520,9 +540,13 @@ export function PurchaseOrderNewPage() {
             </div>
           </div>
           <div className="doc-form-footer-main">
-            <Button type="primary" loading={saving} onClick={onSubmit}>
-              {editId != null ? "保存" : "保存为草稿"}
-            </Button>
+            {readonly ? (
+              <Button onClick={() => navigate("/purchase-orders")}>返回</Button>
+            ) : (
+              <Button type="primary" loading={saving} onClick={onSubmit}>
+                {editId != null ? "保存" : "保存为草稿"}
+              </Button>
+            )}
           </div>
         </div>
       </ProCard>

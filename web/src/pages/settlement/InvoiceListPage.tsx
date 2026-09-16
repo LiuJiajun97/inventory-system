@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, Descriptions, Modal, Space, Table, Tag, App } from "antd";
 import { ProTable } from "@ant-design/pro-components";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { invoiceApi, supplierApi, customerApi } from "../../api";
 import type { Invoice } from "../../types/phase1";
@@ -33,6 +33,7 @@ export function InvoiceListPage() {
   const actionRef = useRef<ActionType>();
   const { hasPerm } = usePermission();
   const location = useLocation();
+  const navigate = useNavigate();
   const { message, modal } = App.useApp();
 
   useEffect(() => {
@@ -126,7 +127,10 @@ export function InvoiceListPage() {
       width: 190,
       fieldProps: { placeholder: "发票号", allowClear: true },
       render: (_v, r) => (
-        <a style={{ fontFamily: "monospace", fontSize: 13 }} onClick={() => void openDetail(r.id)}>
+        <a
+          style={{ fontFamily: "monospace", fontSize: 13 }}
+          onClick={() => navigate("/invoices/new/" + r.id)}
+        >
           {r.docNo}
         </a>
       ),
@@ -224,7 +228,7 @@ export function InvoiceListPage() {
     },
     {
       title: "操作",
-      width: 170,
+      width: 220,
       fixed: "right" as const,
       search: false,
       render: (_v, row) => (

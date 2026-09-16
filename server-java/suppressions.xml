@@ -14,10 +14,10 @@
     构造器"(参数超 7),WarehouseVO 兼容构造器 10 参,同按构造器签名行区间精确豁免。
 -->
 <suppressions>
-    <!-- 入库单服务构造器:10 个依赖注入(Mapper/StockCoreService/DocNoService 等),属 Spring 构造器注入 -->
-    <suppress files="[\\/]InboundServiceImpl\.java" checks="ParameterNumberCheck" lines="107-116"/>
-    <!-- 出库单服务构造器:10 个依赖注入,属 Spring 构造器注入 -->
-    <suppress files="[\\/]OutboundServiceImpl\.java" checks="ParameterNumberCheck" lines="108-117"/>
+    <!-- 入库单服务构造器:15 个依赖注入(Mapper/StockCoreService/DocNoService/退货/期初/客户 Mapper 等),属 Spring 构造器注入 -->
+    <suppress files="[\\/]InboundServiceImpl\.java" checks="ParameterNumberCheck" lines="137-151"/>
+    <!-- 出库单服务构造器:15 个依赖注入(含退货/采购/供应商/批次 Mapper),属 Spring 构造器注入 -->
+    <suppress files="[\\/]OutboundServiceImpl\.java" checks="ParameterNumberCheck" lines="138-152"/>
     <!-- 销售订单服务构造器:11 个依赖注入(含 ApprovalGuard),属 Spring 构造器注入 -->
     <suppress files="[\\/]SalesOrderServiceImpl\.java" checks="ParameterNumberCheck" lines="110-116"/>
     <!-- 库存调整单服务构造器:10 个依赖注入(含 ApprovalGuard/StockCoreService),属 Spring 构造器注入 -->
