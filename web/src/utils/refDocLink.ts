@@ -1,23 +1,22 @@
- // 关联单据跳转映射:出入库列表"关联单号"链接与详情弹窗共用
-// 五种 refType 各跳对应单据类型列表页(带 ?docNo= 参数,目标页自动预填筛选);
-// 未知 refType 返回 undefined,调用方按"不跳转"处理
+// 关联单据跳转映射:出入库列表"关联单号"链接与详情弹窗共用
+// 优先用 refDocId 直跳对应单据的只读详情页(/xxx/new/:id,页面按状态只读);
+// 无 id 时退回列表页 ?docNo= 筛选跳转;未知 refType 返回 undefined,调用方按"不跳转"处理
+const VIEW_ROUTE_BY_TYPE: Record<string, string> = {
+  purchase: "/purchase-orders/new/",
+  sales: "/sales-orders/new/",
+  purchase_return: "/purchase-returns/new/",
+  sales_return: "/sales-returns/new/",
+  opening: "/opening/new/",
+};
+
 export function refDocHref(
   refType: string | null | undefined,
+  refDocId: number | null | undefined,
   refDocNo: string | null | undefined,
 ): string | undefined {
-  if (!refDocNo) return undefined;
-  switch (refType) {
-    case "purchase":
-      return `/purchase-orders?docNo=${encodeURIComponent(refDocNo)}`;
-    case "sales":
-      return `/sales-orders?docNo=${encodeURIComponent(refDocNo)}`;
-    case "purchase_return":
-      return `/purchase-returns?docNo=${encodeURIComponent(refDocNo)}`;
-    case "sales_return":
-      return `/sales-returns?docNo=${encodeURIComponent(refDocNo)}`;
-    case "opening":
-      return `/opening?docNo=${encodeURIComponent(refDocNo)}`;
-    default:
-      return undefined;
-  }
+  const base = refType ? VIEW_ROUTE_BY_TYPE[refType] : undefined;
+  if (!base) return undefined;
+  if (refDocId != null) return base + refDocId;
+  if (refDocNo) return base.replace("/new/", "") + `?docNo=${encodeURIComponent(refDocNo)}`;
+  return undefined;
 }

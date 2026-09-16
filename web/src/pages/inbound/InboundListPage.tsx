@@ -43,13 +43,15 @@ function parseSerials(v?: string | null): string {
 // 关联单号单元格:未知 refType 不跳转时渲染纯文本,无关联显示 "-"
 function RefDocNoLink({
   refType,
+  refDocId,
   refDocNo,
 }: {
   refType?: string | null;
+  refDocId?: number | null;
   refDocNo?: string | null;
 }) {
   if (!refDocNo) return <span>-</span>;
-  const href = refDocHref(refType, refDocNo);
+  const href = refDocHref(refType, refDocId, refDocNo);
   return href ? (
     <Link to={href} style={{ fontFamily: "monospace", fontSize: 13 }}>
       {refDocNo}
@@ -347,7 +349,7 @@ const request = async (params: {
       dataIndex: "refDocNo",
       width: 170,
       search: false,
-      render: (_v, r) => <RefDocNoLink refType={r.refType} refDocNo={r.refDocNo} />,
+      render: (_v, r) => <RefDocNoLink refType={r.refType} refDocId={r.refDocId} refDocNo={r.refDocNo} />,
     },
     {
       title: "供应商",
@@ -490,7 +492,7 @@ const request = async (params: {
                 {detail.refType ? REF_TYPE_LABEL[detail.refType] ?? detail.refType : "-"}
               </Descriptions.Item>
               <Descriptions.Item label="关联单号">
-                <RefDocNoLink refType={detail.refType} refDocNo={detail.refDocNo} />
+                <RefDocNoLink refType={detail.refType} refDocId={detail.refDocId} refDocNo={detail.refDocNo} />
               </Descriptions.Item>
               <Descriptions.Item label="备注" span={2}>
                 {detail.remark ?? "-"}
