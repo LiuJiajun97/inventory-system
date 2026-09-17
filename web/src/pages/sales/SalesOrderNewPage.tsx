@@ -204,7 +204,7 @@ export function SalesOrderNewPage() {
   const lineColumns = [
     {
       title: "物品",
-      width: 240,
+      width: 250,
       render: (_v: unknown, l: LineRow) => (
         <Select
           showSearch
@@ -220,7 +220,7 @@ export function SalesOrderNewPage() {
     },
     {
       title: "订购数量",
-      width: 120,
+      width: 100,
       render: (_v: unknown, l: LineRow) => (
         <InputNumber
           min={0.0001}
@@ -236,7 +236,7 @@ export function SalesOrderNewPage() {
     },
     {
       title: "要求交付日",
-      width: 160,
+      width: 130,
       render: (_v: unknown, l: LineRow) => (
         <DatePicker
           style={{ width: "100%" }}
@@ -250,7 +250,7 @@ export function SalesOrderNewPage() {
     },
     {
       title: "不含税单价",
-      width: 120,
+      width: 110,
       render: (_v: unknown, l: LineRow) => (
         <InputNumber
           min={0}
@@ -270,7 +270,7 @@ export function SalesOrderNewPage() {
       // V20 含税单价:与不含税单价二选一(都填时服务端按不含税优先)
       // V23.1:两单价按税率推算不一致时输入框右侧同行加小图标 + Tooltip 悬浮展示完整文案(纯展示,不阻断提交)
       title: "含税单价",
-      width: 120,
+      width: 130,
       render: (_v: unknown, l: LineRow) => {
         const hint = priceMismatchHint(l.unitPrice, l.taxPrice, l.taxRate);
         return (
@@ -301,7 +301,7 @@ export function SalesOrderNewPage() {
     {
       // V20 金额三列:只读预览(与后端同口径),提交后以服务端重算为准
       title: "不含税金额",
-      width: 110,
+      width: 90,
       align: "right" as const,
       className: "num-cell",
       render: (_v: unknown, l: LineRow) => {
@@ -311,7 +311,7 @@ export function SalesOrderNewPage() {
     },
     {
       title: "税额",
-      width: 100,
+      width: 90,
       align: "right" as const,
       className: "num-cell",
       render: (_v: unknown, l: LineRow) => {
@@ -321,7 +321,7 @@ export function SalesOrderNewPage() {
     },
     {
       title: "含税金额",
-      width: 110,
+      width: 90,
       align: "right" as const,
       className: "num-cell",
       render: (_v: unknown, l: LineRow) => {
@@ -331,7 +331,7 @@ export function SalesOrderNewPage() {
     },
     {
       title: "税率(%)",
-      width: 110,
+      width: 90,
       render: (_v: unknown, l: LineRow) => (
         <InputNumber
           min={0}
@@ -350,6 +350,7 @@ export function SalesOrderNewPage() {
     },
     {
       title: "行备注",
+      width: 120,
       render: (_v: unknown, l: LineRow) => (
         <Input
           value={l.lineRemark}
@@ -366,7 +367,7 @@ export function SalesOrderNewPage() {
       : [
           {
             title: "",
-            width: 60,
+            width: 50,
             render: (_v: unknown, l: LineRow) => (
               <a
                 onClick={() => setLines((ls) => (ls.length > 1 ? ls.filter((x) => x.key !== l.key) : ls))}
@@ -490,7 +491,7 @@ export function SalesOrderNewPage() {
             dataSource={lines}
             pagination={false}
             columns={lineColumns}
-            scroll={{ x: 1560, y: "calc(100vh - 520px)" }}
+            scroll={{ x: 1250, y: "calc(100vh - 520px)" }}
           />
           {/* 添加行按钮:明细表正下方,左对齐(终态只读不渲染) */}
           {!readonly && (

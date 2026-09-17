@@ -13,11 +13,12 @@ import {
   Button,
   Table,
   Tag,
+  Tooltip,
   App,
 } from "antd";
-import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import { PlusOutlined, DeleteOutlined, InfoCircleOutlined, ArrowLeftOutlined, ExclamationCircleFilled } from "@ant-design/icons";
 import { fmtMoney } from "../../utils/format";
-import { previewLineMoney } from "../../utils/lineMoney";
+import { previewLineMoney, priceMismatchHint, recalcPricePair } from "../../utils/lineMoney";
 import { ProCard } from "@ant-design/pro-components";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { ColumnsType } from "antd/es/table";
@@ -51,6 +52,37 @@ function parseSerials(s?: string | null): string[] | undefined {
   } catch {
     return undefined;
   }
+}
+
+// V23.1:含税单价输入框,与不含税单价按税率推算不一致时在输入框右侧同行渲染小图标 + Tooltip
+function OutboundTaxPriceField(props: {
+  unitPrice?: number;
+  taxRate?: number;
+  value?: number;
+  disabled?: boolean;
+  onChange?: (v: number | null) => void;
+}) {
+  const { unitPrice, taxRate, value, disabled, onChange } = props;
+  const hint = priceMismatchHint(unitPrice, value == null ? undefined : Number(value), taxRate);
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", width: "100%" }}>
+      <InputNumber
+        min={0}
+        step={0.01}
+        value={value}
+        disabled={disabled}
+        onChange={onChange}
+        style={{ width: "calc(100% - 22px)" }}
+      />
+      {hint != null ? (
+        <Tooltip title={hint}>
+          <ExclamationCircleFilled
+            style={{ color: "#fa8c16", fontSize: 14, marginLeft: 6, cursor: "help" }}
+          />
+        </Tooltip>
+      ) : null}
+    </span>
+  );
 }
 
 export function OutboundFormPage() {
@@ -161,6 +193,10 @@ export function OutboundFormPage() {
           itemId: it.itemId,
           qty: Number(it.orderedQty) - Number(it.shippedQty),
           refLineId: it.id,
+          // 订单行价格预填展示(提交时服务端按订单行覆盖,预填只为编辑可见)
+          unitPrice: it.unitPrice == null ? undefined : Number(it.unitPrice),
+          taxRate: it.taxRate == null ? undefined : Number(it.taxRate),
+          taxPrice: it.taxPrice == null ? undefined : Number(it.taxPrice),
         }));
       if (pending.length === 0) {
         message.warning("该销售单已无未发数量,已不生成模板行");
@@ -202,7 +238,30 @@ export function OutboundFormPage() {
   };
 
   const updateLine = <K extends keyof Line>(idx: number, key: K, val: Line[K]) => {
-    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, [key]: val } : l)));
+    setLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== idx) return l;
+        let next: Line = { ...l, [key]: val };
+        // 选物品联动(与采购/销售同口径):税率/不含税单价未填 → 带出物品默认值,仅预填可改
+        if (key === "itemId" && next.itemId != null) {
+          const item = items.find((it) => it.id === next.itemId);
+          if (next.taxRate == null && item) {
+            next.taxRate = Number(item.defaultTaxRate ?? 13);
+          }
+          if (next.unitPrice == null && item?.referenceSalePrice != null) {
+            next.unitPrice = Number(item.referenceSalePrice);
+          }
+        }
+        // V23.1:双单价双向联动(与采购/销售同口径):按刚改的字段重算另一个;
+        // 清空某框时 recalcPricePair 返回空对象不动另一个
+        if (next.taxRate != null && (key === "unitPrice" || key === "taxPrice" || key === "taxRate" || key === "itemId")) {
+          const changed: "unit" | "tax" | "rate" =
+            key === "unitPrice" ? "unit" : key === "taxPrice" ? "tax" : key === "itemId" ? "unit" : "rate";
+          return { ...next, ...recalcPricePair(next.unitPrice, next.taxPrice, next.taxRate, changed) };
+        }
+        return next;
+      }),
+    );
   };
 
   const onSubmit = async () => {
@@ -278,7 +337,7 @@ export function OutboundFormPage() {
     { title: "行号", width: 50, render: (_v, _r, idx) => idx + 1 },
     {
       title: "物品",
-      width: 220,
+      width: 250,
       render: (_v, r) => (
         <Select
           showSearch
@@ -315,7 +374,7 @@ export function OutboundFormPage() {
     {
       // V10 不含税单价(可空,手工出库选填;销售发货由服务端按订单行覆盖)
       title: "不含税单价",
-      width: 120,
+      width: 110,
       render: (_v, r) => (
         <InputNumber
           min={0}
@@ -330,12 +389,11 @@ export function OutboundFormPage() {
     {
       // V20 含税单价(可空,手工出库选填;销售发货由服务端按订单行覆盖)
       title: "含税单价",
-      width: 120,
+      width: 130,
       render: (_v, r) => (
-        <InputNumber
-          min={0}
-          step={0.01}
-          style={{ width: "100%" }}
+        <OutboundTaxPriceField
+          unitPrice={r.line.unitPrice}
+          taxRate={r.line.taxRate}
           value={r.line.taxPrice}
           disabled={readonly}
           onChange={(v) => updateLine(r.idx, "taxPrice", v == null ? undefined : Number(v))}
@@ -345,7 +403,7 @@ export function OutboundFormPage() {
     {
       // V10 税率(可空,空按 0 算)
       title: "税率(%)",
-      width: 110,
+      width: 90,
       render: (_v, r) => (
         <InputNumber
           min={0}
@@ -361,7 +419,7 @@ export function OutboundFormPage() {
     {
       // V20 金额三列(只读预览,与后端同口径)
       title: "不含税金额",
-      width: 110,
+      width: 90,
       align: "right",
       render: (_v, r) => {
         const pm = previewLineMoney(r.line.qty ?? 0, r.line.unitPrice, r.line.taxPrice, r.line.taxRate);
@@ -370,7 +428,7 @@ export function OutboundFormPage() {
     },
     {
       title: "税额",
-      width: 100,
+      width: 90,
       align: "right",
       render: (_v, r) => {
         const pm = previewLineMoney(r.line.qty ?? 0, r.line.unitPrice, r.line.taxPrice, r.line.taxRate);
@@ -379,7 +437,7 @@ export function OutboundFormPage() {
     },
     {
       title: "含税金额",
-      width: 110,
+      width: 90,
       align: "right",
       render: (_v, r) => {
         const pm = previewLineMoney(r.line.qty ?? 0, r.line.unitPrice, r.line.taxPrice, r.line.taxRate);
@@ -388,7 +446,7 @@ export function OutboundFormPage() {
     },
     {
       title: "批次号",
-      width: 180,
+      width: 150,
       render: (_v, r) =>
         currentWarehouse?.enableBatch ? (
           <div>
@@ -410,7 +468,7 @@ export function OutboundFormPage() {
     },
     {
       title: "库位",
-      width: 150,
+      width: 110,
       render: (_v, r) =>
         currentWarehouse?.enableLocation ? (
           <Select
@@ -431,7 +489,7 @@ export function OutboundFormPage() {
     },
     {
       title: "序列号",
-      width: 280,
+      width: 180,
       render: (_v, r) => {
         if (!currentWarehouse?.enableSerial) {
           return <Tag>未启用</Tag>;
@@ -595,7 +653,7 @@ export function OutboundFormPage() {
             dataSource={lines.map((l, i) => ({ idx: i, line: l }))}
             pagination={false}
             size="small"
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1490 }}
           />
           {/* 添加行按钮:明细表正下方,左对齐(只读详情不渲染) */}
           {!readonly && (

@@ -3,6 +3,7 @@ package com.company.inventory.service.rbac.impl;
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.constant.MenuType;
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.mapper.rbac.MenuMapper;
 import com.company.inventory.mapper.rbac.RoleMenuMapper;
 import com.company.inventory.model.dto.rbac.MenuCreateDTO;
@@ -50,15 +51,21 @@ public class MenuServiceImpl implements MenuService {
     /** 角色-菜单绑定 Mapper(删除菜单连带清理用)。 */
     private final RoleMenuMapper roleMenuMapper;
 
+    /** 权限热点缓存(权限码/菜单变更后全清,先落库后清缓存,失败靠 TTL 兜底)。 */
+    private final AuthCache authCache;
+
     /**
      * 构造服务。
      *
      * @param menuMapper     菜单 Mapper
      * @param roleMenuMapper 角色-菜单绑定 Mapper
+     * @param authCache      权限热点缓存
      */
-    public MenuServiceImpl(MenuMapper menuMapper, RoleMenuMapper roleMenuMapper) {
+    public MenuServiceImpl(MenuMapper menuMapper, RoleMenuMapper roleMenuMapper,
+            AuthCache authCache) {
         this.menuMapper = menuMapper;
         this.roleMenuMapper = roleMenuMapper;
+        this.authCache = authCache;
     }
 
     /**
@@ -145,6 +152,8 @@ public class MenuServiceImpl implements MenuService {
         menu.setStatus(STATUS_ENABLED);
         menuMapper.insert(menu);
         LOGGER.info("新建菜单: {}", menu.getMenuCode());
+        // 落库成功后全清权限缓存(先落库后清缓存,清理失败靠 TTL 兜底)
+        authCache.evictByPrefix();
         return toFullNode(menu);
     }
 
@@ -182,6 +191,8 @@ public class MenuServiceImpl implements MenuService {
         }
         menuMapper.updateById(menu);
         LOGGER.info("更新菜单: id={}", id);
+        // 落库成功后全清权限缓存(先落库后清缓存,清理失败靠 TTL 兜底)
+        authCache.evictByPrefix();
         return toFullNode(menuMapper.selectById(id));
     }
 
@@ -204,6 +215,8 @@ public class MenuServiceImpl implements MenuService {
                 .eq(RoleMenuDO::getMenuId, id));
         menuMapper.deleteById(id);
         LOGGER.info("删除菜单: id={}", id);
+        // 落库事务成功后全清权限缓存(先落库后清缓存,清理失败靠 TTL 兜底)
+        authCache.evictByPrefix();
     }
 
     /**

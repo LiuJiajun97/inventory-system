@@ -6,9 +6,10 @@ package com.company.inventory.config;
 
 
 
+import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.common.support.DataScope;
+import com.company.inventory.common.support.TokenRevocationStore;
 import com.company.inventory.common.support.UserContext;
-import com.company.inventory.mapper.rbac.UserWarehouseMapper;
 import com.company.inventory.service.rbac.RbacGuardService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
@@ -33,6 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * JWT 拦截器:校验 Authorization: Bearer &lt;token&gt;,注入用户信息,并按 {@link RequireRole} 做角色鉴权。
@@ -62,6 +64,12 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     /** 请求属性:姓名。 */
     public static final String ATTR_NAME = "auth.name";
+
+    /** 请求属性:JWT id(登出吊销用,旧 token 无 jti 时为 null)。 */
+    public static final String ATTR_JTI = "auth.jti";
+
+    /** 请求属性:当前 token 剩余有效期(秒,登出黑名单 TTL 用)。 */
+    public static final String ATTR_JTI_REMAIN_SECONDS = "auth.jtiRemainSeconds";
 
     /** Authorization 头名称。 */
     private static final String HEADER_AUTHORIZATION = "Authorization";
@@ -95,7 +103,8 @@ public class JwtInterceptor implements HandlerInterceptor {
     private final ObjectMapper objectMapper;
     private final long expiresSeconds;
     private final RbacGuardService rbacGuardService;
-    private final UserWarehouseMapper userWarehouseMapper;
+    private final AuthCache authCache;
+    private final TokenRevocationStore tokenRevocationStore;
 
     /**
      * 构造拦截器。
@@ -103,22 +112,26 @@ public class JwtInterceptor implements HandlerInterceptor {
      * @param jwtProperties        JWT 配置
      * @param objectMapper         JSON 序列化器
      * @param rbacGuardService     RBAC 鉴权支撑服务(@RequirePermission 用)
-     * @param userWarehouseMapper  用户-仓库授权 Mapper(数据权限用)
+     * @param authCache            权限热点缓存(权限码 + 数据权限仓库授权)
+     * @param tokenRevocationStore 登出吊销黑名单
      */
     public JwtInterceptor(JwtProperties jwtProperties, ObjectMapper objectMapper,
-            RbacGuardService rbacGuardService, UserWarehouseMapper userWarehouseMapper) {
+            RbacGuardService rbacGuardService, AuthCache authCache,
+            TokenRevocationStore tokenRevocationStore) {
         this.key = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
         this.parser = Jwts.parser().verifyWith(key).build();
         this.objectMapper = objectMapper;
         this.expiresSeconds = jwtProperties.getExpiresSeconds();
         this.rbacGuardService = rbacGuardService;
-        this.userWarehouseMapper = userWarehouseMapper;
+        this.authCache = authCache;
+        this.tokenRevocationStore = tokenRevocationStore;
     }
 
     /**
      * 签发 JWT(payload:sub/username/roles/name,过期时间取配置,默认 8 小时)。
      *
-     * <p>roles 为多角色 claim(新版);旧版单 role claim 在解析端兼容回退。</p>
+     * <p>roles 为多角色 claim(新版);jti 为 JWT id(登出吊销用);旧版单 role claim
+     * 与无 jti 旧 token 在解析端兼容回退。</p>
      *
      * @param userId   用户 ID
      * @param username 用户名
@@ -129,6 +142,7 @@ public class JwtInterceptor implements HandlerInterceptor {
     public String issueToken(long userId, String username, List<String> roles, String name) {
         Date now = new Date();
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(String.valueOf(userId))
                 .claim("username", username)
                 .claim(CLAIM_ROLES, roles)
@@ -181,6 +195,22 @@ public class JwtInterceptor implements HandlerInterceptor {
         request.setAttribute(ATTR_USER_ID, Long.parseLong(claims.getSubject()));
         request.setAttribute(ATTR_USERNAME, claims.get("username", String.class));
 
+        // 登出失效:验签通过后查吊销黑名单;旧 token 无 jti 跳过(自然过期)
+        String jti = claims.getId();
+        if (jti != null) {
+            request.setAttribute(ATTR_JTI, jti);
+            // 剩余有效期(秒):登出时作为黑名单 key 的 TTL 传入
+            long remainSeconds =
+                    (claims.getExpiration().getTime() - System.currentTimeMillis()) / 1000L;
+            request.setAttribute(ATTR_JTI_REMAIN_SECONDS, Math.max(0L, remainSeconds));
+            if (tokenRevocationStore.isRevoked(jti)) {
+                UserContext.clear();
+                DataScope.clear();
+                writeError(response, HTTP_UNAUTHORIZED, "UNAUTHORIZED", "Unauthorized", MSG_UNAUTHORIZED);
+                return false;
+            }
+        }
+
         // 角色解析:新版 roles 列表优先;旧版单 role claim 回退包成单元素集合(不断旧 token)
         Set<String> roleCodes = resolveRoleCodes(claims);
         request.setAttribute(ATTR_ROLES, roleCodes);
@@ -191,12 +221,12 @@ public class JwtInterceptor implements HandlerInterceptor {
         // 写入用户上下文,供 MyBatis-Plus 自动填充读取
         UserContext.set(claims.get("username", String.class));
 
-        // 数据权限:admin 豁免(null 不过滤);其余按 sys_user_warehouse 授权仓过滤(每请求 1 条 SQL,单机不加缓存)
+        // 数据权限:admin 豁免(null 不过滤);其余按 sys_user_warehouse 授权仓过滤
+        // (走 Redis 权限缓存,miss 回源 DB,写路径变更主动失效 + TTL 兜底)
         if (roleCodes.contains(ROLE_ADMIN)) {
             DataScope.set(null);
         } else {
-            List<Long> allowed = userWarehouseMapper.selectWarehouseIdsByUserId(
-                    Long.parseLong(claims.getSubject()));
+            List<Long> allowed = authCache.warehouseIds(Long.parseLong(claims.getSubject()));
             DataScope.set(allowed);
         }
 

@@ -570,3 +570,17 @@ export interface SettlementDashboard {
   apBalance: number;
   arBalance: number;
 }
+
+/**
+ * 统一 API 错误体(与后端 GlobalExceptionHandler 对齐)。
+ * 业务错(401/403/404 等)带 code;参数校验/兜底错无 code;
+ * traceId 由 TraceIdFilter 注入,用于前后端联调排障。
+ */
+export interface ApiErrorBody {
+  statusCode: number;
+  code?: string;
+  error: string;
+  message: string;
+  /** 请求链路追踪 ID(与响应头 X-Trace-Id 一致,可空) */
+  traceId?: string;
+}

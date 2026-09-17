@@ -52,6 +52,8 @@ export const authApi = {
     http.post<unknown, LoginResponse>("/auth/login", { username, password }),
   changePassword: (oldPassword: string, newPassword: string) =>
     http.post("/auth/password", { oldPassword, newPassword }),
+  // 登出:后端吊销当前 token 的 jti(失败也清本地,降级为自然过期)
+  logout: () => http.post<unknown, { ok: boolean }>("/auth/logout"),
   me: () => http.get<unknown, UserInfo>("/auth/me"),
   // 当前用户(多角色并集)菜单树:目录/菜单节点 + 各节点 permissions 权限码
   menus: () => http.get<unknown, MenuNode[]>("/auth/menus"),
@@ -526,8 +528,11 @@ export const inboundApi = {
       locationId?: number;
       serialNos?: string[];
       refLineId?: number;
-      // V10 不含税单价(可空)
+      // V10 不含税单价/税率(可空;采购到货由服务端按订单行覆盖)
       unitPrice?: number;
+      taxRate?: number;
+      // V20 含税单价(可空)
+      taxPrice?: number;
     }>;
   }) => http.post("/inbound", data),
   list: (params: {

@@ -2,6 +2,8 @@ package com.company.inventory.service.impl;
 
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.LoginGuard;
+import com.company.inventory.common.support.TokenRevocationStore;
 import com.company.inventory.config.JwtInterceptor;
 import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.UserMapper;
@@ -69,18 +71,29 @@ public class AuthServiceImpl implements AuthService {
     /** JWT 拦截器(复用其签发能力)。 */
     private final JwtInterceptor jwtInterceptor;
 
+    /** 登录防爆破守卫。 */
+    private final LoginGuard loginGuard;
+
+    /** JWT 吊销黑名单(登出失效用)。 */
+    private final TokenRevocationStore tokenRevocationStore;
+
     /**
      * 构造服务。
      *
-     * @param userMapper     用户 Mapper
-     * @param userRoleMapper 用户-角色绑定 Mapper
-     * @param jwtInterceptor JWT 拦截器
+     * @param userMapper           用户 Mapper
+     * @param userRoleMapper       用户-角色绑定 Mapper
+     * @param jwtInterceptor       JWT 拦截器
+     * @param loginGuard           登录防爆破守卫
+     * @param tokenRevocationStore JWT 吊销黑名单
      */
     public AuthServiceImpl(UserMapper userMapper, UserRoleMapper userRoleMapper,
-            JwtInterceptor jwtInterceptor) {
+            JwtInterceptor jwtInterceptor, LoginGuard loginGuard,
+            TokenRevocationStore tokenRevocationStore) {
         this.userMapper = userMapper;
         this.userRoleMapper = userRoleMapper;
         this.jwtInterceptor = jwtInterceptor;
+        this.loginGuard = loginGuard;
+        this.tokenRevocationStore = tokenRevocationStore;
     }
 
     /**
@@ -92,14 +105,20 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public LoginVO login(String username, String password) {
+        // 防爆破:锁定中直接 429(含剩余秒数),不再碰密码校验
+        loginGuard.checkLocked(username);
         UserDO user = userMapper.selectOne(new LambdaQueryWrapper<UserDO>()
                 .eq(UserDO::getUsername, username));
         if (user == null || !Integer.valueOf(STATUS_ENABLED).equals(user.getStatus())) {
+            loginGuard.recordFailure(username);
             throw BizException.unauthorized("用户名或密码错误");
         }
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            loginGuard.recordFailure(username);
             throw BizException.unauthorized("用户名或密码错误");
         }
+        // 登录成功清零失败计数
+        loginGuard.reset(username);
         // RBAC:角色取 sys_user_role 多角色并集;未绑定角色的存量用户回退读 role 列(兼容)
         List<String> roles = userRoleMapper.selectRoleCodesByUserId(user.getId());
         if (roles == null || roles.isEmpty()) {
@@ -137,5 +156,21 @@ public class AuthServiceImpl implements AuthService {
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
         LOGGER.info("用户修改密码成功: userId={}", userId);
+    }
+
+    /**
+     * 登出:把当前 token 的 jti 拉黑,拉黑 TTL 取 token 剩余有效期(无 jti 的旧 token 跳过,自然过期)。
+     *
+     * @param jti        当前 token 的 JWT id(可为 null)
+     * @param ttlSeconds 当前 token 剩余有效期(秒,签发时算好传入)
+     */
+    @Override
+    public void logout(String jti, long ttlSeconds) {
+        if (jti == null || ttlSeconds <= 0) {
+            // token 已临期:不拉黑,自然过期
+            return;
+        }
+        tokenRevocationStore.revoke(jti, ttlSeconds);
+        LOGGER.info("用户登出,token 已吊销: jti={}, ttlSeconds={}", jti, ttlSeconds);
     }
 }

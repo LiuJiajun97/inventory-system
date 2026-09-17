@@ -17,3 +17,18 @@ services:
     # 本地目录持久化更可靠。路径请按本机环境修改(目录不存在时 Docker 会自动创建)。
     volumes:
       - D:\docker\pgdata:/var/lib/postgresql/data
+  redis:
+    image: redis:7.4-alpine
+    container_name: inventory-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+    # 数据目录用本地绑定挂载(而非命名 volume):命名 volume 在部分平台/场景下会随容器环境重建而丢失,
+    # 本地目录持久化更可靠。路径请按本机环境修改(目录不存在时 Docker 会自动创建)。
+    volumes:
+      - D:\docker\redisdata:/data

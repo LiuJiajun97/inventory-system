@@ -95,6 +95,21 @@ public class AuthController {
     }
 
     /**
+     * 登出:吊销当前 token 的 jti(登出后旧 token 立即失效,旧无 jti token 自然过期)。
+     *
+     * @param request 请求(取当前 token 的 jti)
+     * @return {ok:true}
+     */
+    @Operation(summary = "登出(吊销当前 token)")
+    @PostMapping("/logout")
+    public Map<String, Object> logout(HttpServletRequest request) {
+        String jti = (String) request.getAttribute(JwtInterceptor.ATTR_JTI);
+        Long remainSeconds = (Long) request.getAttribute(JwtInterceptor.ATTR_JTI_REMAIN_SECONDS);
+        authService.logout(jti, remainSeconds == null ? 0L : remainSeconds);
+        return Map.of("ok", Boolean.TRUE);
+    }
+
+    /**
      * 当前登录用户信息。
      *
      * @param request 请求

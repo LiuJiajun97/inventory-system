@@ -3,6 +3,7 @@ package com.company.inventory.service.impl;
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
 import com.company.inventory.common.page.PageResult;
+import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.model.dto.user.UserCreateDTO;
 import com.company.inventory.model.dto.user.UserUpdateDTO;
 import com.company.inventory.model.entity.rbac.RoleDO;
@@ -61,6 +62,9 @@ public class UserServiceImpl implements UserService {
     /** 仓库 Mapper。 */
     private final WarehouseMapper warehouseMapper;
 
+    /** 权限热点缓存(角色/仓库授权变更后全清,先落库后清缓存,失败靠 TTL 兜底)。 */
+    private final AuthCache authCache;
+
     /**
      * 构造服务。
      *
@@ -69,15 +73,17 @@ public class UserServiceImpl implements UserService {
      * @param userWarehouseMapper 用户-仓库 Mapper
      * @param roleMapper          角色 Mapper
      * @param warehouseMapper     仓库 Mapper
+     * @param authCache           权限热点缓存
      */
     public UserServiceImpl(UserMapper userMapper, UserRoleMapper userRoleMapper,
             UserWarehouseMapper userWarehouseMapper, RoleMapper roleMapper,
-            WarehouseMapper warehouseMapper) {
+            WarehouseMapper warehouseMapper, AuthCache authCache) {
         this.userMapper = userMapper;
         this.userRoleMapper = userRoleMapper;
         this.userWarehouseMapper = userWarehouseMapper;
         this.roleMapper = roleMapper;
         this.warehouseMapper = warehouseMapper;
+        this.authCache = authCache;
     }
 
     /**
@@ -103,6 +109,8 @@ public class UserServiceImpl implements UserService {
 
     /**
      * 新建用户(多角色,首角色写入已废弃的 role 列)。
+     *
+     * <p>落库事务成功后全清权限缓存(先落库后清缓存,清理失败靠 TTL 兜底)。</p>
      *
      * @param dto 入参
      * @return 新用户
@@ -132,11 +140,14 @@ public class UserServiceImpl implements UserService {
         }
         LOGGER.info("新建用户: username={}, roleIds={}, warehouseIds={}",
                 dto.username(), dto.roleIds(), dto.warehouseIds());
+        authCache.evictByPrefix();
         return toVO(userMapper.selectById(user.getId()));
     }
 
     /**
      * 更新用户(部分字段;roleIds/warehouseIds 先删后插 upsert)。
+     *
+     * <p>落库事务成功后全清权限缓存(先落库后清缓存,清理失败靠 TTL 兜底)。</p>
      *
      * @param id  用户 ID
      * @param dto 入参
@@ -178,6 +189,7 @@ public class UserServiceImpl implements UserService {
         LOGGER.info("更新用户: userId={}, fields={name={}, roleIds={}, warehouseIds={}, status={}, password={}}",
                 id, StringUtils.hasText(dto.name()), dto.roleIds(), dto.warehouseIds(),
                 dto.status(), StringUtils.hasText(dto.password()));
+        authCache.evictByPrefix();
         return toVO(userMapper.selectById(id));
     }
 

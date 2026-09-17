@@ -179,6 +179,9 @@ public final class ErrorCode {
     /** HTTP 405。 */
     public static final int HTTP_METHOD_NOT_ALLOWED = 405;
 
+    /** HTTP 429(限流/重复请求)。 */
+    public static final int HTTP_TOO_MANY_REQUESTS = 429;
+
     /** HTTP 500。 */
     public static final int HTTP_INTERNAL_ERROR = 500;
 

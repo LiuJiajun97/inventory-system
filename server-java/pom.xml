@@ -44,6 +44,21 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
+        <!-- 可观测性:actuator(health/info/metrics,版本随 parent 管理;本任务书允许的唯一新增依赖) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- Redis(Lettuce,Boot 默认客户端):幂等/登出黑名单/登录锁定状态 + 权限缓存,版本随 parent 管理 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <!-- Lettuce 连接池(版本由 Boot BOM 管理) -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
         <!-- MyBatis-Plus(Boot3 专用 starter,含分页插件) -->
         <dependency>
             <groupId>com.baomidou</groupId>

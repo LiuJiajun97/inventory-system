@@ -11,6 +11,16 @@ spring:
     url: jdbc:postgresql://127.0.0.1:5433/inventory
     username: inv
     password: inv123
+  # Redis(Lettuce):幂等/登出黑名单/登录锁定状态 + 权限缓存,host/port 走环境变量可覆盖
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
   jackson:
     # 契约要求:remark/location/batch 等空字段必须出现在响应 JSON 中,保持默认包含 null
     serialization:
@@ -25,10 +35,15 @@ mybatis-plus:
     banner: false
   # 分页插件在 MybatisPlusConfig 中注册
 
-# JWT:secret 走环境变量,默认开发值;8 小时过期
+# JWT:secret 走环境变量,默认开发值;2 小时过期(登出即吊销,故缩短有效期)
 jwt:
   secret: ${JWT_SECRET:dev-secret-please-change-in-production-9f3a8b2c1e4d}
-  expires-seconds: 28800
+  expires-seconds: 7200
+
+# 登录防爆破:连续失败次数上限与锁定时长(秒)
+login:
+  max-attempts: 5
+  lock-seconds: 300
 
 # 操作日志:保留天数(每天 3 点定时清理早于该天数的记录)
 operation-log:
@@ -43,6 +58,15 @@ springdoc:
     doc-expansion: list
     deep-linking: true
 
+# 结构化日志:控制台输出 JSON(零新依赖,Spring Boot 3 内置;
+# 自定义 logback-spring.xml 场景用 format.console 驱动 StructuredLogEncoder,而非 console.json)
 logging:
   level:
     com.company.inventory: info
+
+# 可观测性:暴露 health/info/metrics(不加 prometheus registry,无采集端)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  日志配置:
+  - CONSOLE:Boot 默认格式(彩色标准布局),仅在线程名后追加 traceId 位。
+  - FILE:logs/application.log,滚动策略 10MB × 10 份,pattern 带 traceId。
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%clr(%d{${LOG_DATEFORMAT_PATTERN:-yyyy-MM-dd'T'HH:mm:ss.SSSXXX}}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr([%X{traceId:-}]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/application.log.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>10</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{traceId:-}] %logger{40} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- RBAC 三张关联表(sys_user_role/sys_user_warehouse/sys_role_menu)为联合键无 id 列,
+         MyBatis-Plus 启动扫描无主键 DO 的固定警告(每类 2 行)属已知无害:
+         三表 CRUD 全走 Mapper 自定义 SQL 或 wrapper 条件方法,不用任何 *ById 方法,
+         此处压到 ERROR 防每次启动刷屏,非隐藏真实问题。 -->
+    <logger name="com.baomidou.mybatisplus.core.metadata.TableInfoHelper" level="ERROR"/>
+    <logger name="com.baomidou.mybatisplus.core.injector.DefaultSqlInjector" level="ERROR"/>
+
+    <!-- 浏览器带百度统计等第三方 cookie,格式 Tomcat 不认会逐条 WARN;服务端只忽略不影响请求,压掉 -->
+    <logger name="org.apache.tomcat.util.http.parser.Cookie" level="ERROR"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

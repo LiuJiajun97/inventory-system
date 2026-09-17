@@ -24,17 +24,22 @@ public class WebMvcConfig implements WebMvcConfigurer {
     /** JWT 拦截器。 */
     private final JwtInterceptor jwtInterceptor;
 
+    /** 写接口幂等拦截器。 */
+    private final IdempotencyInterceptor idempotencyInterceptor;
+
     /**
      * 构造配置。
      *
-     * @param jwtInterceptor JWT 拦截器
+     * @param jwtInterceptor         JWT 拦截器
+     * @param idempotencyInterceptor 写接口幂等拦截器
      */
-    public WebMvcConfig(JwtInterceptor jwtInterceptor) {
+    public WebMvcConfig(JwtInterceptor jwtInterceptor, IdempotencyInterceptor idempotencyInterceptor) {
         this.jwtInterceptor = jwtInterceptor;
+        this.idempotencyInterceptor = idempotencyInterceptor;
     }
 
     /**
-     * 注册拦截器:全部 /api/v1/** 需登录,登录接口放行。
+     * 注册拦截器:全部 /api/v1/** 需登录(登录接口放行),写接口再叠加幂等拦截。
      *
      * @param registry 拦截器注册表
      */
@@ -43,6 +48,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/api/v1/**")
                 .excludePathPatterns("/api/v1/auth/login");
+        registry.addInterceptor(idempotencyInterceptor)
+                .addPathPatterns("/api/v1/**");
     }
 
     /**

@@ -21,6 +21,15 @@ http.interceptors.request.use((config) => {
     config.headers = config.headers ?? {};
     config.headers["Authorization"] = `Bearer ${token}`;
   }
+  // 写请求(POST/PUT/DELETE)自动附加幂等键,防 at-least-once 重试重复写入;
+  // 调用方已显式带 Idempotency-Key 时不覆盖(同 key 重试由后端重放首次响应)
+  const method = (config.method ?? "get").toLowerCase();
+  if (method === "post" || method === "put" || method === "delete") {
+    config.headers = config.headers ?? {};
+    if (!config.headers["Idempotency-Key"]) {
+      config.headers["Idempotency-Key"] = crypto.randomUUID();
+    }
+  }
   return config;
 });
 

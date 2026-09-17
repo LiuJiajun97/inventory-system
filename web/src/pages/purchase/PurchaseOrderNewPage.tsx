@@ -207,7 +207,7 @@ export function PurchaseOrderNewPage() {
     {
       title: "物品",
       dataIndex: "itemId",
-      width: 240,
+      width: 250,
       valueType: "select",
       fieldProps: {
         showSearch: true,
@@ -221,7 +221,7 @@ export function PurchaseOrderNewPage() {
     {
       title: "订购数量",
       dataIndex: "orderedQty",
-      width: 120,
+      width: 100,
       valueType: "digit",
       fieldProps: { min: 0.0001, step: 1 },
       formItemProps: { rules: [{ required: true, message: "请填写数量" }] },
@@ -229,14 +229,14 @@ export function PurchaseOrderNewPage() {
     {
       title: "期望到货日",
       dataIndex: "expectedDeliveryDate",
-      width: 160,
+      width: 130,
       valueType: "date",
       fieldProps: { style: { width: "100%" } },
     },
     {
       title: "不含税单价",
       dataIndex: "unitPrice",
-      width: 120,
+      width: 110,
       valueType: "digit",
       fieldProps: { min: 0, step: 0.01 },
       formItemProps: { rules: [{ required: false, message: "单价至少填一个" }] },
@@ -247,7 +247,7 @@ export function PurchaseOrderNewPage() {
       // 行值变化走受控 data 刷新,cell 随表单行级 shouldUpdate 重渲染,提示始终反映当前行值
       title: "含税单价",
       dataIndex: "taxPrice",
-      width: 120,
+      width: 130,
       valueType: "digit",
       renderFormItem: (_schema, config) => (
         <TaxPriceField
@@ -263,14 +263,14 @@ export function PurchaseOrderNewPage() {
     {
       title: "税率(%)",
       dataIndex: "taxRate",
-      width: 110,
+      width: 90,
       valueType: "digit",
       fieldProps: { min: 0, max: 100, step: 0.01 },
     },
     {
       // V20 金额三列:只读预览(与后端同口径),提交后以服务端重算为准
       title: "不含税金额",
-      width: 110,
+      width: 90,
       align: "right",
       className: "num-cell",
       search: false,
@@ -282,7 +282,7 @@ export function PurchaseOrderNewPage() {
     },
     {
       title: "税额",
-      width: 100,
+      width: 90,
       align: "right",
       className: "num-cell",
       search: false,
@@ -294,7 +294,7 @@ export function PurchaseOrderNewPage() {
     },
     {
       title: "含税金额",
-      width: 110,
+      width: 90,
       align: "right",
       className: "num-cell",
       search: false,
@@ -307,6 +307,7 @@ export function PurchaseOrderNewPage() {
     {
       title: "行备注",
       dataIndex: "lineRemark",
+      width: 120,
       valueType: "text",
     },
     // 显式操作列:EditableProTable 自动 option 列在 scroll 布局下不渲染 td,与入库/销售页同款显式删除;
@@ -317,7 +318,7 @@ export function PurchaseOrderNewPage() {
       : ([
           {
             title: "操作",
-            width: 80,
+            width: 50,
             editable: false as const,
             render: (_v: unknown, r: LineRow) => (
               <a onClick={() => removeLine(r.key)}>删除</a>
@@ -515,7 +516,7 @@ export function PurchaseOrderNewPage() {
           search={false}
           options={false}
           pagination={false}
-          scroll={{ x: 900, y: "calc(100vh - 520px)" }}
+          scroll={{ x: 1250, y: "calc(100vh - 520px)" }}
           editable={{
             type: "multiple",
             form: lineForm,

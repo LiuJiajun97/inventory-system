@@ -1,14 +1,12 @@
 package com.company.inventory.common.exception;
 
 import com.company.inventory.common.constant.ErrorCode;
-
-
-
-
+import com.company.inventory.config.TraceIdFilter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -52,7 +50,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BizException.class)
     public ResponseEntity<Map<String, Object>> handleBiz(BizException e) {
         return ResponseEntity.status(e.getStatus())
-                .body(errorBody(e.getStatus(), e.getCode(), e.getMessage()));
+                .body(withTraceId(errorBody(e.getStatus(), e.getCode(), e.getMessage())));
     }
 
     /**
@@ -73,7 +71,7 @@ public class GlobalExceptionHandler {
             message.append(fieldError.getField()).append(": ").append(fieldError.getDefaultMessage());
         }
         return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
-                .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, message.toString()));
+                .body(withTraceId(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, message.toString())));
     }
 
     /**
@@ -95,7 +93,7 @@ public class GlobalExceptionHandler {
             message.append(violation.getPropertyPath()).append(" ").append(violation.getMessage());
         }
         return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
-                .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, message.toString()));
+                .body(withTraceId(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, message.toString())));
     }
 
     /**
@@ -107,7 +105,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleUnreadable(HttpMessageNotReadableException e) {
         return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
-                .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, "请求体格式错误"));
+                .body(withTraceId(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, "请求体格式错误")));
     }
 
     /**
@@ -119,7 +117,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
         return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
-                .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, "参数 " + e.getName() + " 类型错误"));
+                .body(withTraceId(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST,
+                        "参数 " + e.getName() + " 类型错误")));
     }
 
     /**
@@ -131,7 +130,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<Map<String, Object>> handleMissingParam(MissingServletRequestParameterException e) {
         return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
-                .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, "缺少必填参数 " + e.getParameterName()));
+                .body(withTraceId(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST,
+                        "缺少必填参数 " + e.getParameterName())));
     }
 
     /**
@@ -165,7 +165,7 @@ public class GlobalExceptionHandler {
     private ResponseEntity<Map<String, Object>> notFoundBody(HttpServletRequest request) {
         String message = "路由不存在: " + request.getMethod() + " " + request.getRequestURI();
         return ResponseEntity.status(ErrorCode.HTTP_NOT_FOUND)
-                .body(errorBody(ErrorCode.HTTP_NOT_FOUND, ErrorCode.NOT_FOUND, message));
+                .body(withTraceId(errorBody(ErrorCode.HTTP_NOT_FOUND, ErrorCode.NOT_FOUND, message)));
     }
 
     /**
@@ -178,8 +178,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleMethodNotSupported(
             HttpRequestMethodNotSupportedException e) {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
-                .body(errorBody(HttpStatus.METHOD_NOT_ALLOWED.value(), ErrorCode.BIZ_ERROR,
-                        "请求方法不被支持: " + e.getMethod()));
+                .body(withTraceId(errorBody(HttpStatus.METHOD_NOT_ALLOWED.value(), ErrorCode.BIZ_ERROR,
+                        "请求方法不被支持: " + e.getMethod())));
     }
 
     /**
@@ -192,7 +192,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException e) {
         LOGGER.warn("数据完整性冲突: {}", e.getMostSpecificCause().getMessage());
         return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
-                .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, "操作冲突,请刷新后重试"));
+                .body(withTraceId(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, "操作冲突,请刷新后重试")));
     }
 
     /**
@@ -205,7 +205,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleUnknown(Exception e) {
         LOGGER.error("未处理异常", e);
         return ResponseEntity.status(ErrorCode.HTTP_INTERNAL_ERROR)
-                .body(noCodeErrorBody(ErrorCode.HTTP_INTERNAL_ERROR, "服务器内部错误"));
+                .body(withTraceId(noCodeErrorBody(ErrorCode.HTTP_INTERNAL_ERROR, "服务器内部错误")));
+    }
+
+    /**
+     * 给错误体追加 traceId 字段(取自 MDC,由 TraceIdFilter 写入;无则为 null)。
+     *
+     * @param body 错误体
+     * @return 追加 traceId 后的错误体
+     */
+    private Map<String, Object> withTraceId(Map<String, Object> body) {
+        body.put("traceId", MDC.get(TraceIdFilter.MDC_TRACE_ID));
+        return body;
     }
 
     /**
@@ -253,6 +264,7 @@ public class GlobalExceptionHandler {
             case ErrorCode.HTTP_FORBIDDEN -> "Forbidden";
             case ErrorCode.HTTP_NOT_FOUND -> "Not Found";
             case ErrorCode.HTTP_METHOD_NOT_ALLOWED -> "Method Not Allowed";
+            case ErrorCode.HTTP_TOO_MANY_REQUESTS -> "Too Many Requests";
             case ErrorCode.HTTP_INTERNAL_ERROR -> "Internal Server Error";
             default -> "Error";
         };

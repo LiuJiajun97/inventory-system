@@ -37,6 +37,7 @@ import {
 } from "@ant-design/icons";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearAuth, getUser } from "../auth/useAuth";
+import { authApi } from "../api";
 import { useMenus } from "../auth/MenuContext";
 import { WarehouseScopeProvider, useWarehouseScope } from "../auth/WarehouseScopeContext";
 import { BrandLogo } from "../components/BrandLogo";
@@ -210,9 +211,13 @@ function MainLayoutInner() {
   }, [location.pathname, paths, nodes]);
 
   const onLogout = () => {
-    // clearAuth 内部派发 auth-changed,菜单缓存随之清空
-    clearAuth();
-    navigate("/login", { replace: true });
+    // 先通知后端吊销当前 token 的 jti(立即失效);请求失败也清本地(降级为自然过期),
+    // 再清本地登录态并回登录页
+    authApi.logout().catch(() => undefined).finally(() => {
+      // clearAuth 内部派发 auth-changed,菜单缓存随之清空
+      clearAuth();
+      navigate("/login", { replace: true });
+    });
   };
 
   // C2:当前日期(YYYY-MM-DD 周X,灰色小字)

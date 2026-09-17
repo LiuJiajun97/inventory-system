@@ -2,6 +2,7 @@ package com.company.inventory.service.rbac.impl;
 
 import com.company.inventory.common.constant.ErrorCode;
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.mapper.rbac.RoleMapper;
 import com.company.inventory.mapper.rbac.RoleMenuMapper;
 import com.company.inventory.mapper.rbac.UserRoleMapper;
@@ -47,18 +48,23 @@ public class RoleServiceImpl implements RoleService {
     /** 用户-角色绑定 Mapper(有用户绑定禁删校验用)。 */
     private final UserRoleMapper userRoleMapper;
 
+    /** 权限热点缓存(角色/菜单绑定变更后全清,先落库后清缓存,失败靠 TTL 兜底)。 */
+    private final AuthCache authCache;
+
     /**
      * 构造服务。
      *
      * @param roleMapper     角色 Mapper
      * @param roleMenuMapper 角色-菜单绑定 Mapper
      * @param userRoleMapper 用户-角色绑定 Mapper
+     * @param authCache      权限热点缓存
      */
     public RoleServiceImpl(RoleMapper roleMapper, RoleMenuMapper roleMenuMapper,
-            UserRoleMapper userRoleMapper) {
+            UserRoleMapper userRoleMapper, AuthCache authCache) {
         this.roleMapper = roleMapper;
         this.roleMenuMapper = roleMenuMapper;
         this.userRoleMapper = userRoleMapper;
+        this.authCache = authCache;
     }
 
     /**
@@ -106,6 +112,8 @@ public class RoleServiceImpl implements RoleService {
         role.setStatus(STATUS_ENABLED);
         roleMapper.insert(role);
         LOGGER.info("新建角色: {}", role.getRoleCode());
+        // 落库成功后全清权限缓存(先落库后清缓存,清理失败靠 TTL 兜底)
+        authCache.evictByPrefix();
         return toVO(role);
     }
 
@@ -146,6 +154,8 @@ public class RoleServiceImpl implements RoleService {
         }
         roleMapper.updateById(role);
         LOGGER.info("更新角色: id={}", id);
+        // 落库成功后全清权限缓存(先落库后清缓存,清理失败靠 TTL 兜底)
+        authCache.evictByPrefix();
         return toVO(roleMapper.selectById(id));
     }
 
@@ -172,6 +182,8 @@ public class RoleServiceImpl implements RoleService {
                 .eq(RoleMenuDO::getRoleId, id));
         roleMapper.deleteById(id);
         LOGGER.info("删除角色: id={}", id);
+        // 落库事务成功后全清权限缓存(先落库后清缓存,清理失败靠 TTL 兜底)
+        authCache.evictByPrefix();
     }
 
     /**
@@ -198,6 +210,8 @@ public class RoleServiceImpl implements RoleService {
             rows.forEach(roleMenuMapper::insert);
         }
         LOGGER.info("替换角色菜单: roleId={}, count={}", roleId, safeIds.size());
+        // 落库事务成功后全清权限缓存(先落库后清缓存,清理失败靠 TTL 兜底)
+        authCache.evictByPrefix();
     }
 
     /**
