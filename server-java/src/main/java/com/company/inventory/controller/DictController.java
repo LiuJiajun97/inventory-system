@@ -16,6 +16,7 @@ import com.company.inventory.model.vo.dict.DictVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,6 +36,7 @@ import java.util.List;
 @Tag(name = "字典")
 @RestController
 @RequestMapping("/api/v1/dicts")
+@Validated
 public class DictController {
 
     /** 字典只读服务。 */

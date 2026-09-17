@@ -34,6 +34,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,6 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "入库")
 @RestController
 @RequestMapping("/api/v1/inbound")
+@Validated
 public class InboundController {
 
     /** 入库单服务。 */

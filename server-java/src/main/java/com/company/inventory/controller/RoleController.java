@@ -10,6 +10,7 @@ import com.company.inventory.service.rbac.RoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +34,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/roles")
 @RequireRole("admin")
+@Validated
 public class RoleController {
 
     /** 角色服务。 */

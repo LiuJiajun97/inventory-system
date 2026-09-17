@@ -11,6 +11,7 @@ import com.company.inventory.model.vo.dashboard.DashboardVO;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "总览")
 @RestController
 @RequestMapping("/api/v1/dashboard")
+@Validated
 public class DashboardController {
 
     /** 总览服务。 */

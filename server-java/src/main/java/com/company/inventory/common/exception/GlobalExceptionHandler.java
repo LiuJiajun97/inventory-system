@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.dao.DataIntegrityViolationException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -69,6 +71,28 @@ public class GlobalExceptionHandler {
             }
             first = false;
             message.append(fieldError.getField()).append(": ").append(fieldError.getDefaultMessage());
+        }
+        return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
+                .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, message.toString()));
+    }
+
+    /**
+     * 处理类级 @Validated 触发的查询参数约束违规(如 page 小于 1、pageSize 超上限):400,
+     * 消息列出具体参数名与违规说明。
+     *
+     * @param e 约束违规异常
+     * @return 契约错误响应
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException e) {
+        StringBuilder message = new StringBuilder("请求参数不合法: ");
+        boolean first = true;
+        for (ConstraintViolation<?> violation : e.getConstraintViolations()) {
+            if (!first) {
+                message.append("; ");
+            }
+            first = false;
+            message.append(violation.getPropertyPath()).append(" ").append(violation.getMessage());
         }
         return ResponseEntity.status(ErrorCode.HTTP_BAD_REQUEST)
                 .body(noCodeErrorBody(ErrorCode.HTTP_BAD_REQUEST, message.toString()));
