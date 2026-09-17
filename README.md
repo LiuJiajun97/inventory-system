@@ -80,14 +80,8 @@
 # 1. 启动 PG(已起过可跳过)
 docker compose up -d
 
-# 2. 推 schema + 迁移 + 种子数据(已推过可跳过)
+# 2. 推 schema + 种子数据(已推过可跳过)
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/schema.sql
-docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V2__phase1.sql
-docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V3__dict.sql
-docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V4__dict_type.sql
-docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V5__audit_fields.sql
-docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V6__snake_case.sql
-docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/V7__rbac.sql
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/seed.sql
 
 # 3. 启动后端(IDEA 运行 InventoryApplication,或命令行)
@@ -173,7 +167,7 @@ inventory-system/
 │   │   └── support/           DictReferenceRegistry(字典引用校验注册表)
 │   ├── src/main/resources/
 │   │   ├── application.yml    8888 / 5433 / JWT / jackson(Asia/Shanghai)
-│   │   └── db/{schema,V2__phase1,V3__dict,V4__dict_type,V5__audit_fields,V6__snake_case,V7__rbac,V8__rbac2,V9__field_ext,V10__field_ext2,V11__return,V12__import_export,V13__opening_stock,V15__report_menu,V16__operation_log,seed}.sql
+│   │   └── db/{schema,seed}.sql(初始化)+ V2~V20__*.sql(历史迁移归档)
 │   └── src/test/java/         30 个测试类,212 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心/V16 操作日志/V17 单据明细行/V18 三单匹配+结算域/V19 盘点防重复生成/V19b 序列号仓盘点调整/V20 库存成本报表/V23 价税工具+含税路径/V24 出入库关联单号分表回填)
 └── web/                       Vite + React 18 + antd 5
     └── src/

@@ -1,3 +1,4 @@
+-- [已归档 2026-09-17] 历史增量迁移记录,仅作变更记录保留;新环境初始化只需执行 schema.sql + seed.sql(终态),勿再执行本文件。
 -- V8: RBAC 批 2(系统组按钮权限码补全 + 「菜单管理」菜单 + admin 绑定)
 -- 1) V7 系统组(users/roles/dicts/monitor)无 button 节点,本迁移补:
 --    users 下 user:create / user:edit / user:delete

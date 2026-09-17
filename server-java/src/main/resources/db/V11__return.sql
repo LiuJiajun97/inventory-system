@@ -1,3 +1,4 @@
+-- [已归档 2026-09-17] 历史增量迁移记录,仅作变更记录保留;新环境初始化只需执行 schema.sql + seed.sql(终态),勿再执行本文件。
 -- V11: 退货模块(采购退货 + 销售退货)
 -- 1) purchase_order_item / sales_order_item 加 returned_qty(已退累计,NOT NULL DEFAULT 0)
 -- 2) 新表 purchase_return / purchase_return_item(采购退货单头/行)

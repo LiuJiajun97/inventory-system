@@ -1,3 +1,4 @@
+-- [已归档 2026-09-17] 历史增量迁移记录,仅作变更记录保留;新环境初始化只需执行 schema.sql + seed.sql(终态),勿再执行本文件。
 -- V4: 字典类型表(动态管理字典分类)
 CREATE TABLE IF NOT EXISTS dict_type (
     id          BIGSERIAL PRIMARY KEY,

@@ -1,3 +1,4 @@
+-- [已归档 2026-09-17] 历史增量迁移记录,仅作变更记录保留;新环境初始化只需执行 schema.sql + seed.sql(终态),勿再执行本文件。
 -- V5: 全表统一审计字段(creator/createdAt/updater/updatedAt)
 -- 1) Supplier/Customer 重命名 createdBy→creator, updatedBy→updater
 -- 2) 12 张表补缺列

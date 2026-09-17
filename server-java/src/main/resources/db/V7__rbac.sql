@@ -1,3 +1,4 @@
+-- [已归档 2026-09-17] 历史增量迁移记录,仅作变更记录保留;新环境初始化只需执行 schema.sql + seed.sql(终态),勿再执行本文件。
 -- V7: RBAC 权限架构(5 表 + seed)
 -- 1) sys_role / sys_menu / sys_role_menu / sys_user_role / sys_user_warehouse
 -- 2) seed:3 内置角色 + 全量菜单树(6 目录 + 20 菜单 + 59 按钮权限码)+ 角色-菜单绑定

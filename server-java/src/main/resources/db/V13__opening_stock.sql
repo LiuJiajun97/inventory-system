@@ -1,3 +1,4 @@
+-- [已归档 2026-09-17] 历史增量迁移记录,仅作变更记录保留;新环境初始化只需执行 schema.sql + seed.sql(终态),勿再执行本文件。
 -- V13: 期初库存模块
 -- 1) 新表 opening_stock_doc / opening_stock_doc_item(期初单头/行,create 即过账,status 恒 finished)
 --    过账走现有入库链路(inbound_doc.ref_type='opening',ref_doc_id=期初单 ID),库存/流水可追溯

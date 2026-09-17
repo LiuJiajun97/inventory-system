@@ -1,3 +1,4 @@
+-- [已归档 2026-09-17] 历史增量迁移记录,仅作变更记录保留;新环境初始化只需执行 schema.sql + seed.sql(终态),勿再执行本文件。
 -- V6:表名/列名统一小写蛇形(PG 标准),去掉全项目双引号依赖。
 -- 迁移只跑一次;两库(inventory/inventory_test)都要执行。
 -- 列清单来源:information_schema.columns 实测(2026-09-11)。

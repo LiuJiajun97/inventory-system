@@ -1,3 +1,4 @@
+-- [已归档 2026-09-17] 历史增量迁移记录,仅作变更记录保留;新环境初始化只需执行 schema.sql + seed.sql(终态),勿再执行本文件。
 -- V16: 操作日志(审计日志)
 -- 1) 新表 operation_log:记录全部写操作(POST/PUT/DELETE)的执行流水,
 --    由 OperationLogAspect 切面落库,供 admin 审计"谁在何时对什么做了什么、成败与否"

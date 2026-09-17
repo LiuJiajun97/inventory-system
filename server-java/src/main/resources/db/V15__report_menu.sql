@@ -1,3 +1,4 @@
+-- [已归档 2026-09-17] 历史增量迁移记录,仅作变更记录保留;新环境初始化只需执行 schema.sql + seed.sql(终态),勿再执行本文件。
 -- V15: 报表中心菜单 seed
 -- 1) 新增顶级目录 reports-dir(报表中心)+ 菜单 reports(报表中心 /reports,单页 4 Tab)
 -- 2) 绑定:admin/operator/viewer 均为 目录+菜单(与仪表盘口径一致:菜单控制页面可见性,

@@ -1,3 +1,4 @@
+-- [已归档 2026-09-17] 历史增量迁移记录,仅作变更记录保留;新环境初始化只需执行 schema.sql + seed.sql(终态),勿再执行本文件。
 -- V12: 导入导出模块按钮权限(RBAC)
 -- 1) 11 个按钮菜单(照 V8/V11 幂等模式):
 --    主数据:item:import / item:export / supplier:import / supplier:export / customer:import / customer:export
