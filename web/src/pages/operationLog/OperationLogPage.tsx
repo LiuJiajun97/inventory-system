@@ -11,6 +11,7 @@ import { operationLogApi } from "../../api";
 import type { OperationLog } from "../../types/phase1";
 import { fmtDateTime } from "../../utils/format";
 import { EmptyHint } from "../../components/EmptyHint";
+import { proTableRequest } from "../../utils/proTable";
 
 // 操作(HTTP 方法)朴素 Tag 配色
 const ACTION_COLOR: Record<string, string> = {
@@ -37,27 +38,17 @@ export function OperationLogPage() {
   }, []);
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    username?: string;
-    module?: string;
-    success?: number;
-    from?: string;
-    to?: string;
-  }) => {
-    const res = await operationLogApi.list({
-      username: params.username,
-      module: params.module,
-      success: params.success,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { username?: string; module?: string; success?: number; from?: string; to?: string }) => ({
+      username: p.username,
+      module: p.module,
+      success: p.success,
+      from: p.from,
+      to: p.to,
+    }),
+    operationLogApi.list,
+  );
 
   const columns: ProColumns<OperationLog>[] = [
     {

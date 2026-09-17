@@ -23,6 +23,7 @@ import { warehouseApi } from "../../api";
 import type { Location, Warehouse } from "../../types";
 import { usePermission } from "../../auth/usePermission";
 import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
+import { proTableRequest } from "../../utils/proTable";
 
 export function LocationListPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -59,19 +60,13 @@ export function LocationListPage() {
     warehouses.find((w) => w.id === id)?.warehouseName ?? id;
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    warehouseId?: number;
-  }) => {
-    const res = await warehouseApi.listLocations({
-      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { warehouseId?: number }) => ({
+      warehouseId: p.warehouseId ?? scopeWarehouseId ?? undefined,
+    }),
+    warehouseApi.listLocations,
+  );
 
   const columns: ProColumns<Location>[] = [
     {

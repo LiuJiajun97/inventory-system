@@ -12,6 +12,7 @@ import type { Item, StockTransaction, Warehouse } from "../../types";
 import { fmtDateTime, fmtQty } from "../../utils/format";
 import { EmptyHint } from "../../components/EmptyHint";
 import { BizTag, BIZ_OPTIONS } from "../../components/StatusTag";
+import { proTableRequest } from "../../utils/proTable";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
 // 部分路径(弹层选择)可能传 dayjs,两种都兼容
@@ -37,27 +38,17 @@ export function TransactionQueryPage() {
   }, []);
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    warehouseId?: number;
-    itemId?: number;
-    bizCode?: string;
-    from?: string;
-    to?: string;
-  }) => {
-    const res = await transactionApi.query({
-      warehouseId: params.warehouseId,
-      itemId: params.itemId,
-      bizCode: params.bizCode as "inbound" | "outbound" | undefined,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { warehouseId?: number; itemId?: number; bizCode?: string; from?: string; to?: string }) => ({
+      warehouseId: p.warehouseId,
+      itemId: p.itemId,
+      bizCode: p.bizCode as "inbound" | "outbound" | undefined,
+      from: p.from,
+      to: p.to,
+    }),
+    transactionApi.query,
+  );
 
   const columns: ProColumns<StockTransaction>[] = [
     {

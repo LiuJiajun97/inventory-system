@@ -19,6 +19,7 @@ import type { PurchaseOrder, DocLine } from "../../types/phase1";
 import type { Supplier } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
+import { proTableRequest } from "../../utils/proTable";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
 // 部分路径(弹层选择)可能传 dayjs,两种都兼容
@@ -78,63 +79,47 @@ export function PurchaseOrderListPage() {
   const autoOpened = useRef(false);
 
 
-const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    supplierId?: number;
-    status?: string;
-    from?: string;
-    to?: string;
-  }) => {
-    setFilterParams({
-      docNo: params.docNo,
-      supplierId: params.supplierId,
-      status: params.status,
-      from: params.from,
-      to: params.to,    });
-    const res = await purchaseApi.list({
-      docNo: params.docNo,
-      supplierId: params.supplierId,
-      status: params.status,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { docNo?: string; supplierId?: number; status?: string; from?: string; to?: string }) => {
+      setFilterParams({
+        docNo: p.docNo,
+        supplierId: p.supplierId,
+        status: p.status,
+        from: p.from,
+        to: p.to,
+      });
+      return {
+        docNo: p.docNo,
+        supplierId: p.supplierId,
+        status: p.status,
+        from: p.from,
+        to: p.to,
+      };
+    },
+    purchaseApi.list,
     // 关联单号跳转且仅命中一条时自动开详情(只触发一次,不影响其他筛选)
-    if (urlDocNo && res.total === 1 && res.rows.length === 1 && !autoOpened.current) {
-      autoOpened.current = true;
-      setDetail(res.rows[0]);
-    }
-    return { data: res.rows, success: true, total: res.total };
-  };
+    (res) => {
+      if (urlDocNo && res.total === 1 && res.rows.length === 1 && !autoOpened.current) {
+        autoOpened.current = true;
+        setDetail(res.rows[0]);
+      }
+    },
+  );
 
   // V17 明细行视图:请求 /lines(共享筛选 + 物品关键字/批次号)
-  const lineRequest = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    supplierId?: number;
-    status?: string;
-    from?: string;
-    to?: string;
-    itemKeyword?: string;
-    batchNo?: string;
-  }) => {
-    const res = await purchaseApi.lines({
-      docNo: params.docNo,
-      supplierId: params.supplierId,
-      status: params.status,
-      from: params.from,
-      to: params.to,
-      itemKeyword: params.itemKeyword,
-      batchNo: params.batchNo,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  const lineRequest = proTableRequest(
+    (p: { docNo?: string; supplierId?: number; status?: string; from?: string; to?: string; itemKeyword?: string; batchNo?: string }) => ({
+      docNo: p.docNo,
+      supplierId: p.supplierId,
+      status: p.status,
+      from: p.from,
+      to: p.to,
+      itemKeyword: p.itemKeyword,
+      batchNo: p.batchNo,
+    }),
+    purchaseApi.lines,
+  );
 
   // V17 明细行点击单据号:拉取整单详情复用现有详情弹窗
   const openLineDetail = async (r: DocLine) => {

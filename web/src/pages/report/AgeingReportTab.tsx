@@ -15,6 +15,7 @@ import { QtyCell } from "./common";
 import { EmptyHint } from "../../components/EmptyHint";
 import { fetchAllPages } from "../../utils/fetchAllPages";
 import { fmtQty } from "../../utils/format";
+import { proTableRequest } from "../../utils/proTable";
 
 // TASK-v22b B3:库龄图——按库龄段(0-30/31-90/91-180/未知)聚合当前量占比(环图)
 // 不带筛选全量拉取(pageSize=1000;本地库批次行数远小于 1000)
@@ -94,33 +95,26 @@ export function AgeingReportTab() {
   // 当前筛选条件(导出 URL 用,随筛选变化重建)
   const [filterParams, setFilterParams] = useState<Record<string, string | number | undefined>>({});
 
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    warehouseId?: number;
-    itemId?: number;
-    ageFrom?: number;
-    ageTo?: number;
-    stagnantDays?: number;
-  }) => {
-    setFilterParams({
-      warehouseId: params.warehouseId,
-      itemId: params.itemId,
-      ageFrom: params.ageFrom,
-      ageTo: params.ageTo,
-      stagnantDays: params.stagnantDays,
-    });
-    const res = await reportApi.ageing({
-      warehouseId: params.warehouseId,
-      itemId: params.itemId,
-      ageFrom: params.ageFrom,
-      ageTo: params.ageTo,
-      stagnantDays: params.stagnantDays,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { warehouseId?: number; itemId?: number; ageFrom?: number; ageTo?: number; stagnantDays?: number }) => {
+      setFilterParams({
+        warehouseId: p.warehouseId,
+        itemId: p.itemId,
+        ageFrom: p.ageFrom,
+        ageTo: p.ageTo,
+        stagnantDays: p.stagnantDays,
+      });
+      return {
+        warehouseId: p.warehouseId,
+        itemId: p.itemId,
+        ageFrom: p.ageFrom,
+        ageTo: p.ageTo,
+        stagnantDays: p.stagnantDays,
+      };
+    },
+    reportApi.ageing,
+  );
 
   const exportUrl = useMemo(() => {
     const p = new URLSearchParams();

@@ -26,6 +26,7 @@ import type { Warehouse } from "../../types";
 import { usePermission } from "../../auth/usePermission";
 import { StatusTag } from "../../components/StatusTag";
 import { EmptyHint } from "../../components/EmptyHint";
+import { proTableRequest } from "../../utils/proTable";
 
 export function WarehouseListPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -49,21 +50,14 @@ export function WarehouseListPage() {
   }, []);
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    keyword?: string;
-    warehouseType?: string;
-  }) => {
-    const res = await warehouseApi.list({
-      keyword: params.keyword || undefined,
-      warehouseType: params.warehouseType || undefined,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { keyword?: string; warehouseType?: string }) => ({
+      keyword: p.keyword || undefined,
+      warehouseType: p.warehouseType || undefined,
+    }),
+    warehouseApi.list,
+  );
 
   const columns: ProColumns<Warehouse>[] = [
     {

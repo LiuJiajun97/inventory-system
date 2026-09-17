@@ -10,6 +10,7 @@ import type { PurchaseReconRow } from "../../types/report";
 import { ExportButton } from "../../components/ExportButton";
 import { AmountCell, QtyCell, ReconDetailTable, dayPart } from "./common";
 import { EmptyHint } from "../../components/EmptyHint";
+import { proTableRequest } from "../../utils/proTable";
 
 export function PurchaseReconTab() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -24,23 +25,14 @@ export function PurchaseReconTab() {
   // 当前筛选条件(导出 URL 用,随筛选变化重建)
   const [filterParams, setFilterParams] = useState<Record<string, string | number | undefined>>({});
 
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    supplierId?: number;
-    from?: string;
-    to?: string;
-  }) => {
-    setFilterParams({ supplierId: params.supplierId, from: params.from, to: params.to });
-    const res = await reportApi.purchaseRecon({
-      supplierId: params.supplierId,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { supplierId?: number; from?: string; to?: string }) => {
+      setFilterParams({ supplierId: p.supplierId, from: p.from, to: p.to });
+      return { supplierId: p.supplierId, from: p.from, to: p.to };
+    },
+    reportApi.purchaseRecon,
+  );
 
   const exportUrl = useMemo(() => {
     const p = new URLSearchParams();

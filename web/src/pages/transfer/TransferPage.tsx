@@ -18,6 +18,7 @@ import { usePermission } from "../../auth/usePermission";
 import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
 import { PrintDocModal, printHeader, type PrintDocData } from "../../components/PrintDocModal";
+import { proTableRequest } from "../../utils/proTable";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
 // 部分路径(弹层选择)可能传 dayjs,两种都兼容
@@ -116,54 +117,32 @@ export function TransferPage() {
     const [searchParams] = useSearchParams();
     const urlStatus = searchParams.get("status") || undefined;
 
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    fromWarehouseId?: number;
-    toWarehouseId?: number;
-    status?: string;
-    from?: string;
-    to?: string;
-  }) => {
-    const res = await transferApi.list({
-      docNo: params.docNo,
-      fromWarehouseId: params.fromWarehouseId ?? scopeWarehouseId ?? undefined,
-      toWarehouseId: params.toWarehouseId,
-      status: params.status,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { docNo?: string; fromWarehouseId?: number; toWarehouseId?: number; status?: string; from?: string; to?: string }) => ({
+      docNo: p.docNo,
+      fromWarehouseId: p.fromWarehouseId ?? scopeWarehouseId ?? undefined,
+      toWarehouseId: p.toWarehouseId,
+      status: p.status,
+      from: p.from,
+      to: p.to,
+    }),
+    transferApi.list,
+  );
 
   // V17 明细行视图:请求 /lines(共享筛选 + 物品关键字)
-  const lineRequest = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    fromWarehouseId?: number;
-    toWarehouseId?: number;
-    status?: string;
-    from?: string;
-    to?: string;
-    itemKeyword?: string;
-  }) => {
-    const res = await transferApi.lines({
-      docNo: params.docNo,
-      fromWarehouseId: params.fromWarehouseId ?? scopeWarehouseId ?? undefined,
-      toWarehouseId: params.toWarehouseId,
-      status: params.status,
-      from: params.from,
-      to: params.to,
-      itemKeyword: params.itemKeyword,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  const lineRequest = proTableRequest(
+    (p: { docNo?: string; fromWarehouseId?: number; toWarehouseId?: number; status?: string; from?: string; to?: string; itemKeyword?: string }) => ({
+      docNo: p.docNo,
+      fromWarehouseId: p.fromWarehouseId ?? scopeWarehouseId ?? undefined,
+      toWarehouseId: p.toWarehouseId,
+      status: p.status,
+      from: p.from,
+      to: p.to,
+      itemKeyword: p.itemKeyword,
+    }),
+    transferApi.lines,
+  );
 
   // V17 明细行点击单据号:拉取整单详情复用现有详情弹窗
   const openLineDetail = async (r: DocLine) => {

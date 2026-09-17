@@ -18,6 +18,7 @@ import { fmtDate, fmtMoney, fmtQty } from "../../utils/format";
 import { EmptyHint } from "../../components/EmptyHint";
 import { DocDetailHeader, DocAuditLine } from "../../components/DocDetailSections";
 import { StatusTag } from "../../components/StatusTag";
+import { proTableRequest } from "../../utils/proTable";
 
 // ProTable dateRange transform 实收值:form 存 'YYYY-MM-DD' 字符串(直接输入路径);
 // 部分路径(弹层选择)可能传 dayjs,两种都兼容
@@ -65,55 +66,37 @@ export function SalesReturnListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    status?: string;
-    warehouseId?: number;
-    from?: string;
-    to?: string;
-  }) => {
-    const res = await salesReturnApi.list({
-      docNo: params.docNo,
-      status: params.status,
-      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { docNo?: string; status?: string; warehouseId?: number; from?: string; to?: string }) => ({
+      docNo: p.docNo,
+      status: p.status,
+      warehouseId: p.warehouseId ?? scopeWarehouseId ?? undefined,
+      from: p.from,
+      to: p.to,
+    }),
+    salesReturnApi.list,
     // 关联单号跳转且仅命中一条时自动开详情(只触发一次,不影响其他筛选)
-    if (urlDocNo && res.total === 1 && res.rows.length === 1 && !autoOpened.current) {
-      autoOpened.current = true;
-      setDetail(res.rows[0]);
-    }
-    return { data: res.rows, success: true, total: res.total };
-  };
+    (res) => {
+      if (urlDocNo && res.total === 1 && res.rows.length === 1 && !autoOpened.current) {
+        autoOpened.current = true;
+        setDetail(res.rows[0]);
+      }
+    },
+  );
 
   // V17 明细行视图:请求 /lines(共享筛选 + 物品关键字)
-  const lineRequest = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    status?: string;
-    warehouseId?: number;
-    from?: string;
-    to?: string;
-    itemKeyword?: string;
-  }) => {
-    const res = await salesReturnApi.lines({
-      docNo: params.docNo,
-      status: params.status,
-      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
-      from: params.from,
-      to: params.to,
-      itemKeyword: params.itemKeyword,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  const lineRequest = proTableRequest(
+    (p: { docNo?: string; status?: string; warehouseId?: number; from?: string; to?: string; itemKeyword?: string }) => ({
+      docNo: p.docNo,
+      status: p.status,
+      warehouseId: p.warehouseId ?? scopeWarehouseId ?? undefined,
+      from: p.from,
+      to: p.to,
+      itemKeyword: p.itemKeyword,
+    }),
+    salesReturnApi.lines,
+  );
 
   // V17 明细行点击单据号:拉取整单详情复用现有详情弹窗
   const openLineDetail = async (r: DocLine) => {

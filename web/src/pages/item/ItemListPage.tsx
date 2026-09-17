@@ -23,6 +23,7 @@ import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { itemApi, dictApi } from "../../api";
 import type { Item } from "../../types";
 import { usePermission } from "../../auth/usePermission";
+import { proTableRequest } from "../../utils/proTable";
 import { ImportButton } from "../../components/ImportButton";
 import { ExportButton } from "../../components/ExportButton";
 import { EmptyHint } from "../../components/EmptyHint";
@@ -60,25 +61,17 @@ export function ItemListPage() {
   }, []);
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    keyword?: string;
-    itemCategory?: string;
-  }) => {
-    setFilterParams({
-      keyword: params.keyword || undefined,
-      itemCategory: params.itemCategory || undefined,
-    });
-    const res = await itemApi.list({
-      keyword: params.keyword || undefined,
-      itemCategory: params.itemCategory || undefined,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { keyword?: string; itemCategory?: string }) => {
+      setFilterParams({
+        keyword: p.keyword || undefined,
+        itemCategory: p.itemCategory || undefined,
+      });
+      return { keyword: p.keyword || undefined, itemCategory: p.itemCategory || undefined };
+    },
+    itemApi.list,
+  );
 
   // 导出 URL:带当前筛选条件(导出不分页)
   const exportUrl = useMemo(() => {

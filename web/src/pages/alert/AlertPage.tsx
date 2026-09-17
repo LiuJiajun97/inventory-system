@@ -12,6 +12,7 @@ import { alertApi, warehouseApi } from "../../api";
 import type { Warehouse } from "../../types";
 import type { ExpiryAlertRow, LowStockRow } from "../../types/phase1";
 import { fmtQty } from "../../utils/format";
+import { proTableRequest } from "../../utils/proTable";
 import { EmptyHint } from "../../components/EmptyHint";
 
 export function AlertPage() {
@@ -31,33 +32,20 @@ export function AlertPage() {
       .catch(() => undefined);
   }, []);
 
-  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
-  const requestExpiry = async (params: {
-    current?: number;
-    pageSize?: number;
-    warehouseId?: number;
-  }) => {
-    const res = await alertApi.expiry({
-      warehouseId: params.warehouseId,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const requestExpiry = proTableRequest(
+    (p: { warehouseId?: number }) => ({
+      warehouseId: p.warehouseId,
+    }),
+    alertApi.expiry,
+  );
 
-  const requestLow = async (params: {
-    current?: number;
-    pageSize?: number;
-    itemKeyword?: string;
-  }) => {
-    const res = await alertApi.lowStock({
-      itemKeyword: params.itemKeyword || undefined,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  const requestLow = proTableRequest(
+    (p: { itemKeyword?: string }) => ({
+      itemKeyword: p.itemKeyword || undefined,
+    }),
+    alertApi.lowStock,
+  );
 
   const expiryColumns: ProColumns<ExpiryAlertRow>[] = [
     {

@@ -18,6 +18,7 @@ import { usePermission } from "../../auth/usePermission";
 import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import { fmtDateTime, REF_TYPE_LABEL, fmtMoney, fmtQty } from "../../utils/format";
 import { refDocHref } from "../../utils/refDocLink";
+import { proTableRequest } from "../../utils/proTable";
 import { EmptyHint } from "../../components/EmptyHint";
 import { DocDetailHeader, DocAuditLine } from "../../components/DocDetailSections";
 import { StatusTag } from "../../components/StatusTag";
@@ -96,63 +97,43 @@ export function InboundListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
     // 当前筛选条件(导出 URL 用,随筛选变化重建)
   const [filterParams, setFilterParams] = useState<Record<string, string | number | undefined>>({});
 
-const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    status?: string;
-    warehouseId?: number;
-    from?: string;
-    to?: string;
-  }) => {
-    setFilterParams({
-      docNo: params.docNo,
-      status: params.status,
-      warehouseId: params.warehouseId,
-      from: params.from,
-      to: params.to,    });
-    const res = await inboundApi.list({
-      docNo: params.docNo,
-      status: params.status,
-      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { docNo?: string; status?: string; warehouseId?: number; from?: string; to?: string }) => {
+      setFilterParams({
+        docNo: p.docNo,
+        status: p.status,
+        warehouseId: p.warehouseId,
+        from: p.from,
+        to: p.to,
+      });
+      return {
+        docNo: p.docNo,
+        status: p.status,
+        warehouseId: p.warehouseId ?? scopeWarehouseId ?? undefined,
+        from: p.from,
+        to: p.to,
+      };
+    },
+    inboundApi.list,
+  );
 
   // V17 明细行视图:请求 /lines(共享筛选 + 物品关键字/批次号)
-  const lineRequest = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    status?: string;
-    warehouseId?: number;
-    from?: string;
-    to?: string;
-    itemKeyword?: string;
-    batchNo?: string;
-  }) => {
-    const res = await inboundApi.lines({
-      docNo: params.docNo,
-      status: params.status,
-      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
-      from: params.from,
-      to: params.to,
-      itemKeyword: params.itemKeyword,
-      batchNo: params.batchNo,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  const lineRequest = proTableRequest(
+    (p: { docNo?: string; status?: string; warehouseId?: number; from?: string; to?: string; itemKeyword?: string; batchNo?: string }) => ({
+      docNo: p.docNo,
+      status: p.status,
+      warehouseId: p.warehouseId ?? scopeWarehouseId ?? undefined,
+      from: p.from,
+      to: p.to,
+      itemKeyword: p.itemKeyword,
+      batchNo: p.batchNo,
+    }),
+    inboundApi.lines,
+  );
 
   // V17 明细行点击单据号:拉取整单详情复用现有详情弹窗
   const openLineDetail = async (r: DocLine) => {

@@ -12,6 +12,7 @@ import { invoiceApi, supplierApi, customerApi } from "../../api";
 import type { Invoice } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { fmtDate, fmtDateTime, fmtMoney, fmtQty } from "../../utils/format";
+import { proTableRequest } from "../../utils/proTable";
 import { EmptyHint } from "../../components/EmptyHint";
 
 function toDay(v: unknown): string | undefined {
@@ -57,28 +58,18 @@ export function InvoiceListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    invoiceType?: string;
-    status?: string;
-    partyId?: number;
-    from?: string;
-    to?: string;
-  }) => {
-    const res = await invoiceApi.list({
-      docNo: params.docNo,
-      invoiceType: params.invoiceType,
-      status: params.status,
-      partyId: params.partyId,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { docNo?: string; invoiceType?: string; status?: string; partyId?: number; from?: string; to?: string }) => ({
+      docNo: p.docNo,
+      invoiceType: p.invoiceType,
+      status: p.status,
+      partyId: p.partyId,
+      from: p.from,
+      to: p.to,
+    }),
+    invoiceApi.list,
+  );
 
   const openDetail = async (id: number) => {
     try {

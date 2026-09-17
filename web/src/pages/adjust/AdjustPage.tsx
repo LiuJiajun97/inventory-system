@@ -16,6 +16,7 @@ import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
 import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 import { fmtDate, fmtMoney, fmtQty } from "../../utils/format";
+import { proTableRequest } from "../../utils/proTable";
 import { EmptyHint } from "../../components/EmptyHint";
 
 const TYPE_LABEL: Record<string, string> = { gain: "盘盈(入库)", loss: "盘亏(出库)", scrap: "报损(出库)" };
@@ -87,46 +88,28 @@ export function AdjustPage() {
     const navigate = useNavigate();
     const urlStatus = searchParams.get("status") || undefined;
 
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    warehouseId?: number;
-    adjustType?: string;
-    status?: string;
-  }) => {
-    const res = await adjustApi.list({
-      docNo: params.docNo,
-      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
-      adjustType: params.adjustType,
-      status: params.status,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { docNo?: string; warehouseId?: number; adjustType?: string; status?: string }) => ({
+      docNo: p.docNo,
+      warehouseId: p.warehouseId ?? scopeWarehouseId ?? undefined,
+      adjustType: p.adjustType,
+      status: p.status,
+    }),
+    adjustApi.list,
+  );
 
   // V17 明细行视图:请求 /lines(共享筛选 + 物品关键字)
-  const lineRequest = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    warehouseId?: number;
-    adjustType?: string;
-    status?: string;
-    itemKeyword?: string;
-  }) => {
-    const res = await adjustApi.lines({
-      docNo: params.docNo,
-      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
-      adjustType: params.adjustType,
-      status: params.status,
-      itemKeyword: params.itemKeyword,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  const lineRequest = proTableRequest(
+    (p: { docNo?: string; warehouseId?: number; adjustType?: string; status?: string; itemKeyword?: string }) => ({
+      docNo: p.docNo,
+      warehouseId: p.warehouseId ?? scopeWarehouseId ?? undefined,
+      adjustType: p.adjustType,
+      status: p.status,
+      itemKeyword: p.itemKeyword,
+    }),
+    adjustApi.lines,
+  );
 
   // V17 明细行点击单据号:拉取整单详情复用现有详情弹窗
   const openLineDetail = async (r: DocLine) => {

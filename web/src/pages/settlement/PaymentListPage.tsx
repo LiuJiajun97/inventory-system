@@ -12,6 +12,7 @@ import { paymentApi, supplierApi, customerApi } from "../../api";
 import type { PaymentDoc } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { fmtDate, fmtDateTime, fmtMoney } from "../../utils/format";
+import { proTableRequest } from "../../utils/proTable";
 import { EmptyHint } from "../../components/EmptyHint";
 
 function toDay(v: unknown): string | undefined {
@@ -50,27 +51,18 @@ export function PaymentListPage({ mode }: { mode: "payment" | "receipt" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    status?: string;
-    partyId?: number;
-    from?: string;
-    to?: string;
-  }) => {
-    const res = await paymentApi.list({
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { docNo?: string; status?: string; partyId?: number; from?: string; to?: string }) => ({
       payType: mode,
-      docNo: params.docNo,
-      status: params.status,
-      partyId: params.partyId,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+      docNo: p.docNo,
+      status: p.status,
+      partyId: p.partyId,
+      from: p.from,
+      to: p.to,
+    }),
+    paymentApi.list,
+  );
 
   const onVoid = (row: PaymentDoc) => {
     modal.confirm({

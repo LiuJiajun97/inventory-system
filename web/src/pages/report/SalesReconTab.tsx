@@ -10,6 +10,7 @@ import type { SalesReconRow } from "../../types/report";
 import { ExportButton } from "../../components/ExportButton";
 import { AmountCell, QtyCell, ReconDetailTable, dayPart } from "./common";
 import { EmptyHint } from "../../components/EmptyHint";
+import { proTableRequest } from "../../utils/proTable";
 
 export function SalesReconTab() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -24,23 +25,14 @@ export function SalesReconTab() {
   // 当前筛选条件(导出 URL 用,随筛选变化重建)
   const [filterParams, setFilterParams] = useState<Record<string, string | number | undefined>>({});
 
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    customerId?: number;
-    from?: string;
-    to?: string;
-  }) => {
-    setFilterParams({ customerId: params.customerId, from: params.from, to: params.to });
-    const res = await reportApi.salesRecon({
-      customerId: params.customerId,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { customerId?: number; from?: string; to?: string }) => {
+      setFilterParams({ customerId: p.customerId, from: p.from, to: p.to });
+      return { customerId: p.customerId, from: p.from, to: p.to };
+    },
+    reportApi.salesRecon,
+  );
 
   const exportUrl = useMemo(() => {
     const p = new URLSearchParams();

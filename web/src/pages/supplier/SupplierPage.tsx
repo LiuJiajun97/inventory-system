@@ -13,6 +13,7 @@ import { ImportButton } from "../../components/ImportButton";
 import { ExportButton } from "../../components/ExportButton";
 import { StatusTag } from "../../components/StatusTag";
 import { EmptyHint } from "../../components/EmptyHint";
+import { proTableRequest } from "../../utils/proTable";
 
 interface FormValues {
   supplierCode: string;
@@ -60,20 +61,14 @@ export function SupplierPage() {
   }, []);
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    keyword?: string;
-  }) => {
-    setFilterParams({ keyword: params.keyword || undefined });
-    const res = await supplierApi.list({
-      keyword: params.keyword || undefined,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { keyword?: string }) => {
+      setFilterParams({ keyword: p.keyword || undefined });
+      return { keyword: p.keyword || undefined };
+    },
+    supplierApi.list,
+  );
 
   // 导出 URL:带当前筛选条件(导出不分页)
   const exportUrl = useMemo(() => {

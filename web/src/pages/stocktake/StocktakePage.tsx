@@ -17,6 +17,7 @@ import type { StocktakeDoc, StocktakeLine, DocLine } from "../../types/phase1";
 import { usePermission } from "../../auth/usePermission";
 import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import { DocStatusTag, docStatusLabel } from "../../components/DocStatusTag";
+import { proTableRequest } from "../../utils/proTable";
 import { PrintDocModal, printHeader, usePrintNameMaps, type PrintDocData } from "../../components/PrintDocModal";
 
 // 状态机枚举:筛选下拉用 valueEnum,表格单元格仍用 DocStatusTag 自定义渲染(样式不变)
@@ -86,42 +87,26 @@ export function StocktakePage() {
     const navigate = useNavigate();
     const urlStatus = searchParams.get("status") || undefined;
 
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    warehouseId?: number;
-    status?: string;
-  }) => {
-    const res = await stocktakeApi.list({
-      docNo: params.docNo,
-      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
-      status: params.status,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { docNo?: string; warehouseId?: number; status?: string }) => ({
+      docNo: p.docNo,
+      warehouseId: p.warehouseId ?? scopeWarehouseId ?? undefined,
+      status: p.status,
+    }),
+    stocktakeApi.list,
+  );
 
   // V17 明细行视图:请求 /lines(共享筛选 + 物品关键字)
-  const lineRequest = async (params: {
-    current?: number;
-    pageSize?: number;
-    docNo?: string;
-    warehouseId?: number;
-    status?: string;
-    itemKeyword?: string;
-  }) => {
-    const res = await stocktakeApi.lines({
-      docNo: params.docNo,
-      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
-      status: params.status,
-      itemKeyword: params.itemKeyword,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  const lineRequest = proTableRequest(
+    (p: { docNo?: string; warehouseId?: number; status?: string; itemKeyword?: string }) => ({
+      docNo: p.docNo,
+      warehouseId: p.warehouseId ?? scopeWarehouseId ?? undefined,
+      status: p.status,
+      itemKeyword: p.itemKeyword,
+    }),
+    stocktakeApi.lines,
+  );
 
   // V17 明细行点击单据号:拉取整单详情复用现有详情弹窗
   const openLineDetail = async (r: DocLine) => {

@@ -33,6 +33,7 @@ import type { UserInfo, UserRoleItem } from "../../types";
 import { fmtDateTime } from "../../utils/format";
 import { StatusTag } from "../../components/StatusTag";
 import { EmptyHint } from "../../components/EmptyHint";
+import { proTableRequest } from "../../utils/proTable";
 
 // 内置角色 Tag 样式(自定义角色用默认灰 Tag)
 const BUILTIN_ROLE_CLASS: Record<string, string> = {
@@ -112,19 +113,13 @@ export function UserListPage() {
     whOptions.find((w) => w.value === id)?.label ?? `#${id}`;
 
   // 参数适配:ProTable current/pageSize -> 后端 page/pageSize
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    keyword?: string;
-  }) => {
-    const res = await userApi.list({
-      keyword: params.keyword || undefined,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { keyword?: string }) => ({
+      keyword: p.keyword || undefined,
+    }),
+    userApi.list,
+  );
 
   const columns: ProColumns<UserInfo>[] = [
     { title: "ID", dataIndex: "id", width: 60, search: false },

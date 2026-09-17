@@ -12,6 +12,7 @@ import { useScopeWarehouseId } from "../../auth/WarehouseScopeContext";
 import type { StockRow, Warehouse } from "../../types";
 import { fmtDate, fmtQty } from "../../utils/format";
 import { EmptyHint } from "../../components/EmptyHint";
+import { proTableRequest } from "../../utils/proTable";
 
 export function StockQueryPage() {
   const { hasPerm } = usePermission();
@@ -40,27 +41,22 @@ export function StockQueryPage() {
     // 当前筛选条件(导出 URL 用,随筛选变化重建)
   const [filterParams, setFilterParams] = useState<Record<string, string | number | undefined>>({});
 
-const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    warehouseId?: number;
-    itemKeyword?: string;
-    batchNo?: string;
-  }) => {
-    setFilterParams({
-      warehouseId: params.warehouseId,
-      itemKeyword: params.itemKeyword,
-      batchNo: params.batchNo,    });
-    const res = await stockApi.query({
-      warehouseId: params.warehouseId ?? scopeWarehouseId ?? undefined,
-      itemKeyword: params.itemKeyword,
-      batchNo: params.batchNo,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    // 返回适配:后端 {rows,total} -> ProTable {data,success,total}
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { warehouseId?: number; itemKeyword?: string; batchNo?: string }) => {
+      setFilterParams({
+        warehouseId: p.warehouseId,
+        itemKeyword: p.itemKeyword,
+        batchNo: p.batchNo,
+      });
+      return {
+        warehouseId: p.warehouseId ?? scopeWarehouseId ?? undefined,
+        itemKeyword: p.itemKeyword,
+        batchNo: p.batchNo,
+      };
+    },
+    stockApi.query,
+  );
   // 导出 URL:带当前筛选条件(导出不分页)
   const exportUrl = useMemo(() => {
     const p = new URLSearchParams();

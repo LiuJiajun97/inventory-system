@@ -18,6 +18,7 @@ import { AmountCell, QtyCell, dayPart } from "./common";
 import { EmptyHint } from "../../components/EmptyHint";
 import { fetchAllPages } from "../../utils/fetchAllPages";
 import { fmtQty } from "../../utils/format";
+import { proTableRequest } from "../../utils/proTable";
 
 // TASK-v22b B3:进销存月报图表——按月份拆区间调月报接口,全部物品入库/出量合计
 // 无日期筛选时默认近 6 个月;超过 12 个月只取最后 12 个月
@@ -107,30 +108,24 @@ export function MonthlyReportTab() {
   // 当前筛选条件(导出 URL 用,随筛选变化重建)
   const [filterParams, setFilterParams] = useState<Record<string, string | number | undefined>>({});
 
-  const request = async (params: {
-    current?: number;
-    pageSize?: number;
-    warehouseId?: number;
-    itemId?: number;
-    from?: string;
-    to?: string;
-  }) => {
-    setFilterParams({
-      warehouseId: params.warehouseId,
-      itemId: params.itemId,
-      from: params.from,
-      to: params.to,
-    });
-    const res = await reportApi.monthly({
-      warehouseId: params.warehouseId,
-      itemId: params.itemId,
-      from: params.from,
-      to: params.to,
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 20,
-    });
-    return { data: res.rows, success: true, total: res.total };
-  };
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const request = proTableRequest(
+    (p: { warehouseId?: number; itemId?: number; from?: string; to?: string }) => {
+      setFilterParams({
+        warehouseId: p.warehouseId,
+        itemId: p.itemId,
+        from: p.from,
+        to: p.to,
+      });
+      return {
+        warehouseId: p.warehouseId,
+        itemId: p.itemId,
+        from: p.from,
+        to: p.to,
+      };
+    },
+    reportApi.monthly,
+  );
 
   // 导出 URL:带当前筛选条件(导出不分页)
   const exportUrl = useMemo(() => {
