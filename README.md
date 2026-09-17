@@ -6,6 +6,41 @@
 > **212 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初 + 4 V15 报表中心 + 3 V16 操作日志 + 6 V17 单据明细行 + 12 V18 三单匹配/结算域 + 1 V19 盘点防重复生成 + 1 V19b 序列号仓盘点调整 + 11 V20 库存成本移动均价报表 + 3 V20 数据权限按 id 补 403 + 6 V23 MoneyUtils 价税工具 + 2 V23 含税路径 + 1 超收比例口径校验 + 1 序列号退货回流 + 2 出入库列表关联单号按 refType 分表回填),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
+## 界面预览
+
+<table>
+<tr>
+<td><img src="docs/assets/dashboard.png" width="700" alt="仪表盘:数字卡 + 出入库趋势 + 库存金额占比 + 待办"></td>
+</tr>
+<tr>
+<td align="center"><sub>仪表盘(总览)</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/purchase-orders.png" width="700" alt="采购订单列表"></td>
+</tr>
+<tr>
+<td align="center"><sub>采购订单列表(筛选 + 分页 + 详情弹窗)</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/purchase-new.png" width="700" alt="新建采购订单表单"></td>
+</tr>
+<tr>
+<td align="center"><sub>新建采购订单(价税六列明细)</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/reports.png" width="700" alt="报表中心"></td>
+</tr>
+<tr>
+<td align="center"><sub>报表中心(进销存月报:图表 + 明细)</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/stock.png" width="700" alt="库存查询"></td>
+</tr>
+<tr>
+<td align="center"><sub>库存查询(多仓多物品余额)</sub></td>
+</tr>
+</table>
+
 ---
 
 ## 1. 架构
