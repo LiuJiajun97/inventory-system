@@ -31,9 +31,9 @@ public class SerialDO {
     private Long warehouseId;
     /** 状态:in_stock / out。 */
     private String status;
-    /** 入库时间(UTC)。 */
+    /** 入库时间。 */
     private LocalDateTime inboundTime;
-    /** 出库时间(UTC)。 */
+    /** 出库时间。 */
     private LocalDateTime outboundTime;
     /** 最近入库单号(V9 追溯链,可空)。 */
     private String refDocNo;

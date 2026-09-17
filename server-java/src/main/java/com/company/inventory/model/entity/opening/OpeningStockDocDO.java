@@ -41,13 +41,13 @@ public class OpeningStockDocDO {
     /** 创建人。 */
     @TableField(fill = FieldFill.INSERT)
     private String creator;
-    /** 创建时间(UTC)。 */
+    /** 创建时间。 */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     /** 修改人。 */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private String updater;
-    /** 修改时间(UTC)。 */
+    /** 修改时间。 */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
 

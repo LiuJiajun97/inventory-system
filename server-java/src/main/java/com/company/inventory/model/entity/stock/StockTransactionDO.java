@@ -42,7 +42,7 @@ public class StockTransactionDO {
     private String docNo;
     /** 操作人。 */
     private String operator;
-    /** 创建时间(UTC)。 */
+    /** 创建时间。 */
     private LocalDateTime createdAt;
 
 }

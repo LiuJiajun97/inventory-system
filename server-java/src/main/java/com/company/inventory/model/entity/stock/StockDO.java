@@ -37,7 +37,7 @@ public class StockDO {
     private BigDecimal quantity;
     /** 预占量(销售订单审批预占,方案 §5.2;可用=quantity-preAllocatedQty)。 */
     private BigDecimal preAllocatedQty;
-    /** 更新时间(UTC)。 */
+    /** 更新时间。 */
     private LocalDateTime updatedAt;
 
 }

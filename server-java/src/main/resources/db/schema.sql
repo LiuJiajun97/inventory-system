@@ -225,7 +225,7 @@ CREATE TABLE public.stock (
     batch_id          integer DEFAULT 0 NOT NULL          ,  -- 批次 ID(无批次为 0)
     location_id       integer DEFAULT 0 NOT NULL          ,  -- 库位 ID(无库位为 0)
     quantity          numeric(18,4) DEFAULT 0 NOT NULL    ,  -- 库存数量
-    updated_at        timestamp without time zone NOT NULL,  -- 更新时间(UTC)
+    updated_at        timestamp without time zone NOT NULL,  -- 更新时间
     pre_allocated_qty numeric(18,4) DEFAULT 0 NOT NULL      -- 预占量(销售订单审批预占,可用=quantity-preAllocatedQty)
 );
 

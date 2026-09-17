@@ -44,7 +44,7 @@ public class WarehouseDO {
     /** 创建人。 */
     @TableField(fill = FieldFill.INSERT)
     private String creator;
-    /** 创建时间(UTC)。 */
+    /** 创建时间。 */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
     /** 修改人。 */
