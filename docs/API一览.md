@@ -3,6 +3,7 @@
 | 方法 | 路径 | 说明 | 权限 |
 |---|---|---|---|
 | POST | `/auth/login` `/auth/password` `/auth/me` | 登录 / 改密 / 当前用户(登录响应 user 新增 roles 数组) | 公开 / 登录 |
+| POST | `/auth/logout` | 登出:吊销当前 token 的 jti(登出后旧 token 立即 401;无 jti 旧 token 自然过期),返回 `{ok:true}` | 登录 |
 | GET | `/auth/menus` | 当前用户菜单树(多角色并集,仅目录+菜单,附按钮权限码列表) | 登录 |
 | GET | `/auth/perm-check` | 权限码探针(校验 @RequirePermission,码 purchase-order:approve) | 登录+权限码 |
 | GET | `/dashboard/summary` | 首页统计 | 登录 |
@@ -45,3 +46,10 @@
 | GET | `/settlement/dashboard`(V18) | 结算总览(应付/应收余额合计,仪表盘 2 卡) | 登录 |
 
 完整契约以 Swagger 为准:`http://127.0.0.1:8888/docs`。
+
+**横切契约(企业级横切能力)**
+- **幂等 `Idempotency-Key` 头**:全部 `/api/v1` 写接口(POST/PUT/DELETE)支持标准幂等键。无 key 行为不变;同 key 第二次请求重放首次成功响应(原样 status/contentType/body,TTL 5 分钟);首次仍在进行中时并发重复 → **429 `{statusCode:429,error:"idempotent_conflict",message:"重复请求,请稍后重试"}`**;首次请求失败则释放 key,同 key 重试正常执行。前端 axios 拦截器对写请求自动附加 `crypto.randomUUID()`。
+- **登录防爆破 429**:同一用户名连续 5 次登录失败锁 5 分钟(`login.max-attempts`/`login.lock-seconds` 可调),锁定中一律 429 `{statusCode:429,code:"auth_locked",error:"Too Many Requests",message:"登录失败次数过多,请 N 秒后重试"}`;到期自动重置,登录成功清零。
+- **链路追踪 `X-Trace-Id` 响应头**:所有请求(含 404/异常)均回 `X-Trace-Id`(本地生成 16 位 hex;请求头带 W3C `traceparent` 时透传其 trace-id);全部统一错误体新增可选字段 `traceId`(与响应头一致),用于前后端联调排障。
+- **token 有效期**:JWT 从 8 小时缩短为 **2 小时**(`jwt.expires-seconds: 7200`),签发含 `jti` claim,配合 logout 吊销。
+- **可观测性端点**(`/actuator/**`,无需登录,单机自用;生产需网关鉴权):`GET /actuator/health`(UP/DOWN)、`GET /actuator/info`、`GET /actuator/metrics`。

@@ -15,7 +15,7 @@
 
 ```bash
 # 构建/测试(必须在 server-java/ 下跑,Maven 必须经包装脚本,根目录直接跑报 no POM)
-bash ../scripts/mvn.sh test               # 后端测试(当前 210 条,必须全绿)
+bash ../scripts/mvn.sh test               # 后端测试(当前 212 条,必须全绿)
 bash ../scripts/mvn.sh checkstyle:check   # checkstyle(必须 0 违规)
 bash ../scripts/mvn.sh package            # 构建
 bash ../scripts/mvn.sh spring-boot:run    # 启动后端(8888)
@@ -26,7 +26,9 @@ npm run build                          # 构建(必须 0 错)
 
 # 数据库(docker 容器 inventory-postgres,端口 5433,库 inventory,用户 inv)
 docker compose up -d                   # 起 PG
+# 新库初始化只需这两个文件(V2~V20 为历史迁移归档,新库勿执行;存量库改结构手工写 ALTER 追加到最新 V 文件):
 docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/schema.sql
+docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/main/resources/db/seed.sql
 ```
 
 完工前必须跑:三件套(test/checkstyle/package)+ `npm run build`,数字写实测值。
@@ -36,7 +38,8 @@ docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/mai
 - 后端 8888、前端 5173,**禁止同时多实例**(会撞端口)。
   前端只改 web 代码时靠 HMR,无需重启;**后端 Java 改动必须重启后端才生效**,标准流程:
   1) 按端口 8888 找到 java 进程;2) 结束进程;3) 用 IDE 运行配置(InventoryApplication)或 `bash scripts/mvn.sh spring-boot:run` 重启
-- PG:容器 `inventory-postgres`,端口 5433,库 `inventory`(开发)/`inventory_test`(测试);需要种子数据时重放 `server-java/src/main/resources/db/seed.sql`
+- PG:容器 `inventory-postgres`,端口 5433,库 `inventory`(开发)/`inventory_test`(测试)
+- Redis:容器 `inventory-redis`,端口 6379(`docker compose up -d` 同 PG 一起起),存幂等/登出黑名单/登录锁定状态与权限缓存(host/port 可用 `REDIS_HOST`/`REDIS_PORT` 环境变量覆盖)
 - 账号:admin/admin123、zhangsan/zhang123(operator)、lisi/lisi123(viewer)
 
 ## 架构约定
@@ -60,11 +63,12 @@ docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/mai
 - 仓库范围切换:走 `WarehouseScopeContext`;列表页要配 `useEffect + actionRef.reload()`(Context 变化 ProTable 不会自动重请求)
 - 列表状态筛选:`useSearchParams` + ProTable `params` 接 URL 参数(如 `/purchase-orders?status=pending`),页内手动改筛选仍可覆盖
 - 交互:可回退/草稿态操作去确认弹层;不可逆/动库存操作保留确认
+- 写请求幂等:axios 拦截器(`web/src/api/http.ts`)对 POST/PUT/DELETE 自动附加 `Idempotency-Key` 头(crypto.randomUUID);需要重试重放语义时才手动传固定 key
 
-## 数据状态(开发库 inventory)
+## 数据状态
 
-- 测试一律走 `inventory_test` 库且自包含(自建自清);E2E 不清数据。2026-09-15 用户拍板恢复独立测试库(先合并开发单库后嫌乱)
-- 2026-09-14 重启事故后库已重建:原保留验收数据(PGTEST-001/PGSUP-01/PGCUS-01/CG-20260911-0007 等)不可恢复;重建后仅 schema + 种子(3 仓/4 物/3 用户),现开发库另有一套 2026-09-15 全链路仿真数据(采购/销售/退货/盘点/结算各单据)
+- 测试一律走 `inventory_test` 库且自包含(自建自清);E2E 不清数据
+- 开发库 inventory:2026-09-15 重建,种子 + 一套 14 天全链路仿真数据(采购/销售/退货/盘点/结算各单据)
 
 ## 前端验证标准
 

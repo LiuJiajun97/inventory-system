@@ -3,7 +3,7 @@
 > 前后端分离项目(Java 21 + Spring Boot 3.5 + MyBatis-Plus 3.5 + PostgreSQL 16 / Vite + React 18 + antd 5 + @ant-design/pro-components 2.8 列表页 ProTable、单据表单页 ProForm 表头)。
 > 企业级进销存一期:采购/销售/调拨/盘点/调整/预警/审批/预占/退货/期初/报表 + 基础出入库,22 个 Controller,前端 34 个页面(27 个业务模块)。
 > 后端按阿里开发规范分层,出库条件 UPDATE 防穿仓、FEFO/FIFO 选批、序列号台账等核心规则零弱化。
-> **212 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初 + 4 V15 报表中心 + 3 V16 操作日志 + 6 V17 单据明细行 + 12 V18 三单匹配/结算域 + 1 V19 盘点防重复生成 + 1 V19b 序列号仓盘点调整 + 11 V20 库存成本移动均价报表 + 3 V20 数据权限按 id 补 403 + 6 V23 MoneyUtils 价税工具 + 2 V23 含税路径 + 1 超收比例口径校验 + 1 序列号退货回流 + 2 出入库列表关联单号按 refType 分表回填),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
+> **229 条测试全绿**(114 存量 + 15 RBAC 批 1a + 2 RBAC 批 2 + 4 V9 通用字段补全 + 5 V10 对标字段补齐 + 8 V11 退货 + 6 V12 导入导出 + 5 V13 期初 + 4 V15 报表中心 + 3 V16 操作日志 + 6 V17 单据明细行 + 12 V18 三单匹配/结算域 + 1 V19 盘点防重复生成 + 1 V19b 序列号仓盘点调整 + 11 V20 库存成本移动均价报表 + 3 V20 数据权限按 id 补 403 + 6 V23 MoneyUtils 价税工具 + 2 V23 含税路径 + 1 超收比例口径校验 + 1 序列号退货回流 + 2 出入库列表关联单号按 refType 分表回填 + 10 企业级横切能力(幂等 3/防爆破 2/traceId 4/登出失效 1) + 7 Redis 状态持久化与权限缓存(RedisStateTest 4/AuthCacheTest 3)),阿里 checkstyle 规则集(违规 0),前端 build 0 错。
 > 时间统一东八区(Asia/Shanghai,JVM 显式锁定),格式 `yyyy-MM-dd HH:mm:ss`(日期 `yyyy-MM-dd`)。
 
 ## 界面预览
@@ -77,7 +77,8 @@
 ## 2. 启动步骤
 
 ```bash
-# 1. 启动 PG(已起过可跳过)
+# 1. 启动 PG + Redis(已起过可跳过;Redis 7.4 容器 inventory-redis,端口 6379,
+#    存幂等/登出黑名单/登录锁定状态与权限缓存,重启不丢)
 docker compose up -d
 
 # 2. 推 schema + 种子数据(已推过可跳过)
@@ -96,7 +97,7 @@ npm run dev
 # 前端:http://localhost:5173 (dev 代理 /api → 8888)
 
 # 5. 测试 & 构建(在 server-java 下)
-bash ../scripts/mvn.sh test        # 212 条,全绿,无 skip
+bash ../scripts/mvn.sh test        # 229 条,全绿,无 skip
 bash ../scripts/mvn.sh package     # 0 错误
 bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
@@ -146,7 +147,7 @@ bash ../scripts/mvn.sh checkstyle:check   # 违规 0
 ```
 inventory-system/
 ├── AGENTS.md                  AI 编码代理工作手册(代理原生读取)
-├── docker-compose.yml         PG 16-alpine,端口 5433
+├── docker-compose.yml         PG 16-alpine(5433)+ Redis 7.4(6379)
 ├── scripts/mvn.sh             Maven 包装脚本(本机 bash 路径兼容)
 ├── docs/                      项目文档
 │   ├── 迭代日志.md            迭代流水账(每次实质变更追加一条)
@@ -168,7 +169,7 @@ inventory-system/
 │   ├── src/main/resources/
 │   │   ├── application.yml    8888 / 5433 / JWT / jackson(Asia/Shanghai)
 │   │   └── db/{schema,seed}.sql(初始化)+ V2~V20__*.sql(历史迁移归档)
-│   └── src/test/java/         30 个测试类,212 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心/V16 操作日志/V17 单据明细行/V18 三单匹配+结算域/V19 盘点防重复生成/V19b 序列号仓盘点调整/V20 库存成本报表/V23 价税工具+含税路径/V24 出入库关联单号分表回填)
+│   └── src/test/java/         36 个测试类,229 条(库存核心/并发/采购/销售/调拨/盘点/调整编辑/权限/字典/预警/仓库库位编辑/审计字段/日期解析/系统监控/RBAC 批 1a/RBAC 批 2 多角色+数据权限/V9 通用字段补全/V10 对标字段补齐/V11 退货/V12 导入导出/V13 期初/V15 报表中心/V16 操作日志/V17 单据明细行/V18 三单匹配+结算域/V19 盘点防重复生成/V19b 序列号仓盘点调整/V20 库存成本报表/V23 价税工具+含税路径/V24 出入库关联单号分表回填/企业级横切能力:幂等+防爆破+traceId+登出失效/Redis 状态持久化+权限缓存)
 └── web/                       Vite + React 18 + antd 5
     └── src/
         ├── api/  auth/  components/  layout/
