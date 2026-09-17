@@ -1,7 +1,7 @@
 # AGENTS.md
 
 本文件给 AI 编码代理(Claude Code / Codex / pi / opencode 等)提供项目上下文。
-人看的文档:README.md(总览)、docs/迭代日志.md(变更流水)。
+人看的文档:README.md(总览)、docs/迭代日志.md(变更流水)、docs/权限矩阵.md、docs/API一览.md、docs/核心业务规则.md。
 
 ## 项目
 
@@ -79,7 +79,7 @@ docker exec -i inventory-postgres psql -U inv -d inventory < server-java/src/mai
 4. Javadoc 摘要以中文句号「。」收尾(checkstyle 按字面量 `。` 匹配);禁 `select *`
 5. MyBatis-Plus 空集合防护:`selectByIds`/`IN` 前必须 `isEmpty()`
 6. 不引入新依赖,除非任务书明确允许
-7. 动了接口/表/测试数/权限 → 同步更新 README.md 对应章节 + docs/迭代日志.md 追加一条,与代码同 commit
+7. 动了接口/表/测试数/权限 → 同步更新 docs/API一览.md、docs/权限矩阵.md 与 README 对应章节;业务规则变更更新 docs/核心业务规则.md;同时 docs/迭代日志.md 追加一条,与代码同 commit
 8. **git 不默认提交**:改完代码只报告"待提交",必须等用户明确说"提交"才 commit;一次"提交"只授权当时那一批改动,后续新改动仍需再次授权,不得当作持续授权
 
 ## 踩坑备忘
