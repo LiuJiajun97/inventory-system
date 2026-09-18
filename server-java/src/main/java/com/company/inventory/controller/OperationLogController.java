@@ -1,7 +1,7 @@
 package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.query.log.OperationLogQuery;
 import com.company.inventory.model.vo.log.OperationLogVO;
 import com.company.inventory.service.OperationLogService;
@@ -24,7 +24,7 @@ import java.util.List;
 @Tag(name = "操作日志")
 @RestController
 @RequestMapping("/api/v1/operation-logs")
-@RequireRole("admin")
+@RequirePerm("operationlog:view")
 @Validated
 public class OperationLogController {
 

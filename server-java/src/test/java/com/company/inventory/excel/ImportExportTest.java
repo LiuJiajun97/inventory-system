@@ -1,6 +1,7 @@
 package com.company.inventory.excel;
 
 import com.alibaba.excel.EasyExcel;
+import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.model.dto.excel.CustomerImportRow;
 import com.company.inventory.model.dto.excel.ItemImportRow;
 import com.company.inventory.model.dto.excel.SupplierImportRow;
@@ -16,6 +17,7 @@ import com.company.inventory.service.SupplierService;
 import com.company.inventory.model.entity.user.UserDO;
 
 import org.junit.jupiter.api.AfterAll;
+import com.company.inventory.support.RbacSeedSupport;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -72,6 +74,10 @@ class ImportExportTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    /** 权限缓存(测试前清缓存防串号)。 */
+    @Autowired
+    private AuthCache authCache;
+
     /** 物品服务(造前置数据)。 */
     @Autowired
     private ItemService itemService;
@@ -91,13 +97,17 @@ class ImportExportTest {
     private String operatorToken;
 
     /**
-     * 前置:造 admin/operator 用户(legacy role 列)与物品前置数据
+     * 前置:注入 RBAC 基线 + 清权限缓存,造 admin/operator 用户(legacy role 列)与物品前置数据
      * (IE-DUP-001 供重复用例,IE-EXP-001/002 供导出行数用例)。
      */
     @BeforeAll
     void setUp() {
+        RbacSeedSupport.injectBaseline(jdbcTemplate);
+        RbacSeedSupport.evictAuthCache(authCache);
         createLegacyUser("ie_admin", "admin");
         createLegacyUser("ie_op", "operator");
+        RbacSeedSupport.bindUserRole(jdbcTemplate, "ie_admin");
+        RbacSeedSupport.bindUserRole(jdbcTemplate, "ie_op");
         adminToken = login("ie_admin");
         operatorToken = login("ie_op");
 
@@ -117,6 +127,8 @@ class ImportExportTest {
         jdbcTemplate.update("DELETE FROM item WHERE item_code LIKE 'IE-%'");
         jdbcTemplate.update("DELETE FROM supplier WHERE supplier_code LIKE 'IE-%'");
         jdbcTemplate.update("DELETE FROM customer WHERE customer_code LIKE 'IE-%'");
+        RbacSeedSupport.unbindUser(jdbcTemplate, "ie_admin");
+        RbacSeedSupport.unbindUser(jdbcTemplate, "ie_op");
         jdbcTemplate.update("DELETE FROM sys_user WHERE username IN ('ie_admin', 'ie_op')");
     }
 

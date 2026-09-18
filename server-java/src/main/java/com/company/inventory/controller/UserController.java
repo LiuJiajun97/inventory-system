@@ -1,7 +1,7 @@
 package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.user.UserCreateDTO;
 import com.company.inventory.model.dto.user.UserUpdateDTO;
 import com.company.inventory.model.query.UserQuery;
@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "用户")
 @RestController
 @RequestMapping("/api/v1/users")
-@RequireRole("admin")
+@RequirePerm("user:view")
 @Validated
 public class UserController {
 

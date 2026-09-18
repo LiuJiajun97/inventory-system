@@ -1,5 +1,6 @@
 package com.company.inventory.rbac;
 
+import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.model.entity.rbac.MenuDO;
 import com.company.inventory.model.entity.rbac.RoleDO;
 import com.company.inventory.model.entity.rbac.UserRoleDO;
@@ -8,6 +9,7 @@ import com.company.inventory.mapper.rbac.MenuMapper;
 import com.company.inventory.mapper.rbac.RoleMapper;
 import com.company.inventory.mapper.rbac.UserRoleMapper;
 import com.company.inventory.mapper.UserMapper;
+import com.company.inventory.support.RbacSeedSupport;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -41,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * RBAC 核心测试:菜单树 API(三型/并集)、角色 CRUD(内置保护/用户绑定保护)、
- * 菜单 CRUD(code 唯一/子节点保护/删除连带解绑)、@RequirePermission 鉴权、
+ * 菜单 CRUD(code 唯一/子节点保护/删除连带解绑)、@RequirePerm 鉴权、
  * 旧版单 role claim token 兼容。自包含:自建数据自清理(TRUNCATE RBAC 5 表 + sys_user)。
  *
  * @author inventory
@@ -68,6 +70,10 @@ class RbacTest {
     /** JDBC。 */
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    /** 权限缓存(测试前清缓存防串号)。 */
+    @Autowired
+    private AuthCache authCache;
     /** 角色 Mapper。 */
     @Autowired
     private RoleMapper roleMapper;
@@ -103,10 +109,12 @@ class RbacTest {
     private long buttonIdApprove;
 
     /**
-     * 前置:清 RBAC 5 表 + sys_user,造 6 角色 / 5 菜单 / 角色菜单绑定 / 4 用户。
+     * 前置:清 RBAC 5 表 + sys_user,造 6 角色 / 7 菜单 / 角色菜单绑定 / 4 用户。
+     * (role:view / menu:view 按钮码供 RoleController / MenuController 类级鉴权)
      */
     @BeforeAll
     void setUp() {
+        RbacSeedSupport.evictAuthCache(authCache);
         jdbcTemplate.execute("TRUNCATE sys_role_menu, sys_user_role, sys_user_warehouse,"
                 + " sys_menu, sys_role, sys_user RESTART IDENTITY CASCADE");
 
@@ -122,9 +130,13 @@ class RbacTest {
         menuIdY = insertMenu(menuIdDir, "menu-y", "菜单Y", "menu", "/y", 2);
         buttonIdApprove = insertMenu(menuIdX, "purchase-order:approve", "菜单X-审批", "button", null, 1);
         insertMenu(menuIdY, "item:edit", "菜单Y-编辑", "button", null, 1);
+        // 角色/菜单管理页查看码(admin 绑定;供 /roles 与 /menus 类级鉴权)
+        long buttonRoleView = insertMenu(menuIdY, "role:view", "角色-查看", "button", null, 2);
+        long buttonMenuView = insertMenu(menuIdY, "menu:view", "菜单-查看", "button", null, 3);
 
         // admin 全量;viewer 仅目录+菜单;dualA→menu-x;dualB→menu-y
-        bindMenus(roleIdAdmin, List.of(menuIdDir, menuIdX, menuIdY, buttonIdApprove));
+        bindMenus(roleIdAdmin, List.of(menuIdDir, menuIdX, menuIdY, buttonIdApprove,
+                buttonRoleView, buttonMenuView));
         bindMenus(roleIdViewer, List.of(menuIdDir, menuIdX, menuIdY));
         bindMenus(roleIdDualA, List.of(menuIdX));
         bindMenus(roleIdDualB, List.of(menuIdY));
@@ -335,7 +347,7 @@ class RbacTest {
     }
 
     /**
-     * @RequirePermission:有权限码 → 200;无权限码 → 403。
+     * @RequirePerm:有权限码 → 200;无权限码 → 403。
      */
     @Test
     void requirePermissionGate() {
@@ -362,7 +374,7 @@ class RbacTest {
     }
 
     /**
-     * 旧版单 role claim token(无 roles claim)仍可访问 @RequireRole 接口。
+     * 旧版单 role claim token(无 roles claim)仍可访问受 @RequirePerm 保护的接口。
      */
     @Test
     void legacyRoleClaimTokenStillWorks() {

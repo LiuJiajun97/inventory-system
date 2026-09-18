@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.settlement.PaymentCreateDTO;
 import com.company.inventory.model.query.PaymentQuery;
 import com.company.inventory.model.vo.settlement.PaymentVO;
@@ -56,7 +56,7 @@ public class PaymentController {
      */
     @Operation(summary = "新建付款/收款单(核销行挂正票,防超核)")
     @PostMapping
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("payments:create")
     public PaymentVO create(@Valid @RequestBody PaymentCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -72,7 +72,7 @@ public class PaymentController {
      */
     @Operation(summary = "作废付款/收款单")
     @PostMapping("/{id}/void")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("payments:void")
     public PaymentVO voidPayment(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return paymentService.voidPayment(id, username);

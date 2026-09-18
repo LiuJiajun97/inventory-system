@@ -19,7 +19,7 @@ import java.util.Map;
  * 表格偏好接口(登录即可,非 admin 功能:列宽拖拽/列显隐/列序按用户持久化)。
  *
  * <p>userId 从 {@link JwtInterceptor} 写入的请求属性取(拦截器已保证登录态),
- * 故本类不加 @RequireRole/@RequirePermission。</p>
+ * 故本类不加 @RequirePerm。</p>
  *
  * @author inventory
  */

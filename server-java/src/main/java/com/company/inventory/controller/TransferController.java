@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.transfer.TransferActionDTO;
 import com.company.inventory.model.dto.transfer.TransferCreateDTO;
 import com.company.inventory.model.query.TransferDocQuery;
@@ -74,7 +74,7 @@ public class TransferController {
      */
     @Operation(summary = "新建调拨单")
     @PostMapping
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("transfer:create")
     public TransferDocVO create(@Valid @RequestBody TransferCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -103,7 +103,7 @@ public class TransferController {
      */
     @Operation(summary = "编辑调拨单")
     @PutMapping("/{id}")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("transfer:edit")
     public TransferDocVO update(@PathVariable long id, @Valid @RequestBody TransferCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -119,7 +119,7 @@ public class TransferController {
      */
     @Operation(summary = "提交调拨单")
     @PostMapping("/{id}/submit")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("transfer:submit")
     public TransferDocVO submit(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return transferService.submit(id, username);
@@ -134,7 +134,7 @@ public class TransferController {
      */
     @Operation(summary = "审批通过调拨单")
     @PostMapping("/{id}/approve")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("transfer:approve")
     public TransferDocVO approve(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return transferService.approve(id, username);
@@ -150,7 +150,7 @@ public class TransferController {
      */
     @Operation(summary = "驳回调拨单")
     @PostMapping("/{id}/reject")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("transfer:reject")
     public TransferDocVO reject(@PathVariable long id, @Valid @RequestBody TransferActionDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -166,7 +166,7 @@ public class TransferController {
      */
     @Operation(summary = "作废调拨单")
     @PostMapping("/{id}/void")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("transfer:void")
     public TransferDocVO voidDoc(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return transferService.voidDoc(id, username);

@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.inbound.InboundCreateDTO;
 import com.company.inventory.model.query.InboundDocQuery;
 import com.company.inventory.model.query.InboundDocLineQuery;
@@ -85,7 +85,7 @@ public class InboundController {
      */
     @Operation(summary = "新建入库单")
     @PostMapping
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("inbound:create")
     public InboundDocCreatedVO create(@Valid @RequestBody InboundCreateDTO dto,
                                       HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);

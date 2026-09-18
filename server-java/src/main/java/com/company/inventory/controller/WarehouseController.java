@@ -1,7 +1,7 @@
 package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.location.LocationCreateDTO;
 import com.company.inventory.model.dto.location.LocationUpdateDTO;
 import com.company.inventory.model.dto.warehouse.WarehouseCreateDTO;
@@ -100,7 +100,7 @@ public class WarehouseController {
      */
     @Operation(summary = "新建仓库")
     @PostMapping("/warehouses")
-    @RequireRole("admin")
+    @RequirePerm("warehouse:create")
     public WarehouseVO createWarehouse(@Valid @RequestBody WarehouseCreateDTO dto) {
         return warehouseService.create(dto);
     }
@@ -117,7 +117,7 @@ public class WarehouseController {
      */
     @Operation(summary = "编辑仓库")
     @PutMapping("/warehouses/{id}")
-    @RequireRole("admin")
+    @RequirePerm("warehouse:edit")
     public WarehouseVO updateWarehouse(@PathVariable long id,
             @Valid @RequestBody WarehouseUpdateDTO dto) {
         return warehouseService.update(id, dto);
@@ -143,7 +143,7 @@ public class WarehouseController {
      */
     @Operation(summary = "新建库位")
     @PostMapping("/locations")
-    @RequireRole("admin")
+    @RequirePerm("location:create")
     public LocationVO createLocation(@Valid @RequestBody LocationCreateDTO dto) {
         return locationService.create(dto);
     }
@@ -157,7 +157,7 @@ public class WarehouseController {
      */
     @Operation(summary = "编辑库位")
     @PutMapping("/locations/{id}")
-    @RequireRole("admin")
+    @RequirePerm("location:edit")
     public LocationVO updateLocation(@PathVariable long id,
             @Valid @RequestBody LocationUpdateDTO dto) {
         return locationService.update(id, dto);

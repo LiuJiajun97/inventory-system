@@ -1,9 +1,11 @@
 package com.company.inventory.log;
 
+import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.ItemMapper;
 import com.company.inventory.mapper.UserMapper;
 import com.company.inventory.service.OperationLogService;
+import com.company.inventory.support.RbacSeedSupport;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -69,15 +71,23 @@ class OperationLogTest {
     @Autowired
     private ItemMapper itemMapper;
 
+    /** 权限缓存(测试前清缓存防串号)。 */
+    @Autowired
+    private AuthCache authCache;
+
     /**
-     * 前置:清空操作日志 + 造 admin/viewer 用户(自包含)。
+     * 前置:注入 RBAC 基线 + 清权限缓存,清空操作日志 + 造 admin/viewer 用户(自包含)。
      */
     @BeforeAll
     void setUp() {
+        RbacSeedSupport.injectBaseline(jdbcTemplate);
+        RbacSeedSupport.evictAuthCache(authCache);
         jdbcTemplate.execute("TRUNCATE operation_log RESTART IDENTITY");
         BCryptPasswordEncoder enc = new BCryptPasswordEncoder(4);
         createUser("oplog_admin", "admin12345", "admin", enc);
         createUser("oplog_viewer", "viewer123", "viewer", enc);
+        RbacSeedSupport.bindUserRole(jdbcTemplate, "oplog_admin");
+        RbacSeedSupport.bindUserRole(jdbcTemplate, "oplog_viewer");
     }
 
     /**
@@ -87,6 +97,8 @@ class OperationLogTest {
     void tearDown() {
         jdbcTemplate.update(
                 "DELETE FROM item WHERE item_code = ?", ITEM_CODE);
+        RbacSeedSupport.unbindUser(jdbcTemplate, "oplog_admin");
+        RbacSeedSupport.unbindUser(jdbcTemplate, "oplog_viewer");
         jdbcTemplate.update("DELETE FROM sys_user WHERE username IN (?, ?)",
                 "oplog_admin", "oplog_viewer");
         jdbcTemplate.execute("TRUNCATE operation_log RESTART IDENTITY");

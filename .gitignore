@@ -13,6 +13,7 @@ coverage/
 # Maven / Java
 target/
 *.class
+logs/
 
 # 工作临时目录(任务书、截图、代理运行日志等,不进版本库)
 .tmp/

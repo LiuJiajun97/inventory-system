@@ -1,6 +1,6 @@
 package com.company.inventory.controller;
 
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.rbac.RoleCreateDTO;
 import com.company.inventory.model.dto.rbac.RoleMenuDTO;
 import com.company.inventory.model.dto.rbac.RoleUpdateDTO;
@@ -33,7 +33,7 @@ import java.util.Map;
 @Tag(name = "角色")
 @RestController
 @RequestMapping("/api/v1/roles")
-@RequireRole("admin")
+@RequirePerm("role:view")
 @Validated
 public class RoleController {
 

@@ -42,7 +42,7 @@ const STATUS_ENUM = {
 
 export function PurchaseOrderListPage() {
   const { hasPerm } = usePermission();  const canExport = hasPerm("purchase-order:export");
-  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePermission 拦截)
+  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePerm 拦截)
   const canEdit = hasPerm("purchase-order:edit");
   const canSubmit = hasPerm("purchase-order:submit");
   const canApprove = hasPerm("purchase-order:approve");

@@ -230,8 +230,12 @@ function MainLayoutInner() {
   const todayText = `${dayjs().format("YYYY-MM-DD")} 周${WEEK_CN[dayjs().day()]}`;
 
   // C2:数据范围徽标——非 admin 且已拉到授权仓列表(数据权限过滤后的结果)时显示数量
+  // admin 判定按多角色列表(登录接口 roles 为角色码数组);roles 缺失时回退旧单角色字段
   const scope = useWarehouseScope();
-  const showScopeBadge = role !== "admin" && scope.warehouses.length > 0;
+  const rawRoles: unknown[] = user?.roles ?? [];
+  const roleCodes = rawRoles.map((r) => (typeof r === "string" ? r : (r as { code?: string }).code ?? ""));
+  const isAdmin = roleCodes.length > 0 ? roleCodes.includes("admin") : role === "admin";
+  const showScopeBadge = !isAdmin && scope.warehouses.length > 0;
 
   // C2:头像下拉菜单(退出登录);原独立退出按钮已移除
   const avatarMenu = {

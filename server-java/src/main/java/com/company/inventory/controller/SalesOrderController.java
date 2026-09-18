@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.sales.SalesActionDTO;
 import com.company.inventory.model.dto.sales.SalesOrderCreateDTO;
 import com.company.inventory.model.query.SalesOrderQuery;
@@ -82,7 +82,7 @@ public class SalesOrderController {
      */
     @Operation(summary = "新建销售订单")
     @PostMapping
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("sales-order:create")
     public SalesOrderVO create(@Valid @RequestBody SalesOrderCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -111,7 +111,7 @@ public class SalesOrderController {
      */
     @Operation(summary = "编辑销售订单")
     @PutMapping("/{id}")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("sales-order:edit")
     public SalesOrderVO update(@PathVariable long id, @Valid @RequestBody SalesOrderCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -127,7 +127,7 @@ public class SalesOrderController {
      */
     @Operation(summary = "提交销售订单")
     @PostMapping("/{id}/submit")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("sales-order:submit")
     public SalesOrderVO submit(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return salesOrderService.submit(id, username);
@@ -142,7 +142,7 @@ public class SalesOrderController {
      */
     @Operation(summary = "审批通过销售订单")
     @PostMapping("/{id}/approve")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("sales-order:approve")
     public SalesOrderVO approve(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return salesOrderService.approve(id, username);
@@ -158,7 +158,7 @@ public class SalesOrderController {
      */
     @Operation(summary = "驳回销售订单")
     @PostMapping("/{id}/reject")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("sales-order:reject")
     public SalesOrderVO reject(@PathVariable long id, @Valid @RequestBody SalesActionDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -174,7 +174,7 @@ public class SalesOrderController {
      */
     @Operation(summary = "作废销售订单")
     @PostMapping("/{id}/void")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("sales-order:void")
     public SalesOrderVO voidDoc(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return salesOrderService.voidDoc(id, username);
@@ -189,7 +189,7 @@ public class SalesOrderController {
      */
     @Operation(summary = "关闭销售订单")
     @PostMapping("/{id}/close")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("sales-order:close")
     public SalesOrderVO close(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return salesOrderService.close(id, username);

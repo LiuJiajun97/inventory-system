@@ -1,6 +1,6 @@
 package com.company.inventory.controller;
 
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.service.MonitorService;
 import com.company.inventory.model.vo.monitor.MonitorVO;
 
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "系统监控")
 @RestController
 @RequestMapping("/api/v1/monitor")
-@RequireRole("admin")
+@RequirePerm("monitor:view")
 @Validated
 public class MonitorController {
 

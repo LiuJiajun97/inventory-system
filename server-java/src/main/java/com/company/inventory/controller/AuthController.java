@@ -1,7 +1,7 @@
 package com.company.inventory.controller;
 
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequirePermission;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.auth.ChangePasswordDTO;
 import com.company.inventory.model.dto.auth.LoginDTO;
 import com.company.inventory.model.vo.rbac.UserMenuTreeVO;
@@ -139,13 +139,13 @@ public class AuthController {
     }
 
     /**
-     * 权限码探针:校验 @RequirePermission 生效(权限码 purchase-order:approve)。
+     * 权限码探针:校验 @RequirePerm 生效(权限码 purchase-order:approve)。
      *
      * @return {ok:true}
      */
     @Operation(summary = "权限码探针")
     @GetMapping("/perm-check")
-    @RequirePermission("purchase-order:approve")
+    @RequirePerm("purchase-order:approve")
     public Map<String, Object> permCheck() {
         return Map.of("ok", Boolean.TRUE);
     }

@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.stocktake.StocktakeActualDTO;
 import com.company.inventory.model.dto.stocktake.StocktakeCreateDTO;
 import com.company.inventory.model.query.StocktakeDocQuery;
@@ -78,7 +78,7 @@ public class StocktakeController {
      */
     @Operation(summary = "新建盘点单")
     @PostMapping
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stocktake:edit")
     public StocktakeDocVO create(@Valid @RequestBody StocktakeCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -107,7 +107,7 @@ public class StocktakeController {
      */
     @Operation(summary = "盘点实盘录入")
     @PutMapping("/{id}/actual")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stocktake:edit")
     public StocktakeDocVO enterActual(@PathVariable long id, @Valid @RequestBody StocktakeActualDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -123,7 +123,7 @@ public class StocktakeController {
      */
     @Operation(summary = "盘点刷新快照")
     @PostMapping("/{id}/refresh-book")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stocktake:edit")
     public StocktakeDocVO refreshBook(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stocktakeService.refreshBook(id, username);
@@ -138,7 +138,7 @@ public class StocktakeController {
      */
     @Operation(summary = "盘点差异生成调整单")
     @PostMapping("/{id}/adjust")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stocktake:edit")
     public List<StockAdjustDocVO> adjust(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stocktakeService.generateAdjust(id, username);
@@ -153,7 +153,7 @@ public class StocktakeController {
      */
     @Operation(summary = "提交盘点单")
     @PostMapping("/{id}/submit")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stocktake:submit")
     public StocktakeDocVO submit(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stocktakeService.submit(id, username);
@@ -168,7 +168,7 @@ public class StocktakeController {
      */
     @Operation(summary = "审批通过盘点单")
     @PostMapping("/{id}/approve")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stocktake:approve")
     public StocktakeDocVO approve(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stocktakeService.approve(id, username);
@@ -184,7 +184,7 @@ public class StocktakeController {
      */
     @Operation(summary = "驳回盘点单")
     @PostMapping("/{id}/reject")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stocktake:reject")
     public StocktakeDocVO reject(@PathVariable long id,
             @RequestBody Map<String, String> body, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -200,7 +200,7 @@ public class StocktakeController {
      */
     @Operation(summary = "作废盘点单")
     @PostMapping("/{id}/void")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stocktake:void")
     public StocktakeDocVO voidDoc(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stocktakeService.voidDoc(id, username);

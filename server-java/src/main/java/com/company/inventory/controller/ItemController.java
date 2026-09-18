@@ -1,7 +1,7 @@
 package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.item.ItemCreateDTO;
 import com.company.inventory.model.dto.item.ItemUpdateDTO;
 import com.company.inventory.model.query.ItemQuery;
@@ -102,7 +102,7 @@ public class ItemController {
      */
     @Operation(summary = "新建物品")
     @PostMapping
-    @RequireRole("admin")
+    @RequirePerm("item:create")
     public ItemVO create(@Valid @RequestBody ItemCreateDTO dto) {
         return itemService.create(dto);
     }
@@ -116,7 +116,7 @@ public class ItemController {
      */
     @Operation(summary = "编辑物品")
     @PutMapping("/{id}")
-    @RequireRole("admin")
+    @RequirePerm("item:edit")
     public ItemVO update(@PathVariable long id, @Valid @RequestBody ItemUpdateDTO dto) {
         return itemService.update(id, dto);
     }
@@ -129,7 +129,7 @@ public class ItemController {
      */
     @Operation(summary = "物品导入")
     @PostMapping("/import")
-    @RequireRole("admin")
+    @RequirePerm("item:import")
     public ImportResultVO importItems(@RequestParam("file") MultipartFile file) {
         return importService.importItems(file);
     }

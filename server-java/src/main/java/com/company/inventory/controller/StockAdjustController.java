@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.adjust.StockAdjustCreateDTO;
 import com.company.inventory.model.query.StockAdjustQuery;
 import com.company.inventory.model.query.StockAdjustDocLineQuery;
@@ -75,7 +75,7 @@ public class StockAdjustController {
      */
     @Operation(summary = "新建调整单")
     @PostMapping
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stock-adjust:edit")
     public StockAdjustDocVO create(@Valid @RequestBody StockAdjustCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -92,7 +92,7 @@ public class StockAdjustController {
      */
     @Operation(summary = "编辑调整单")
     @PutMapping("/{id}")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stock-adjust:edit")
     public StockAdjustDocVO update(@PathVariable long id,
             @Valid @RequestBody StockAdjustCreateDTO dto, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -120,7 +120,7 @@ public class StockAdjustController {
      */
     @Operation(summary = "提交调整单")
     @PostMapping("/{id}/submit")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stock-adjust:submit")
     public StockAdjustDocVO submit(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stockAdjustService.submit(id, username);
@@ -135,7 +135,7 @@ public class StockAdjustController {
      */
     @Operation(summary = "审批执行调整单")
     @PostMapping("/{id}/approve")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stock-adjust:approve")
     public StockAdjustDocVO approve(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stockAdjustService.approve(id, username);
@@ -151,7 +151,7 @@ public class StockAdjustController {
      */
     @Operation(summary = "驳回调整单")
     @PostMapping("/{id}/reject")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stock-adjust:reject")
     public StockAdjustDocVO reject(@PathVariable long id,
             @RequestBody Map<String, String> body, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -167,7 +167,7 @@ public class StockAdjustController {
      */
     @Operation(summary = "作废调整单")
     @PostMapping("/{id}/void")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("stock-adjust:void")
     public StockAdjustDocVO voidDoc(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return stockAdjustService.voidDoc(id, username);

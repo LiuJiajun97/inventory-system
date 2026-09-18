@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 库存管理系统 种子数据(新环境基线,配合 schema.sql 使用)
 -- 内容:3 仓库 + 4 库位 + 4 物品 + 3 用户 + 字典(3 类型 9 项)
---      + RBAC 终态(3 内置角色 / 133 菜单 / 255 角色-菜单绑定 / 用户角色)
+--      + RBAC 终态(3 内置角色 / 142 菜单 / 267 角色-菜单绑定 / 用户角色)
 -- 密码 BCrypt(明文:admin123 / zhang123 / lisi123)
 -- 用法:psql -U inv -d <新库> -f schema.sql -f seed.sql
 -- INSERT 均带 ON CONFLICT 防护,重复执行不报错(已存在的行跳过)。
@@ -215,7 +215,16 @@ VALUES
     (130, 124, 'payments:create', '付款单-新建', 'button', NULL, 1, 1),
     (131, 124, 'payments:void', '付款单-作废', 'button', NULL, 2, 1),
     (132, 125, 'receipts:create', '收款单-新建', 'button', NULL, 1, 1),
-    (133, 125, 'receipts:void', '收款单-作废', 'button', NULL, 2, 1)
+    (133, 125, 'receipts:void', '收款单-作废', 'button', NULL, 2, 1),
+    (134, 9, 'purchase-order:create', '采购订单-新建', 'button', NULL, 0, 1),
+    (135, 10, 'sales-order:create', '销售订单-新建', 'button', NULL, 0, 1),
+    (136, 13, 'transfer:create', '调拨单-新建', 'button', NULL, 0, 1),
+    (137, 86, 'menu:view', '菜单-查看', 'button', NULL, 0, 1),
+    (138, 26, 'monitor:view', '系统监控-查看', 'button', NULL, 0, 1),
+    (139, 119, 'operationlog:view', '操作日志-查看', 'button', NULL, 0, 1),
+    (140, 24, 'role:view', '角色-查看', 'button', NULL, 0, 1),
+    (141, 23, 'user:view', '用户-查看', 'button', NULL, 0, 1),
+    (142, 25, 'dict:view', '字典-查看', 'button', NULL, 0, 1)
 ON CONFLICT (menu_code) DO NOTHING;
 SELECT setval(pg_get_serial_sequence('sys_menu', 'id'), (SELECT MAX(id) FROM sys_menu));
 
@@ -355,6 +364,15 @@ VALUES
     (1, 131),
     (1, 132),
     (1, 133),
+    (1, 134),
+    (1, 135),
+    (1, 136),
+    (1, 137),
+    (1, 138),
+    (1, 139),
+    (1, 140),
+    (1, 141),
+    (1, 142),
     (2, 1),
     (2, 2),
     (2, 3),
@@ -445,6 +463,9 @@ VALUES
     (2, 131),
     (2, 132),
     (2, 133),
+    (2, 134),
+    (2, 135),
+    (2, 136),
     (3, 1),
     (3, 2),
     (3, 3),

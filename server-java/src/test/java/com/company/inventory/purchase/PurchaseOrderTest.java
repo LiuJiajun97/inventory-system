@@ -1,6 +1,8 @@
 package com.company.inventory.purchase;
 
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.AuthCache;
+import com.company.inventory.support.RbacSeedSupport;
 import com.company.inventory.model.dto.inbound.InboundCreateDTO;
 import com.company.inventory.model.dto.inbound.InboundLineDTO;
 import com.company.inventory.model.dto.purchase.ArrivalLine;
@@ -92,6 +94,10 @@ class PurchaseOrderTest {
     /** JDBC */
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    /** 权限缓存(测试前清缓存防串号) */
+    @Autowired
+    private AuthCache authCache;
     /** REST 模板(校验口径 HTTP 层断言用) */
     @Autowired
     private TestRestTemplate rest;
@@ -123,6 +129,8 @@ class PurchaseOrderTest {
      */
     @BeforeAll
     void cleanDb() {
+        RbacSeedSupport.injectBaseline(jdbcTemplate);
+        RbacSeedSupport.evictAuthCache(authCache);
         String sql = "TRUNCATE \"purchase_order_item\",\"sales_order_item\",\"transfer_doc_item\","
                 + "\"stocktake_doc_item\",\"stock_adjust_doc_item\",\"outbound_doc_item\",\"inbound_doc_item\","
                 + "\"purchase_order\",\"sales_order\",\"transfer_doc\",\"stocktake_doc\",\"stock_adjust_doc\","
@@ -166,6 +174,7 @@ class PurchaseOrderTest {
         httpUser.setRole("operator");
         httpUser.setStatus(1);
         userMapper.insert(httpUser);
+        RbacSeedSupport.bindUserRole(jdbcTemplate, "po_http");
     }
 
     /**
@@ -585,6 +594,7 @@ class PurchaseOrderTest {
         user.setRole(role);
         user.setStatus(1);
         userMapper.insert(user);
+        RbacSeedSupport.bindUserRole(jdbcTemplate, username);
         return user.getId();
     }
 

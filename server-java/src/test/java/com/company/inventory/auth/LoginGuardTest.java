@@ -1,5 +1,7 @@
 package com.company.inventory.auth;
 
+import com.company.inventory.common.support.AuthCache;
+import com.company.inventory.support.RbacSeedSupport;
 import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.UserMapper;
 import org.junit.jupiter.api.BeforeAll;
@@ -54,6 +56,9 @@ class LoginGuardTest {
     /** JDBC 模板。 */
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    /** 权限缓存(测试前清缓存防串号)。 */
+    @Autowired
+    private AuthCache authCache;
 
     /** REST 客户端。 */
     @Autowired
@@ -71,7 +76,9 @@ class LoginGuardTest {
         String sql = "TRUNCATE \"outbound_doc_item\",\"inbound_doc_item\",\"outbound_doc\",\"inbound_doc\","
                 + "\"stock_transaction\",\"stock\",\"serial\",\"batch\",\"location\",\"item\","
                 + "\"warehouse\",\"sys_user\" RESTART IDENTITY CASCADE";
-        jdbcTemplate.execute(sql);
+                RbacSeedSupport.injectBaseline(jdbcTemplate);
+        RbacSeedSupport.evictAuthCache(authCache);
+jdbcTemplate.execute(sql);
 
         UserDO user = new UserDO();
         user.setUsername(USERNAME);

@@ -58,7 +58,7 @@ export const authApi = {
   me: () => http.get<unknown, UserInfo>("/auth/me"),
   // 当前用户(多角色并集)菜单树:目录/菜单节点 + 各节点 permissions 权限码
   menus: () => http.get<unknown, MenuNode[]>("/auth/menus"),
-  // 权限码探针:后端 @RequirePermission 拦截,无权限返回 403
+  // 权限码探针:后端 @RequirePerm 拦截,无权限返回 403
   permCheck: (code: string) =>
     http.get<unknown, { ok: boolean }>("/auth/perm-check", { params: { code } }),
 };

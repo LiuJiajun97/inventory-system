@@ -6,6 +6,7 @@ package com.company.inventory.config;
 
 
 
+import com.company.inventory.common.constant.RoleEnum;
 import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.common.support.DataScope;
 import com.company.inventory.common.support.TokenRevocationStore;
@@ -37,9 +38,9 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * JWT 拦截器:校验 Authorization: Bearer &lt;token&gt;,注入用户信息,并按 {@link RequireRole} 做角色鉴权。
+ * JWT 拦截器:校验 Authorization: Bearer &lt;token&gt;,注入用户信息,并按 {@link RequirePerm} 做权限码鉴权。
  *
- * <p>无 token / token 无效 / 过期 → 401 未登录;角色不符 → 403 无权限。
+ * <p>无 token / token 无效 / 过期 → 401 未登录;权限码不匹配 → 403 无权限。
  * 错误体结构与 Fastify 版逐字段一致。</p>
  *
  * @author inventory
@@ -96,7 +97,7 @@ public class JwtInterceptor implements HandlerInterceptor {
     private static final String CLAIM_ROLE = "role";
 
     /** 管理员角色编码(数据权限豁免)。 */
-    private static final String ROLE_ADMIN = "admin";
+    private static final String ROLE_ADMIN = RoleEnum.ADMIN.getValue();
 
     private final JwtParser parser;
     private final SecretKey key;
@@ -111,7 +112,7 @@ public class JwtInterceptor implements HandlerInterceptor {
      *
      * @param jwtProperties        JWT 配置
      * @param objectMapper         JSON 序列化器
-     * @param rbacGuardService     RBAC 鉴权支撑服务(@RequirePermission 用)
+     * @param rbacGuardService     RBAC 鉴权支撑服务(@RequirePerm 用)
      * @param authCache            权限热点缓存(权限码 + 数据权限仓库授权)
      * @param tokenRevocationStore 登出吊销黑名单
      */
@@ -230,30 +231,17 @@ public class JwtInterceptor implements HandlerInterceptor {
             DataScope.set(allowed);
         }
 
-        // 角色校验:方法注解优先,其次类注解;多角色语义 = 与注解角色编码集合有交集即通过
-        RequireRole requireRole = handlerMethod.getMethodAnnotation(RequireRole.class);
-        if (requireRole == null) {
-            requireRole = handlerMethod.getBeanType().getAnnotation(RequireRole.class);
+        // 权限码校验:方法注解优先,其次类注解;与用户权限码集合有交集即放行
+        // (权限码 = 多角色 sys_role_menu 按钮码并集,走 Redis 权限缓存,miss 回源 DB)
+        RequirePerm requirePerm = handlerMethod.getMethodAnnotation(RequirePerm.class);
+        if (requirePerm == null) {
+            requirePerm = handlerMethod.getBeanType().getAnnotation(RequirePerm.class);
         }
-        if (requireRole != null) {
-            boolean allowed = Arrays.stream(requireRole.value()).anyMatch(roleCodes::contains);
-            if (!allowed) {
-                UserContext.clear();
-                DataScope.clear();
-                writeError(response, HTTP_FORBIDDEN, "FORBIDDEN", "Forbidden", MSG_FORBIDDEN);
-                return false;
-            }
-        }
-
-        // 按钮级权限码校验:方法注解优先,其次类注解;命中用户权限码并集才放行
-        RequirePermission requirePermission = handlerMethod.getMethodAnnotation(RequirePermission.class);
-        if (requirePermission == null) {
-            requirePermission = handlerMethod.getBeanType().getAnnotation(RequirePermission.class);
-        }
-        if (requirePermission != null) {
+        if (requirePerm != null) {
             Set<String> permissionCodes =
                     rbacGuardService.permissionCodesOf((Long) request.getAttribute(ATTR_USER_ID));
-            if (!permissionCodes.contains(requirePermission.value())) {
+            boolean allowed = Arrays.stream(requirePerm.value()).anyMatch(permissionCodes::contains);
+            if (!allowed) {
                 UserContext.clear();
                 DataScope.clear();
                 writeError(response, HTTP_FORBIDDEN, "FORBIDDEN", "Forbidden", MSG_FORBIDDEN);

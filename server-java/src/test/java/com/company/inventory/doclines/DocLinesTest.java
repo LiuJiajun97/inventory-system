@@ -1,5 +1,7 @@
 package com.company.inventory.doclines;
 
+import com.company.inventory.common.support.AuthCache;
+import com.company.inventory.support.RbacSeedSupport;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -48,6 +50,8 @@ class DocLinesTest {
     private TestRestTemplate rest;
     @Autowired
     private JdbcTemplate jdbc;
+    @Autowired
+    private AuthCache authCache;
 
     /** 测试用户 ID。 */
     private long adminUserId;
@@ -71,6 +75,8 @@ class DocLinesTest {
      */
     @BeforeAll
     void setUp() {
+        // 清权限缓存:防跨类 userId 复用导致 auth:wh 缓存串号(数据权限断言敏感)
+        RbacSeedSupport.evictAuthCache(authCache);
         // 先清本类单据/用户授权仓/主数据残留(防上轮 tearDown 中断)
         cleanDocs();
         jdbc.update("DELETE FROM sys_user_warehouse WHERE user_id IN (SELECT id FROM sys_user "

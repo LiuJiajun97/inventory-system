@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.supplier.SupplierCreateDTO;
 import com.company.inventory.model.dto.supplier.SupplierUpdateDTO;
 import com.company.inventory.model.query.SupplierQuery;
@@ -95,7 +95,7 @@ public class SupplierController {
      */
     @Operation(summary = "新建供应商")
     @PostMapping
-    @RequireRole("admin")
+    @RequirePerm("supplier:create")
     public SupplierVO create(@Valid @RequestBody SupplierCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -112,7 +112,7 @@ public class SupplierController {
      */
     @Operation(summary = "编辑供应商")
     @PutMapping("/{id}")
-    @RequireRole("admin")
+    @RequirePerm("supplier:edit")
     public SupplierVO update(@PathVariable long id, @Valid @RequestBody SupplierUpdateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -128,7 +128,7 @@ public class SupplierController {
      */
     @Operation(summary = "供应商导入")
     @PostMapping("/import")
-    @RequireRole("admin")
+    @RequirePerm("supplier:import")
     public ImportResultVO importSuppliers(@RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);

@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.customer.CustomerCreateDTO;
 import com.company.inventory.model.dto.customer.CustomerUpdateDTO;
 import com.company.inventory.model.query.CustomerQuery;
@@ -95,7 +95,7 @@ public class CustomerController {
      */
     @Operation(summary = "新建客户")
     @PostMapping
-    @RequireRole("admin")
+    @RequirePerm("customer:create")
     public CustomerVO create(@Valid @RequestBody CustomerCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -112,7 +112,7 @@ public class CustomerController {
      */
     @Operation(summary = "编辑客户")
     @PutMapping("/{id}")
-    @RequireRole("admin")
+    @RequirePerm("customer:edit")
     public CustomerVO update(@PathVariable long id, @Valid @RequestBody CustomerUpdateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -128,7 +128,7 @@ public class CustomerController {
      */
     @Operation(summary = "客户导入")
     @PostMapping("/import")
-    @RequireRole("admin")
+    @RequirePerm("customer:import")
     public ImportResultVO importCustomers(@RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);

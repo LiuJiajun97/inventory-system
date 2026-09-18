@@ -1,11 +1,13 @@
 package com.company.inventory.rbac;
 
+import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.model.entity.rbac.UserRoleDO;
 import com.company.inventory.model.entity.rbac.UserWarehouseDO;
 import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.rbac.UserRoleMapper;
 import com.company.inventory.mapper.rbac.UserWarehouseMapper;
 import com.company.inventory.mapper.UserMapper;
+import com.company.inventory.support.RbacSeedSupport;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -72,6 +74,10 @@ class UserRbac2Test {
     @Autowired
     private UserWarehouseMapper userWarehouseMapper;
 
+    /** 权限缓存(测试前清缓存防串号)。 */
+    @Autowired
+    private AuthCache authCache;
+
     /** admin 角色 ID。 */
     private long roleIdAdmin;
     /** operator 角色 ID。 */
@@ -84,15 +90,19 @@ class UserRbac2Test {
     private long whB;
 
     /**
-     * 前置:清库,造 3 角色 / 2 仓库 / 库存与 7 类单据数据 / 4 授权用户。
+     * 前置:清库,注入 RBAC 基线(3 内置角色 + 菜单 + 绑定),
+     * 造 2 仓库 / 库存与 7 类单据数据 / 4 授权用户。
      */
     @BeforeAll
     void setUp() {
+        RbacSeedSupport.evictAuthCache(authCache);
         jdbcTemplate.execute(TRUNCATE_SQL);
+        // 菜单/角色基线(seed 幂等注入):内置 3 角色 id 与绑定一致,菜单 142 条含 user:view 等按钮码
+        RbacSeedSupport.injectBaseline(jdbcTemplate);
 
-        roleIdAdmin = insertRole("admin", "系统管理员", true);
-        roleIdOperator = insertRole("operator", "库员", true);
-        roleIdViewer = insertRole("viewer", "查看员", true);
+        roleIdAdmin = roleCodeId("admin");
+        roleIdOperator = roleCodeId("operator");
+        roleIdViewer = roleCodeId("viewer");
 
         whA = insertWarehouse("R2-WH-A", "R2仓库A");
         whB = insertWarehouse("R2-WH-B", "R2仓库B");
@@ -311,11 +321,14 @@ class UserRbac2Test {
     }
 
     /** 造角色。 */
-    private long insertRole(String code, String name, boolean builtin) {
-        return jdbcTemplate.queryForObject(
-                "INSERT INTO sys_role (role_code, role_name, is_builtin, status)"
-                        + " VALUES (?, ?, ?, 1) RETURNING id",
-                Long.class, code, name, builtin);
+    /** 按 role_code 取内置角色 ID(seed 注入后存在)。 */
+    private long roleCodeId(String code) {
+        Long id = jdbcTemplate.queryForObject(
+                "SELECT id FROM sys_role WHERE role_code = ?", Long.class, code);
+        if (id == null) {
+            throw new IllegalStateException("seed 角色缺失: " + code);
+        }
+        return id;
     }
 
     /** 造仓库。 */

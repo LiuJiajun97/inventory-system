@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.returns.PurchaseReturnCreateDTO;
 import com.company.inventory.model.query.PurchaseReturnQuery;
 import com.company.inventory.model.query.PurchaseReturnLinesQuery;
@@ -61,7 +61,7 @@ public class PurchaseReturnController {
      */
     @Operation(summary = "新建采购退货单(过账)")
     @PostMapping
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("purchase-return:create")
     public PurchaseReturnCreatedVO create(@Valid @RequestBody PurchaseReturnCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);

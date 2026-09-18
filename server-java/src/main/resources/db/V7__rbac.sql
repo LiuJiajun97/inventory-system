@@ -191,7 +191,7 @@ WHERE r.role_code = 'admin'
 ON CONFLICT (role_id, menu_id) DO NOTHING;
 
 -- operator:除"系统"整个子树(任意深度,含 V8 追加的系统组按钮)外全部;基础数据组
--- (物品/仓库/库位/供应商/客户)按钮码不绑——后端写端点一期起即 @RequireRole("admin"),
+-- (物品/仓库/库位/供应商/客户)按钮码不绑——后端写端点一期起即 admin 角色注解,
 -- operator 只读(前端按钮随之隐藏)。用递归子树排除,保证在含 V8 菜单的库上重跑 V7 也不会把系统组按钮污染给 operator
 INSERT INTO sys_role_menu (role_id, menu_id)
 WITH RECURSIVE sys_tree AS (

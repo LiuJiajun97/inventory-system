@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.settlement.InvoiceCreateDTO;
 import com.company.inventory.model.dto.settlement.InvoiceUpdateDTO;
 import com.company.inventory.model.query.InvoiceQuery;
@@ -58,7 +58,7 @@ public class InvoiceController {
      */
     @Operation(summary = "新建发票(手工登记正票)")
     @PostMapping
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("invoices:create")
     public InvoiceVO create(@Valid @RequestBody InvoiceCreateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -75,7 +75,7 @@ public class InvoiceController {
      */
     @Operation(summary = "修改发票(仅草稿/差异)")
     @PutMapping("/{id}")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("invoices:edit")
     public InvoiceVO update(@PathVariable long id, @Valid @RequestBody InvoiceUpdateDTO dto,
             HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
@@ -91,7 +91,7 @@ public class InvoiceController {
      */
     @Operation(summary = "确认发票(仍有差异行 400)")
     @PostMapping("/{id}/confirm")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("invoices:confirm")
     public InvoiceVO confirm(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return invoiceService.confirm(id, username);
@@ -106,7 +106,7 @@ public class InvoiceController {
      */
     @Operation(summary = "作废发票")
     @PostMapping("/{id}/void")
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("invoices:void")
     public InvoiceVO voidInvoice(@PathVariable long id, HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);
         return invoiceService.voidInvoice(id, username);

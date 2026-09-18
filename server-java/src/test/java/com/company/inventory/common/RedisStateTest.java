@@ -1,7 +1,9 @@
 package com.company.inventory.common;
 
+import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.UserMapper;
+import com.company.inventory.support.RbacSeedSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -97,14 +99,20 @@ class RedisStateTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /** 权限缓存(测试前清缓存防串号)。 */
+    @Autowired
+    private AuthCache authCache;
+
     /** admin token(幂等/登出用例用)。 */
     private String token;
 
     /**
-     * 前置:清库,造三个测试用户,清理 Redis 本类前缀 key(自包含)。
+     * 前置:注入 RBAC 基线 + 清权限缓存,清库造三个测试用户(自包含)。
      */
     @BeforeAll
     void setUp() throws Exception {
+        RbacSeedSupport.injectBaseline(jdbcTemplate);
+        RbacSeedSupport.evictAuthCache(authCache);
         String sql = "TRUNCATE \"outbound_doc_item\",\"inbound_doc_item\",\"outbound_doc\",\"inbound_doc\","
                 + "\"stock_transaction\",\"stock\",\"serial\",\"batch\",\"location\",\"item\","
                 + "\"warehouse\",\"sys_user\" RESTART IDENTITY CASCADE";
@@ -113,6 +121,9 @@ class RedisStateTest {
         insertUser(IDEM_USERNAME, "幂等持久化员", "admin");
         insertUser(LOCK_USERNAME, "锁定测试员", "operator");
         insertUser(LOGOUT_USERNAME, "登出测试员", "admin");
+        RbacSeedSupport.bindUserRole(jdbcTemplate, IDEM_USERNAME);
+        RbacSeedSupport.bindUserRole(jdbcTemplate, LOCK_USERNAME);
+        RbacSeedSupport.bindUserRole(jdbcTemplate, LOGOUT_USERNAME);
 
         // Redis 自包含:清本类 key 前缀(6379 常驻实例,只清本类 key 前缀,不用 FLUSHDB)
         redisTemplate.delete(keysByPattern("idem:*"));
@@ -130,6 +141,9 @@ class RedisStateTest {
     @AfterAll
     void tearDown() {
         jdbcTemplate.update("DELETE FROM item WHERE item_code LIKE 'RDS_%'");
+        RbacSeedSupport.unbindUser(jdbcTemplate, IDEM_USERNAME);
+        RbacSeedSupport.unbindUser(jdbcTemplate, LOCK_USERNAME);
+        RbacSeedSupport.unbindUser(jdbcTemplate, LOGOUT_USERNAME);
         jdbcTemplate.update("DELETE FROM sys_user WHERE username IN (?, ?, ?)",
                 IDEM_USERNAME, LOCK_USERNAME, LOGOUT_USERNAME);
         redisTemplate.delete(keysByPattern("idem:*"));

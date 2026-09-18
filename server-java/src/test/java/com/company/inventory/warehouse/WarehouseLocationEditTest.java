@@ -1,6 +1,8 @@
 package com.company.inventory.warehouse;
 
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.AuthCache;
+import com.company.inventory.support.RbacSeedSupport;
 import com.company.inventory.model.dto.location.LocationUpdateDTO;
 import com.company.inventory.model.dto.warehouse.WarehouseUpdateDTO;
 import com.company.inventory.model.entity.item.ItemDO;
@@ -97,11 +99,17 @@ class WarehouseLocationEditTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    /** 权限缓存(测试前清缓存防串号)。 */
+    @Autowired
+    private AuthCache authCache;
+
     /**
      * 前置:清库 + 造 viewer/operator/admin 用户(用于权限测试)。
      */
     @BeforeAll
     void cleanDb() {
+        RbacSeedSupport.injectBaseline(jdbcTemplate);
+        RbacSeedSupport.evictAuthCache(authCache);
         String sql = "TRUNCATE \"outbound_doc_item\",\"inbound_doc_item\",\"outbound_doc\",\"inbound_doc\","
                 + "\"stock_transaction\",\"stock\",\"serial\",\"batch\",\"location\",\"item\","
                 + "\"warehouse\",\"supplier\",\"customer\",\"sys_user\" RESTART IDENTITY CASCADE";
@@ -111,6 +119,10 @@ class WarehouseLocationEditTest {
         createUser("whedit_viewer", "viewer123", "viewer", enc);
         createUser("whedit_operator", "operator123", "operator", enc);
         createUser("whedit_admin", "admin123", "admin", enc);
+        // 自建用户按 role 列回填 sys_user_role(接口权限码鉴权依赖)
+        RbacSeedSupport.bindUserRole(jdbcTemplate, "whedit_viewer");
+        RbacSeedSupport.bindUserRole(jdbcTemplate, "whedit_operator");
+        RbacSeedSupport.bindUserRole(jdbcTemplate, "whedit_admin");
     }
 
     /**
@@ -335,7 +347,7 @@ class WarehouseLocationEditTest {
     }
 
     /**
-     * PUT 仓库(走真实 HTTP,覆盖 @RequireRole + JwtInterceptor 全链路)。
+     * PUT 仓库(走真实 HTTP,覆盖 @RequirePerm + JwtInterceptor 全链路)。
      */
     private ResponseEntity<Map> putWarehouse(String token, long id, String body) {
         HttpHeaders headers = new HttpHeaders();

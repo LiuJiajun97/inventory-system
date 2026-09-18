@@ -39,7 +39,7 @@ const STATUS_ENUM = {
 
 export function TransferPage() {
   const { hasPerm } = usePermission();
-  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePermission 拦截)
+  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePerm 拦截)
   const canEdit = hasPerm("transfer:edit");
   const canSubmit = hasPerm("transfer:submit");
   const canApprove = hasPerm("transfer:approve");

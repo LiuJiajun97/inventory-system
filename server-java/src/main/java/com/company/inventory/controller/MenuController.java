@@ -1,6 +1,6 @@
 package com.company.inventory.controller;
 
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.rbac.MenuCreateDTO;
 import com.company.inventory.model.dto.rbac.MenuUpdateDTO;
 import com.company.inventory.model.vo.rbac.MenuNodeVO;
@@ -30,7 +30,7 @@ import java.util.Map;
 @Tag(name = "菜单")
 @RestController
 @RequestMapping("/api/v1/menus")
-@RequireRole("admin")
+@RequirePerm("menu:view")
 @Validated
 public class MenuController {
 

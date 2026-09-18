@@ -1,7 +1,7 @@
 package com.company.inventory.purchase;
 
 import com.company.inventory.common.exception.BizException;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.purchase.PurchaseOrderCreateDTO;
 import com.company.inventory.model.dto.purchase.PurchaseOrderLineDTO;
 import com.company.inventory.model.entity.item.ItemDO;
@@ -24,7 +24,6 @@ import org.springframework.test.context.TestPropertySource;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -73,11 +72,17 @@ class ApprovalPermissionTest {
     /** 物品 */
     private long itemId;
 
-    /**
-     * 前置:造两个 operator 用户 + 供应商 + 物品。
+    /** 前置:造两个 operator 用户 + 供应商 + 物品。
      */
     @BeforeAll
     void setup() {
+        // 审批资格按 sys_user_role 多角色绑定判定,先确保测试库存在 admin/operator 角色记录
+        jdbcTemplate.update("INSERT INTO sys_role (role_code, role_name, remark, is_builtin, status) "
+                + "VALUES ('admin', '系统管理员', '审批测试内置角色', TRUE, 1) "
+                + "ON CONFLICT (role_code) DO NOTHING");
+        jdbcTemplate.update("INSERT INTO sys_role (role_code, role_name, remark, is_builtin, status) "
+                + "VALUES ('operator', '库员', '审批测试内置角色', TRUE, 1) "
+                + "ON CONFLICT (role_code) DO NOTHING");
         String suffix = String.valueOf(System.nanoTime());
         SupplierDO sp = new SupplierDO();
         sp.setSupplierCode("APSP-" + suffix);
@@ -108,19 +113,19 @@ class ApprovalPermissionTest {
         PurchaseOrderVO approved = purchaseOrderService.approve(id, operatorB);
         assertEquals("approved", approved.status());
         assertEquals(operatorB, approved.approver());
-        // 接口注解同步放开:审批/驳回/作废/关闭均含 operator
-        assertTrue(roleOf("PurchaseOrderController", "approve").contains("operator"));
-        assertTrue(roleOf("PurchaseOrderController", "reject").contains("operator"));
-        assertTrue(roleOf("PurchaseOrderController", "voidDoc").contains("operator"));
-        assertTrue(roleOf("PurchaseOrderController", "close").contains("operator"));
-        assertTrue(roleOf("SalesOrderController", "approve").contains("operator"));
-        assertTrue(roleOf("SalesOrderController", "reject").contains("operator"));
-        assertTrue(roleOf("TransferController", "approve").contains("operator"));
-        assertTrue(roleOf("TransferController", "voidDoc").contains("operator"));
-        assertTrue(roleOf("StocktakeController", "approve").contains("operator"));
-        assertTrue(roleOf("StocktakeController", "voidDoc").contains("operator"));
-        assertTrue(roleOf("StockAdjustController", "approve").contains("operator"));
-        assertTrue(roleOf("StockAdjustController", "voidDoc").contains("operator"));
+        // 接口注解同步替换为权限码:审批/驳回/作废/关闭均为 operator 可绑定的业务码(与 seed 对齐)
+        assertEquals("purchase-order:approve", permCodeOf("PurchaseOrderController", "approve"));
+        assertEquals("purchase-order:reject", permCodeOf("PurchaseOrderController", "reject"));
+        assertEquals("purchase-order:void", permCodeOf("PurchaseOrderController", "voidDoc"));
+        assertEquals("purchase-order:close", permCodeOf("PurchaseOrderController", "close"));
+        assertEquals("sales-order:approve", permCodeOf("SalesOrderController", "approve"));
+        assertEquals("sales-order:reject", permCodeOf("SalesOrderController", "reject"));
+        assertEquals("transfer:approve", permCodeOf("TransferController", "approve"));
+        assertEquals("transfer:void", permCodeOf("TransferController", "voidDoc"));
+        assertEquals("stocktake:approve", permCodeOf("StocktakeController", "approve"));
+        assertEquals("stocktake:void", permCodeOf("StocktakeController", "voidDoc"));
+        assertEquals("stock-adjust:approve", permCodeOf("StockAdjustController", "approve"));
+        assertEquals("stock-adjust:void", permCodeOf("StockAdjustController", "voidDoc"));
     }
 
     /**
@@ -152,6 +157,37 @@ class ApprovalPermissionTest {
     }
 
     /**
+     * 用例 4:多角色用户(sys_user_role 含 admin+operator,旧单角色列为 operator)可自批。
+     * ApprovalGuard 按多角色绑定判定 admin 的回归用例:旧逻辑读单角色列会误判"禁自批"。
+     */
+    @Test
+    void dualRoleUserCanApproveOwnDoc() {
+        String suffix = String.valueOf(System.nanoTime());
+        UserDO dual = new UserDO();
+        dual.setUsername("ap_dual_" + suffix);
+        dual.setPasswordHash("$2a$10$dummy");
+        dual.setName("双角色甲");
+        dual.setRole("operator");
+        dual.setStatus(1);
+        userMapper.insert(dual);
+        for (String code : List.of("admin", "operator")) {
+            Integer roleId = jdbcTemplate.queryForObject(
+                    "SELECT id FROM sys_role WHERE role_code = ?", Integer.class, code);
+            jdbcTemplate.update("INSERT INTO sys_user_role (user_id, role_id) VALUES (?, ?) "
+                    + "ON CONFLICT (user_id, role_id) DO NOTHING", dual.getId(), roleId);
+        }
+        String dualName = dual.getUsername();
+        PurchaseOrderVO vo = purchaseOrderService.create(new PurchaseOrderCreateDTO(LocalDate.now(),
+                supplierId, dual.getId(), null, null,
+                List.of(new PurchaseOrderLineDTO(itemId, new BigDecimal("1"), null,
+                        new BigDecimal("10"), null, new BigDecimal("13.00"), null))), dualName);
+        purchaseOrderService.submit(vo.id(), dualName);
+        PurchaseOrderVO approved = purchaseOrderService.approve(vo.id(), dualName);
+        assertEquals("approved", approved.status());
+        assertEquals(dualName, approved.approver());
+    }
+
+    /**
      * 新建单行采购订单(草稿,制单人=operatorA)。
      *
      * @return 订单 ID
@@ -175,7 +211,7 @@ class ApprovalPermissionTest {
     }
 
     /**
-     * 造用户。
+     * 造用户(同步写 sys_user_role 多角色绑定,与生产 seed 一致;旧 role 列保留兼容)。
      *
      * @param u 用户名
      * @param name 姓名
@@ -190,26 +226,36 @@ class ApprovalPermissionTest {
         user.setRole(role);
         user.setStatus(1);
         userMapper.insert(user);
+        Integer roleId = jdbcTemplate.queryForObject(
+                "SELECT id FROM sys_role WHERE role_code = ?", Integer.class, role);
+        if (roleId != null) {
+            jdbcTemplate.update("INSERT INTO sys_user_role (user_id, role_id) VALUES (?, ?) "
+                    + "ON CONFLICT (user_id, role_id) DO NOTHING", user.getId(), roleId);
+        }
         return user.getId();
     }
 
     /**
-     * 反射读取 Controller 指定方法的 @RequireRole 角色集合。
+     * 反射读取 Controller 指定方法的 @RequirePerm 权限码(方法级优先,回退类级)。
      *
      * @param controllerName 控制器类简名
      * @param methodName     方法名
-     * @return 角色列表
+     * @return 权限码(单码声明时返回首码)
      */
-    private List<String> roleOf(String controllerName, String methodName) {
+    private String permCodeOf(String controllerName, String methodName) {
         try {
             Class<?> clazz = Class.forName("com.company.inventory.controller." + controllerName);
+            RequirePerm fallback = clazz.getAnnotation(RequirePerm.class);
             for (Method m : clazz.getDeclaredMethods()) {
                 if (m.getName().equals(methodName)) {
-                    RequireRole rr = m.getAnnotation(RequireRole.class);
-                    if (rr != null) {
-                        return Arrays.asList(rr.value());
+                    RequirePerm rp = m.getAnnotation(RequirePerm.class);
+                    if (rp != null && rp.value().length > 0) {
+                        return rp.value()[0];
                     }
                 }
+            }
+            if (fallback != null && fallback.value().length > 0) {
+                return fallback.value()[0];
             }
             throw new IllegalStateException("方法或注解缺失: " + controllerName + "#" + methodName);
         } catch (ClassNotFoundException e) {

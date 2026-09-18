@@ -2,7 +2,7 @@ package com.company.inventory.controller;
 
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.config.JwtInterceptor;
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.opening.OpeningStockCreateDTO;
 import com.company.inventory.model.query.OpeningStockQuery;
 import com.company.inventory.model.query.OpeningStockDocLineQuery;
@@ -61,7 +61,7 @@ public class OpeningStockController {
      */
     @Operation(summary = "新建期初单并过账")
     @PostMapping
-    @RequireRole({"admin", "operator"})
+    @RequirePerm("opening:create")
     public OpeningStockCreatedVO create(@Valid @RequestBody OpeningStockCreateDTO dto,
                                         HttpServletRequest request) {
         String username = (String) request.getAttribute(JwtInterceptor.ATTR_USERNAME);

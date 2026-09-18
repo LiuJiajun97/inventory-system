@@ -33,7 +33,7 @@ const STATUS_ENUM = {
 
 export function AdjustPage() {
   const { hasPerm } = usePermission();
-  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePermission 拦截)
+  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePerm 拦截)
   const canEdit = hasPerm("stock-adjust:edit");
   const canSubmit = hasPerm("stock-adjust:submit");
   const canApprove = hasPerm("stock-adjust:approve");

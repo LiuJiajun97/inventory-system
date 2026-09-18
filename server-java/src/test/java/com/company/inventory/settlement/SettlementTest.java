@@ -1,6 +1,8 @@
 package com.company.inventory.settlement;
 
 import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.AuthCache;
+import com.company.inventory.support.RbacSeedSupport;
 import com.company.inventory.common.page.PageResult;
 import com.company.inventory.common.support.DataScope;
 import com.company.inventory.model.dto.inbound.InboundCreateDTO;
@@ -130,6 +132,10 @@ class SettlementTest {
     /** JDBC(独立 SQL 基准) */
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    /** 权限缓存(测试前清缓存防串号) */
+    @Autowired
+    private AuthCache authCache;
     /** HTTP 权限验证 */
     @Autowired
     private TestRestTemplate rest;
@@ -155,6 +161,8 @@ class SettlementTest {
     void cleanDb() {
         // 全清(含主数据):测试类可能被多次加载,防止编码唯一约束撞历史残留
         truncateBusiness();
+        RbacSeedSupport.injectBaseline(jdbcTemplate);
+        RbacSeedSupport.evictAuthCache(authCache);
         jdbcTemplate.execute("TRUNCATE \"location\",\"item\",\"warehouse\",\"supplier\",\"customer\","
                 + "\"sys_user\" RESTART IDENTITY CASCADE");
         WarehouseDO wh = new WarehouseDO();
@@ -178,6 +186,10 @@ class SettlementTest {
                 "settle123");
         approverUserId = insertUser("settle_approver", "结算审批人", "admin", "settle123");
         insertUser(VIEWER, "结算查看员", "viewer", "settle123");
+        // 自建用户按 role 列回填 sys_user_role(接口权限码鉴权依赖)
+        RbacSeedSupport.bindUserRole(jdbcTemplate, "settle_creator");
+        RbacSeedSupport.bindUserRole(jdbcTemplate, "settle_approver");
+        RbacSeedSupport.bindUserRole(jdbcTemplate, VIEWER);
     }
 
     /**

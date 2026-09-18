@@ -1,6 +1,6 @@
 package com.company.inventory.controller;
 
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.config.RequirePerm;
 import com.company.inventory.model.dto.dict.DictCreateDTO;
 import com.company.inventory.model.dto.dict.DictStatusDTO;
 import com.company.inventory.model.dto.dict.DictTypeCreateDTO;
@@ -82,7 +82,7 @@ public class DictController {
      */
     @Operation(summary = "新建字典类型")
     @PostMapping("/types")
-    @RequireRole("admin")
+    @RequirePerm("dict:edit")
     public DictTypeVO createType(@Valid @RequestBody DictTypeCreateDTO dto) {
         return dictTypeAdminService.create(dto);
     }
@@ -96,7 +96,7 @@ public class DictController {
      */
     @Operation(summary = "编辑字典类型")
     @PutMapping("/types/{typeCode}")
-    @RequireRole("admin")
+    @RequirePerm("dict:edit")
     public DictTypeVO updateType(@PathVariable String typeCode,
                                  @Valid @RequestBody DictTypeUpdateDTO dto) {
         return dictTypeAdminService.update(typeCode, dto);
@@ -122,7 +122,7 @@ public class DictController {
      */
     @Operation(summary = "按类型查全部字典项(含停用)")
     @GetMapping("/all")
-    @RequireRole("admin")
+    @RequirePerm("dict:view")
     public List<DictVO> listAll(@RequestParam("type") String type) {
         return dictAdminService.listAllByType(type);
     }
@@ -135,7 +135,7 @@ public class DictController {
      */
     @Operation(summary = "新建字典项")
     @PostMapping
-    @RequireRole("admin")
+    @RequirePerm("dict:edit")
     public DictVO create(@Valid @RequestBody DictCreateDTO dto) {
         return dictAdminService.create(dto);
     }
@@ -149,7 +149,7 @@ public class DictController {
      */
     @Operation(summary = "编辑字典项")
     @PutMapping("/{id}")
-    @RequireRole("admin")
+    @RequirePerm("dict:edit")
     public DictVO update(@PathVariable long id, @Valid @RequestBody DictUpdateDTO dto) {
         return dictAdminService.update(id, dto);
     }
@@ -162,7 +162,7 @@ public class DictController {
      */
     @Operation(summary = "启用/停用字典项")
     @PostMapping("/{id}/status")
-    @RequireRole("admin")
+    @RequirePerm("dict:edit")
     public void updateStatus(@PathVariable long id, @Valid @RequestBody DictStatusDTO dto) {
         dictAdminService.updateStatus(id, dto.status());
     }

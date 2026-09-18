@@ -1,6 +1,7 @@
 package com.company.inventory.auth;
 
-import com.company.inventory.config.RequireRole;
+import com.company.inventory.common.support.AuthCache;
+import com.company.inventory.support.RbacSeedSupport;
 import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.model.entity.warehouse.WarehouseDO;
 import com.company.inventory.mapper.UserMapper;
@@ -41,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 权限测试(对照 server/test/auth.test.ts):
  * 1) viewer 调 POST /api/v1/inbound → 403 无权限;
  * 2) 无 token → 401 未登录。
- * 使用真实 HTTP(RANDOM_PORT),覆盖 JWT 拦截器与 @RequireRole 全链路。
+ * 使用真实 HTTP(RANDOM_PORT),覆盖 JWT 拦截器与 @RequirePerm 权限码鉴权全链路。
  *
  * @author inventory
  */
@@ -66,6 +67,9 @@ class AuthTest {
     /** JDBC 模板 */
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    /** 权限缓存(测试前清缓存防串号)。 */
+    @Autowired
+    private AuthCache authCache;
 
     /**
      * 前置:清库,造 viewer 用户与 1 个仓库。
@@ -75,7 +79,9 @@ class AuthTest {
         String sql = "TRUNCATE \"outbound_doc_item\",\"inbound_doc_item\",\"outbound_doc\",\"inbound_doc\","
                 + "\"stock_transaction\",\"stock\",\"serial\",\"batch\",\"location\",\"item\","
                 + "\"warehouse\",\"sys_user\" RESTART IDENTITY CASCADE";
-        jdbcTemplate.execute(sql);
+                RbacSeedSupport.injectBaseline(jdbcTemplate);
+        RbacSeedSupport.evictAuthCache(authCache);
+jdbcTemplate.execute(sql);
 
         WarehouseDO wh = new WarehouseDO();
         wh.setWarehouseCode("AUTHW");

@@ -1,6 +1,6 @@
 // 字典管理页(传统类型列表 + Drawer 二级管理弹窗)
 // ProTable 版:主表全量返回(非分页,pagination=false),关键字筛选保持前端内存过滤
-// admin 可见操作列;viewer 只读
+// 持有 dict:edit 权限码的用户可见操作列;无权限码只读
 
 import { useState, useRef } from "react";
 import {
@@ -25,6 +25,7 @@ import { ProTable } from "@ant-design/pro-components";
 import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { dictApi } from "../../api";
+import { usePermission } from "../../auth/usePermission";
 import type { DictItem, DictTypeItem } from "../../types/phase1";
 import { StatusTag } from "../../components/StatusTag";
 import { EmptyHint } from "../../components/EmptyHint";
@@ -49,22 +50,20 @@ export function DictPage() {
   // 新建字典项弹窗
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [itemForm] = Form.useForm();
-  // 角色(接口全量返回成功即视为 admin,保持原逻辑)
-  const [isAdmin, setIsAdmin] = useState(false);
+  // 按钮级权限:dict:edit(页面入口显隐由菜单权限控制)
+  const { hasPerm } = usePermission();
   const actionRef = useRef<ActionType>();
 
   // 数据全量返回(非分页):后端 getTypes() + 前端内存按关键字过滤
   const request = async (params: { current?: number; pageSize?: number; keyword?: string }) => {
     try {
       const types = await dictApi.getTypes();
-      setIsAdmin(true);
       const kw = (params.keyword ?? "").trim().toLowerCase();
       const data = types.filter(
         (t) => !kw || t.typeCode.toLowerCase().includes(kw) || t.typeName.toLowerCase().includes(kw)
       );
       return { data, success: true, total: data.length };
     } catch {
-      setIsAdmin(false);
       return { data: [] as DictTypeItem[], success: true, total: 0 };
     }
   };
@@ -237,7 +236,7 @@ export function DictPage() {
       render: (_v, record) =>
         record.status === 1 ? <StatusTag status="enabled" /> : <StatusTag status="disabled" />,
     },
-    ...(isAdmin
+    ...(hasPerm("dict:edit")
       ? [
           {
             title: "操作",
@@ -308,10 +307,10 @@ export function DictPage() {
           labelWidth: "auto",
           defaultCollapsed: false,
           span: 6,
-          // 新建类型按钮放筛选行右侧(替代默认工具栏行,仅 admin)
+          // 新建类型按钮放筛选行右侧(替代默认工具栏行,仅 dict:edit)
           optionRender: (_searchConfig, _props, dom) => [
             ...dom,
-            isAdmin && (
+            hasPerm("dict:edit") && (
               <Button
                 key="new"
                 type="primary"
@@ -471,7 +470,7 @@ export function DictPage() {
             className="drawer-footer"
             style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}
           >
-            {isAdmin && (
+            {hasPerm("dict:edit") && (
               <Space>
                 <Button
                   type="primary"

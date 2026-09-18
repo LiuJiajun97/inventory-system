@@ -1,7 +1,9 @@
 package com.company.inventory.common;
 
+import com.company.inventory.common.support.AuthCache;
 import com.company.inventory.model.entity.user.UserDO;
 import com.company.inventory.mapper.UserMapper;
+import com.company.inventory.support.RbacSeedSupport;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -60,6 +62,10 @@ class IdempotencyTest {
     @Autowired
     private TestRestTemplate rest;
 
+    /** 权限缓存(测试前清缓存防串号)。 */
+    @Autowired
+    private AuthCache authCache;
+
     /** admin token。 */
     private String token;
 
@@ -67,10 +73,12 @@ class IdempotencyTest {
     private static final String USERNAME = "idem_admin";
 
     /**
-     * 前置:清库,造 admin 用户并登录。
+     * 前置:注入 RBAC 基线 + 清权限缓存,清库造 admin 用户并登录。
      */
     @BeforeAll
     void setUp() {
+        RbacSeedSupport.injectBaseline(jdbcTemplate);
+        RbacSeedSupport.evictAuthCache(authCache);
         String sql = "TRUNCATE \"outbound_doc_item\",\"inbound_doc_item\",\"outbound_doc\",\"inbound_doc\","
                 + "\"stock_transaction\",\"stock\",\"serial\",\"batch\",\"location\",\"item\","
                 + "\"warehouse\",\"sys_user\" RESTART IDENTITY CASCADE";
@@ -83,6 +91,7 @@ class IdempotencyTest {
         user.setRole("admin");
         user.setStatus(1);
         userMapper.insert(user);
+        RbacSeedSupport.bindUserRole(jdbcTemplate, USERNAME);
 
         token = login(USERNAME, "idem123456");
         assertTrue(token != null && !token.isBlank(), "登录应返回 token");
@@ -94,6 +103,7 @@ class IdempotencyTest {
     @AfterAll
     void tearDown() {
         jdbcTemplate.update("DELETE FROM item WHERE item_code LIKE 'IDEM_%'");
+        RbacSeedSupport.unbindUser(jdbcTemplate, USERNAME);
         jdbcTemplate.update("DELETE FROM sys_user WHERE username = ?", USERNAME);
     }
 

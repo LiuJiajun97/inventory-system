@@ -32,7 +32,7 @@ const STATUS_ENUM = {
 
 export function StocktakePage() {
   const { hasPerm } = usePermission();
-  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePermission 拦截)
+  // 按钮级权限码(前端仅控制显隐,403 兜底由后端 @RequirePerm 拦截)
   // 录入实盘/刷新快照属编辑动作 → :edit;生成调整单为审批后动作 → :approve
   const canEdit = hasPerm("stocktake:edit");
   const canSubmit = hasPerm("stocktake:submit");
