@@ -56,10 +56,14 @@ jobs:
           cache: maven
 
       - name: 初始化测试库结构(导入 schema.sql)
-        run: psql postgresql://inv:***@localhost:5433/inventory_test -v ON_ERROR_STOP=1 -f src/main/resources/db/schema.sql
+        run: |
+          export PGPASSWORD=inv123
+          psql "host=127.0.0.1 port=5433 dbname=inventory_test user=inv" -v ON_ERROR_STOP=1 -f src/main/resources/db/schema.sql
 
       - name: 初始化测试库种子(导入 seed.sql)
-        run: psql postgresql://inv:***@localhost:5433/inventory_test -v ON_ERROR_STOP=1 -f src/main/resources/db/seed.sql
+        run: |
+          export PGPASSWORD=inv123
+          psql "host=127.0.0.1 port=5433 dbname=inventory_test user=inv" -v ON_ERROR_STOP=1 -f src/main/resources/db/seed.sql
 
       - name: 后端三件套(测试 + checkstyle + 打包)
         run: mvn -q test checkstyle:check package
