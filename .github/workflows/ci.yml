@@ -56,10 +56,10 @@ jobs:
           cache: maven
 
       - name: 初始化测试库结构(导入 schema.sql)
-        run: psql postgresql://inv:inv123@localhost:5433/inventory_test -v ON_ERROR_STOP=1 -f server-java/src/main/resources/db/schema.sql
+        run: psql postgresql://inv:***@localhost:5433/inventory_test -v ON_ERROR_STOP=1 -f src/main/resources/db/schema.sql
 
       - name: 初始化测试库种子(导入 seed.sql)
-        run: psql postgresql://inv:inv123@localhost:5433/inventory_test -v ON_ERROR_STOP=1 -f server-java/src/main/resources/db/seed.sql
+        run: psql postgresql://inv:***@localhost:5433/inventory_test -v ON_ERROR_STOP=1 -f src/main/resources/db/seed.sql
 
       - name: 后端三件套(测试 + checkstyle + 打包)
         run: mvn -q test checkstyle:check package
