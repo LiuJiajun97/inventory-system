@@ -5,7 +5,7 @@
 | POST | `/auth/login` `/auth/password` `/auth/me` | 登录 / 改密 / 当前用户(登录响应 user 新增 roles 数组) | 公开 / 登录 |
 | POST | `/auth/logout` | 登出:吊销当前 token 的 jti(登出后旧 token 立即 401;无 jti 旧 token 自然过期),返回 `{ok:true}` | 登录 |
 | GET | `/auth/menus` | 当前用户菜单树(多角色并集,仅目录+菜单,附按钮权限码列表) | 登录 |
-| GET | `/auth/perm-check` | 权限码探针(校验 @RequirePermission,码 purchase-order:approve) | 登录+权限码 |
+| GET | `/auth/perm-check` | 权限码探针(校验 @RequirePerm,码 purchase-order:approve) | 登录+权限码 |
 | GET | `/dashboard/summary` | 首页统计 | 登录 |
 | GET/POST/PUT | `/warehouses` `/warehouses/:id` | 仓库列表 / 新建 / 编辑(编码不可改,含防不一致校验) | 登录 / admin |
 | GET/POST/PUT | `/locations` `/locations/:id` | 库位列表 / 新建 / 编辑(编码与所属仓库不可改) | 登录 / admin |
