@@ -26,20 +26,19 @@ jobs:
           POSTGRES_USER: inv
           POSTGRES_PASSWORD: inv123
           POSTGRES_DB: inventory_test
-        # 容器内监听 5433 并映射 5433:5433,与测试类硬编码的 127.0.0.1:5433 对齐
+        # 宿主机 5433 → 容器 5432(容器内 PG 监听默认 5432),对齐测试类硬编码 127.0.0.1:5433
+        ports:
+          - "5433:5432"
         options: >-
-          --health-cmd pg_isready -U inv
+          --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          -p 5433 -p 5433
-        ports:
-          - 5433:5433
       # 测试用 Redis(独立 6379 实例,测试类 properties 硬编码 spring.data.redis.port=6379)
       redis:
         image: redis:7.4
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd redis-cli ping
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
