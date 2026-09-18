@@ -629,7 +629,7 @@ function DictLabelCell({
       return;
     }
     try {
-      await dictApi.update(item.id, { dictLabel: value });
+      await dictApi.update(item.id, { dictLabel: value }, { silent: true });
       message.success("标签更新成功");
       setEditing(false);
       onReload();
@@ -692,7 +692,7 @@ function DictSortCell({
       return;
     }
     try {
-      await dictApi.update(item.id, { sortOrder: value });
+      await dictApi.update(item.id, { sortOrder: value }, { silent: true });
       message.success("排序更新成功");
       setEditing(false);
       onReload();

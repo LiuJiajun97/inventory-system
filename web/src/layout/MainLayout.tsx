@@ -7,7 +7,7 @@
 // 面包屑按动态菜单树自动推导(所属目录 + 当前页)
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Layout, Menu, Breadcrumb, Tooltip, Spin, Tag, Dropdown, Select } from "antd";
+import { Layout, Menu, Breadcrumb, Tooltip, Spin, Tag, Dropdown, Select, App } from "antd";
 import dayjs from "dayjs";
 import {
   DashboardOutlined,
@@ -133,6 +133,7 @@ export function MainLayout() {
 function MainLayoutInner() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { message } = App.useApp();
   const user = getUser();
   const role = user?.role;
   const [collapsed, setCollapsed] = useState(false);
@@ -211,13 +212,18 @@ function MainLayoutInner() {
   }, [location.pathname, paths, nodes]);
 
   const onLogout = () => {
-    // 先通知后端吊销当前 token 的 jti(立即失效);请求失败也清本地(降级为自然过期),
-    // 再清本地登录态并回登录页
-    authApi.logout().catch(() => undefined).finally(() => {
-      // clearAuth 内部派发 auth-changed,菜单缓存随之清空
-      clearAuth();
-      navigate("/login", { replace: true });
-    });
+    // 登出:先通知后端吊销当前 token 的 jti。成功才清本地登录态并回登录页;
+    // 失败保留登录态(可重试)并弹具体提示。请求标 silent,由本处自行提示(避免拦截器双弹)。
+    authApi
+      .logout({ silent: true })
+      .then(() => {
+        // clearAuth 内部派发 auth-changed,菜单缓存随之清空
+        clearAuth();
+        navigate("/login", { replace: true });
+      })
+      .catch(() => {
+        message.error("退出登录失败,请重试");
+      });
   };
 
   // C2:当前日期(YYYY-MM-DD 周X,灰色小字)

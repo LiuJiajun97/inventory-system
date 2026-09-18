@@ -88,7 +88,7 @@ export function PurchaseReturnNewPage() {
     if (viewId == null) return;
     let cancelled = false;
     purchaseReturnApi
-      .get(viewId)
+      .get(viewId, { silent: true })
       .then(async (d) => {
         if (cancelled) return;
         setOrderId(d.purchaseOrderId);

@@ -75,7 +75,7 @@ export function PaymentNewPage({ mode }: { mode: "payment" | "receipt" }) {
     if (viewId == null) return;
     let cancelled = false;
     paymentApi
-      .get(viewId)
+      .get(viewId, { silent: true })
       .then((d) => {
         if (cancelled) return;
         setPartyId(d.partyId);

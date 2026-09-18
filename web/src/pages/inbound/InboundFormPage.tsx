@@ -138,7 +138,7 @@ export function InboundFormPage() {
     if (viewId == null) return;
     let cancelled = false;
     inboundApi
-      .get(viewId)
+      .get(viewId, { silent: true })
       .then((d) => {
         if (cancelled) return;
         setWarehouseId(d.warehouseId);

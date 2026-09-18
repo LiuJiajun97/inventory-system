@@ -52,8 +52,9 @@ export const authApi = {
     http.post<unknown, LoginResponse>("/auth/login", { username, password }),
   changePassword: (oldPassword: string, newPassword: string) =>
     http.post("/auth/password", { oldPassword, newPassword }),
-  // 登出:后端吊销当前 token 的 jti(失败也清本地,降级为自然过期)
-  logout: () => http.post<unknown, { ok: boolean }>("/auth/logout"),
+  // 登出:后端吊销当前 token 的 jti(silent,由页面自行提示/决定本地清理)
+  logout: (opts?: { silent?: boolean }) =>
+    http.post<unknown, { ok: boolean }>("/auth/logout", undefined, { silent: opts?.silent }),
   me: () => http.get<unknown, UserInfo>("/auth/me"),
   // 当前用户(多角色并集)菜单树:目录/菜单节点 + 各节点 permissions 权限码
   menus: () => http.get<unknown, MenuNode[]>("/auth/menus"),
@@ -476,8 +477,8 @@ export const dictApi = {
     http.get<unknown, DictItem[]>("/dicts/all", { params: { type } }),
   create: (data: { dictType: string; dictKey: string; dictLabel: string; sortOrder?: number; status?: number }) =>
     http.post<unknown, DictItem>("/dicts", data),
-  update: (id: number, data: { dictLabel?: string; sortOrder?: number }) =>
-    http.put<unknown, DictItem>(`/dicts/${id}`, data),
+  update: (id: number, data: { dictLabel?: string; sortOrder?: number }, opts?: { silent?: boolean }) =>
+    http.put<unknown, DictItem>(`/dicts/${id}`, data, { silent: opts?.silent }),
   setStatus: (id: number, status: number) =>
     http.post(`/dicts/${id}/status`, { status }),
 };
@@ -544,7 +545,8 @@ export const inboundApi = {
     from?: string;
     to?: string;
   }) => http.get<unknown, PagedResponse<InboundDoc>>("/inbound", { params }),
-  get: (id: number) => http.get<unknown, InboundDoc>(`/inbound/${id}`),
+  get: (id: number, opts?: { silent?: boolean }) =>
+    http.get<unknown, InboundDoc>(`/inbound/${id}`, { silent: opts?.silent }),
   // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
   lines: (params?: {
     warehouseId?: number;
@@ -584,7 +586,8 @@ export const openingApi = {
     from?: string;
     to?: string;
   }) => http.get<unknown, PagedResponse<OpeningStockDoc>>("/opening", { params }),
-  get: (id: number) => http.get<unknown, OpeningStockDoc>(`/opening/${id}`),
+  get: (id: number, opts?: { silent?: boolean }) =>
+    http.get<unknown, OpeningStockDoc>(`/opening/${id}`, { silent: opts?.silent }),
   // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
   lines: (params?: {
     warehouseId?: number;
@@ -634,7 +637,8 @@ export const outboundApi = {
     from?: string;
     to?: string;
   }) => http.get<unknown, PagedResponse<OutboundDoc>>("/outbound", { params }),
-  get: (id: number) => http.get<unknown, OutboundDoc>(`/outbound/${id}`),
+  get: (id: number, opts?: { silent?: boolean }) =>
+    http.get<unknown, OutboundDoc>(`/outbound/${id}`, { silent: opts?.silent }),
   // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
   lines: (params?: {
     warehouseId?: number;
@@ -715,7 +719,8 @@ export const purchaseReturnApi = {
     page?: number;
     pageSize?: number;
   }) => http.get<unknown, PagedResponse<PurchaseReturn>>("/purchase-returns", { params }),
-  get: (id: number) => http.get<unknown, PurchaseReturn>(`/purchase-returns/${id}`),
+  get: (id: number, opts?: { silent?: boolean }) =>
+    http.get<unknown, PurchaseReturn>(`/purchase-returns/${id}`, { silent: opts?.silent }),
   create: (data: PurchaseReturnCreatePayload) =>
     http.post<unknown, { id: number; docNo: string; outDocNo: string }>("/purchase-returns", data),
   // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
@@ -742,7 +747,8 @@ export const salesReturnApi = {
     page?: number;
     pageSize?: number;
   }) => http.get<unknown, PagedResponse<SalesReturn>>("/sales-returns", { params }),
-  get: (id: number) => http.get<unknown, SalesReturn>(`/sales-returns/${id}`),
+  get: (id: number, opts?: { silent?: boolean }) =>
+    http.get<unknown, SalesReturn>(`/sales-returns/${id}`, { silent: opts?.silent }),
   create: (data: SalesReturnCreatePayload) =>
     http.post<unknown, { id: number; docNo: string; inDocNo: string }>("/sales-returns", data),
   // V17 明细行视图(单据行拍平,支持物品关键字/批次号筛选)
@@ -871,7 +877,8 @@ export const paymentApi = {
     page?: number;
     pageSize?: number;
   }) => http.get<unknown, PagedResponse<PaymentDoc>>("/payments", { params }),
-  get: (id: number) => http.get<unknown, PaymentDoc>(`/payments/${id}`),
+  get: (id: number, opts?: { silent?: boolean }) =>
+    http.get<unknown, PaymentDoc>(`/payments/${id}`, { silent: opts?.silent }),
   create: (data: {
     payType: string;
     partyId: number;

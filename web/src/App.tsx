@@ -2,7 +2,7 @@
 // 路由懒加载(TASK-v22c C1):登录页/主布局静态导入,其余页面组件 React.lazy 按需分包;
 // 项目均为具名导出,故 lazy 需 .then 包装成 default 导出;
 // 懒加载 chunk 下载期间展示整页骨架屏 <Suspense fallback={<PageSkeleton/>}>。
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import type { ComponentType } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ConfigProvider, App as AntdApp, Result } from "antd";
@@ -13,6 +13,17 @@ import { MainLayout } from "./layout/MainLayout";
 import { PageSkeleton } from "./components/PageSkeleton";
 import { RequireAuth } from "./auth/RequireAuth";
 import { MenuProvider } from "./auth/MenuContext";
+import { setApiMessage } from "./api/messageBridge";
+
+// 全局消息桥注册:在 <AntdApp> 内用 App.useApp() 拿到带主题的 message,
+// 交给 http 拦截器/下载工具等非组件上下文复用(统一样式)。
+function MessageBridge() {
+  const { message } = AntdApp.useApp();
+  useEffect(() => {
+    setApiMessage(message);
+  }, [message]);
+  return null;
+}
 
 // 懒加载页面包装:每个懒组件自带 Suspense,chunk 下载期间展示整页骨架屏。
 // 注意:react-router v6 要求 <Route> 的直接子元素必须全是 <Route>,
@@ -190,6 +201,7 @@ export default function App() {
   return (
     <ConfigProvider locale={zhCN} theme={themeConfig}>
       <AntdApp>
+        <MessageBridge />
         {/* 全局菜单/权限上下文:登录拉 /auth/menus,守卫与按钮显隐共用 */}
         <MenuProvider>
         <BrowserRouter>

@@ -76,7 +76,7 @@ export function OpeningStockNewPage() {
     if (viewId == null) return;
     let cancelled = false;
     openingApi
-      .get(viewId)
+      .get(viewId, { silent: true })
       .then((d) => {
         if (cancelled) return;
         setHeadWhId(d.warehouseId);

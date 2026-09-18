@@ -92,7 +92,7 @@ export function SalesReturnNewPage() {
     if (viewId == null) return;
     let cancelled = false;
     salesReturnApi
-      .get(viewId)
+      .get(viewId, { silent: true })
       .then(async (d) => {
         if (cancelled) return;
         setOrderId(d.salesOrderId);
