@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Popconfirm, Row, Segmented, Select, Space, Table, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
 import { adjustApi, itemApi, warehouseApi } from "../../api";
@@ -412,6 +413,18 @@ export function AdjustPage() {
 
   const itemOptions = items.map((it) => ({ label: `${it.itemCode} ${it.itemName}`, value: it.id }));
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化,主表/明细共用同一 pageKey)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(
+    viewMode === "line" ? (lineColumns as unknown as ProColumns<StockAdjustDoc>[]) : columns,
+    "adjust-list",
+  );
   return (
     <>
       <ProTable<StockAdjustDoc>
@@ -420,7 +433,7 @@ export function AdjustPage() {
       rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库存调整单" /> }}
         actionRef={actionRef}
-        columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<StockAdjustDoc>[]) : columns}
+        columns={rcColumns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
         headerTitle={
           <Segmented
@@ -435,8 +448,16 @@ export function AdjustPage() {
             }}
           />
         }
-        options={false}
-        scroll={{ x: 1050 }}
+        options={{
+          density: false,
+          reload: false,
+          fullScreen: false,
+          setting: rcOptionSetting,
+        }}
+        columnsState={columnsState}
+        onColumnsStateChange={onColumnsChange}
+        components={rcComponents}
+        scroll={rcScroll}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,

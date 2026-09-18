@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Table, Tag, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import dayjs, { type Dayjs } from "dayjs";
 import { fmtDate, fmtQty } from "../../utils/format";
@@ -419,6 +420,18 @@ export function StocktakePage() {
     />
   );
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化,主表/明细共用同一 pageKey)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(
+    viewMode === "line" ? (lineColumns as unknown as ProColumns<StocktakeDoc>[]) : columns,
+    "stocktake",
+  );
   return (
     <>
       <ProTable<StocktakeDoc>
@@ -427,7 +440,7 @@ export function StocktakePage() {
       rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无盘点单" /> }}
         actionRef={actionRef}
-        columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<StocktakeDoc>[]) : columns}
+        columns={rcColumns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
         headerTitle={
           <Segmented
@@ -442,8 +455,16 @@ export function StocktakePage() {
             }}
           />
         }
-        options={false}
-        scroll={{ x: 1100 }}
+        options={{
+          density: false,
+          reload: false,
+          fullScreen: false,
+          setting: rcOptionSetting,
+        }}
+        columnsState={columnsState}
+        onColumnsStateChange={onColumnsChange}
+        components={rcComponents}
+        scroll={rcScroll}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,

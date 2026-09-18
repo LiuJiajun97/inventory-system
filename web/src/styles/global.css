@@ -983,3 +983,33 @@ a.action-edit .anticon {
     box-sizing: border-box;
   }
 }
+
+/* 列表页列宽拖拽:表头右缘常驻握把(react-resizable 默认 handle 透明,补宽命中区+常驻可见) */
+th.react-resizable {
+  position: relative;
+}
+th.react-resizable .react-resizable-handle {
+  width: 14px;
+  height: 100%;
+  bottom: 0;
+  cursor: col-resize;
+}
+/* 常驻握把:竖条+两端圆点,默认浅灰可见,悬停/拖动时主色高亮 */
+th.react-resizable .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--color-text-tertiary);
+  opacity: 0.9;
+  transition: background 0.15s, width 0.15s;
+}
+th.react-resizable:hover .react-resizable-handle::after,
+th.react-resizable .react-resizable-handle:hover::after {
+  background: var(--color-primary);
+  width: 4px;
+}

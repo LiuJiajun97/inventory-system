@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ProColumns } from "@ant-design/pro-components";
 import { Tag, Typography } from "antd";
 import dayjs from "dayjs";
@@ -155,14 +156,31 @@ export function OperationLogPage() {
     },
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(columns, "operation-log");
   return (
     <ProTable<OperationLog>
       rowKey="id"
       locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无操作日志" /> }}
-      columns={columns}
+      columns={rcColumns}
       request={request}
       headerTitle={false}
-      options={false}
+      options={{
+        density: false,
+        reload: false,
+        fullScreen: false,
+        setting: rcOptionSetting,
+      }}
+      columnsState={columnsState}
+      onColumnsStateChange={onColumnsChange}
+      components={rcComponents}
       search={{ labelWidth: "auto", defaultCollapsed: false, span: 6 }}
       pagination={{
         pageSize: 20,

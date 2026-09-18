@@ -17,6 +17,7 @@ import {
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { EmptyHint } from "../../components/EmptyHint";
 import { warehouseApi } from "../../api";
@@ -90,7 +91,7 @@ export function LocationListPage() {
         <span style={{ fontFamily: "monospace" }}>{r.locationCode}</span>
       ),
     },
-    { title: "名称", dataIndex: "locationName", ellipsis: true, search: false },
+    { title: "名称", dataIndex: "locationName", width: 160, ellipsis: true, search: false },
     ...(canEdit
       ? [
           {
@@ -155,16 +156,33 @@ export function LocationListPage() {
     setEditing(null);
   };
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(columns, "location-list");
   return (
     <>
       <ProTable<Location>
         rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库位" /> }}
         actionRef={actionRef}
-        columns={columns}
+        columns={rcColumns}
         request={request}
         headerTitle={false}
-        options={false}
+        options={{
+          density: false,
+          reload: false,
+          fullScreen: false,
+          setting: rcOptionSetting,
+        }}
+        columnsState={columnsState}
+        onColumnsStateChange={onColumnsChange}
+        components={rcComponents}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,

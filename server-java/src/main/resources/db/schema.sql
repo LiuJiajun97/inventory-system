@@ -1,5 +1,5 @@
 -- ============================================================
--- 库存管理系统 PostgreSQL 终态 DDL(42 张表 + 索引 + 约束 + 注释)
+-- 库存管理系统 PostgreSQL 终态 DDL(43 张表 + 索引 + 约束 + 注释)
 -- 按业务域分组,逐表整理版(2026-09-17 重构自 pg_dump 提取物)。
 -- 用法(新环境初始化):
 --   psql -U inv -d <新库> -f schema.sql
@@ -1737,6 +1737,38 @@ ALTER TABLE ONLY public.operation_log ADD CONSTRAINT operation_log_pkey PRIMARY 
 CREATE INDEX idx_operation_log_created_at ON public.operation_log USING btree (created_at);
 CREATE INDEX idx_operation_log_module_ct ON public.operation_log USING btree (module, created_at);
 CREATE INDEX idx_operation_log_username ON public.operation_log USING btree (username);
+
+
+-- ============================================================
+-- 表:sys_user_table_pref 用户表格偏好
+-- 说明:按 (用户, 页面) 存 ProTable 列宽/显隐/列序配置;config JSONB 存前端序列化的 {widths, hidden, order} 原文,服务端不做结构强校验;读路径带 Redis 缓存(前缀 pref:table:{userId},TTL 300 秒,fail-open 降级直查库)。
+-- ============================================================
+CREATE TABLE public.sys_user_table_pref (
+    id         bigserial NOT NULL                                          ,  -- 主键ID
+    user_id    bigint NOT NULL                                             ,  -- 用户 ID
+    page_key   character varying(64) NOT NULL                              ,  -- 页面标识(前端路由段,如 purchase-list)
+    config     jsonb NOT NULL                                              ,  -- 列配置 JSON 原文:{widths 列宽, hidden 隐藏列, order 列序}
+    creator    character varying(64)                                       ,  -- 创建人
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,  -- 创建时间
+    updater    character varying(64)                                       ,  -- 更新人
+    updated_at timestamp without time zone                                     -- 更新时间
+);
+
+COMMENT ON TABLE public.sys_user_table_pref IS '用户表格偏好:按 (用户, 页面) 存 ProTable 列宽/显隐/列序配置(config JSONB 存前端原文)。';
+
+COMMENT ON COLUMN public.sys_user_table_pref.id IS '主键ID';
+COMMENT ON COLUMN public.sys_user_table_pref.user_id IS '用户 ID';
+COMMENT ON COLUMN public.sys_user_table_pref.page_key IS '页面标识(前端路由段,如 purchase-list)';
+COMMENT ON COLUMN public.sys_user_table_pref.config IS '列配置 JSON 原文:{widths 列宽, hidden 隐藏列, order 列序}';
+COMMENT ON COLUMN public.sys_user_table_pref.creator IS '创建人';
+COMMENT ON COLUMN public.sys_user_table_pref.created_at IS '创建时间';
+COMMENT ON COLUMN public.sys_user_table_pref.updater IS '更新人';
+COMMENT ON COLUMN public.sys_user_table_pref.updated_at IS '更新时间';
+
+ALTER TABLE ONLY public.sys_user_table_pref ADD CONSTRAINT uk_user_table_pref_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.sys_user_table_pref ADD CONSTRAINT uk_user_page UNIQUE (user_id, page_key);
+
+CREATE INDEX idx_user_table_pref_user_id ON public.sys_user_table_pref USING btree (user_id);
 
 
 -- ######################################################################

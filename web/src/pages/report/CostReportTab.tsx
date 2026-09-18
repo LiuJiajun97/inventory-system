@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ProColumns } from "@ant-design/pro-components";
 import { Bar } from "@ant-design/charts";
 import dayjs from "dayjs";
@@ -183,6 +184,15 @@ export function CostReportTab() {
     },
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(columns, "report-cost");
   return (
     <>
       {/* TASK-v22b B3:图表在上、表格在下(表格本身不动) */}
@@ -190,10 +200,18 @@ export function CostReportTab() {
       <ProTable<CostReportRow>
       rowKey={(r) => `${r.warehouseId}-${r.itemId}-${r.batchId}`}
       locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无成本数据" /> }}
-      columns={columns}
+      columns={rcColumns}
       request={request}
       headerTitle={false}
-      options={false}
+      options={{
+        density: false,
+        reload: false,
+        fullScreen: false,
+        setting: rcOptionSetting,
+      }}
+      columnsState={columnsState}
+      onColumnsStateChange={onColumnsChange}
+      components={rcComponents}
       search={{
         labelWidth: "auto",
         defaultCollapsed: false,
@@ -208,7 +226,7 @@ export function CostReportTab() {
         showSizeChanger: true,
         showTotal: (t) => `共 ${t} 条`,
       }}
-      scroll={{ x: 950 }}
+      scroll={rcScroll}
     />
     </>
   );

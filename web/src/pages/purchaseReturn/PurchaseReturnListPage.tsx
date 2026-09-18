@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Descriptions, Modal, Segmented, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
@@ -320,6 +321,18 @@ export function PurchaseReturnListPage() {
     },
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化,主表/明细共用同一 pageKey)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(
+    viewMode === "line" ? (lineColumns as unknown as ProColumns<PurchaseReturn>[]) : columns,
+    "purchase-return",
+  );
   return (
     <>
       <ProTable<PurchaseReturn>
@@ -328,7 +341,7 @@ export function PurchaseReturnListPage() {
         rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无采购退货单" /> }}
         actionRef={actionRef}
-        columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<PurchaseReturn>[]) : columns}
+        columns={rcColumns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
         headerTitle={
           <Segmented
@@ -343,8 +356,16 @@ export function PurchaseReturnListPage() {
             }}
           />
         }
-        options={false}
-        scroll={{ x: 1250 }}
+        options={{
+          density: false,
+          reload: false,
+          fullScreen: false,
+          setting: rcOptionSetting,
+        }}
+        columnsState={columnsState}
+        onColumnsStateChange={onColumnsChange}
+        components={rcComponents}
+        scroll={rcScroll}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,

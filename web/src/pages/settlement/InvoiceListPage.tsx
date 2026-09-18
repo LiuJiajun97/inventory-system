@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Descriptions, Modal, Space, Table, Tag, App } from "antd";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -241,16 +242,33 @@ export function InvoiceListPage() {
     },
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(columns, "invoice-list");
   return (
     <>
       <ProTable<Invoice>
         rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无发票" /> }}
         actionRef={actionRef}
-        columns={columns}
+        columns={rcColumns}
         request={request}
-        options={false}
-        scroll={{ x: 1150 }}
+        options={{
+          density: false,
+          reload: false,
+          fullScreen: false,
+          setting: rcOptionSetting,
+        }}
+        columnsState={columnsState}
+        onColumnsStateChange={onColumnsChange}
+        components={rcComponents}
+        scroll={rcScroll}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,

@@ -26,6 +26,7 @@ import {
   CopyOutlined,
 } from "@ant-design/icons";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { userApi, roleApi, warehouseApi } from "../../api";
 import type { RoleRow } from "../../api";
@@ -254,6 +255,15 @@ export function UserListPage() {
     }
   };
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(columns, "user-list");
   return (
     <>
       <ProTable<UserInfo>
@@ -267,11 +277,19 @@ export function UserListPage() {
             hideInTable: true,
             fieldProps: { placeholder: "用户名/姓名", allowClear: true },
           },
-          ...columns,
+          ...rcColumns,
         ]}
         request={request}
         headerTitle={false}
-        options={false}
+        options={{
+          density: false,
+          reload: false,
+          fullScreen: false,
+          setting: rcOptionSetting,
+        }}
+        columnsState={columnsState}
+        onColumnsStateChange={onColumnsChange}
+        components={rcComponents}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,

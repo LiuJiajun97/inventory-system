@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Col, Drawer, Form, Input, InputNumber, Row, Select, Space, theme } from "antd";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { customerApi, dictApi } from "../../api";
 import type { Customer } from "../../types/phase1";
@@ -170,6 +171,15 @@ export function CustomerPage() {
       : []),
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(columns, "customer-list");
   return (
     <>
       <ProTable<Customer>
@@ -183,12 +193,20 @@ export function CustomerPage() {
             hideInTable: true,
             fieldProps: { placeholder: "编码/名称", allowClear: true },
           },
-          ...columns,
+          ...rcColumns,
         ]}
         request={request}
         headerTitle={false}
-        options={false}
-        scroll={{ x: 900 }}
+        options={{
+          density: false,
+          reload: false,
+          fullScreen: false,
+          setting: rcOptionSetting,
+        }}
+        columnsState={columnsState}
+        onColumnsStateChange={onColumnsChange}
+        components={rcComponents}
+        scroll={rcScroll}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,

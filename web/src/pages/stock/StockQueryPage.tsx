@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProTable, type ActionType } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ProColumns } from "@ant-design/pro-components";
 import { stockApi, warehouseApi } from "../../api";
 import { ExportButton } from "../../components/ExportButton";
@@ -178,15 +179,32 @@ export function StockQueryPage() {
     },
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(columns, "stock-query");
   return (
     <ProTable<StockRow>
       actionRef={actionRef}
       rowKey="id"
       locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无库存" /> }}
-      columns={columns}
+      columns={rcColumns}
       request={request}
       headerTitle={false}
-      options={false}
+      options={{
+        density: false,
+        reload: false,
+        fullScreen: false,
+        setting: rcOptionSetting,
+      }}
+      columnsState={columnsState}
+      onColumnsStateChange={onColumnsChange}
+      components={rcComponents}
       search={{
         labelWidth: "auto",
         defaultCollapsed: false,
@@ -203,7 +221,7 @@ export function StockQueryPage() {
         showSizeChanger: true,
         showTotal: (t) => `共 ${t} 条`,
       }}
-      scroll={{ x: 980 }}
+      scroll={rcScroll}
       rowClassName={(r) => (Number(r.quantity) === 0 ? "row-zero" : "")}
     />
   );

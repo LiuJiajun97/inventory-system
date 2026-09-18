@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ProColumns } from "@ant-design/pro-components";
 import { reportApi, supplierApi } from "../../api";
 import type { Supplier } from "../../types/phase1";
@@ -130,14 +131,31 @@ export function PurchaseReconTab() {
     },
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(columns, "report-purchase-recon");
   return (
     <ProTable<PurchaseReconRow>
       rowKey="supplierId"
       locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无采购对账数据" /> }}
-      columns={columns}
+      columns={rcColumns}
       request={request}
       headerTitle={false}
-      options={false}
+      options={{
+        density: false,
+        reload: false,
+        fullScreen: false,
+        setting: rcOptionSetting,
+      }}
+      columnsState={columnsState}
+      onColumnsStateChange={onColumnsChange}
+      components={rcComponents}
       search={{
         labelWidth: "auto",
         defaultCollapsed: false,
@@ -156,7 +174,7 @@ export function PurchaseReconTab() {
         showSizeChanger: true,
         showTotal: (t) => `共 ${t} 条`,
       }}
-      scroll={{ x: 1120 }}
+      scroll={rcScroll}
     />
   );
 }

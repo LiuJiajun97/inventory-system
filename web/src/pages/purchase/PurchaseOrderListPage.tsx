@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState , useMemo} from "react";
 import { Button, Descriptions, Input, Modal, Popconfirm, Segmented, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
@@ -370,6 +371,18 @@ export function PurchaseOrderListPage() {
     },
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化,主表/明细共用同一 pageKey)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(
+    viewMode === "line" ? (lineColumns as unknown as ProColumns<PurchaseOrder>[]) : columns,
+    "purchase-list",
+  );
   return (
     <>
       <ProTable<PurchaseOrder>
@@ -379,7 +392,7 @@ export function PurchaseOrderListPage() {
       rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无采购订单" /> }}
         actionRef={actionRef}
-        columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<PurchaseOrder>[]) : columns}
+        columns={rcColumns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
         headerTitle={
           <Segmented
@@ -394,8 +407,16 @@ export function PurchaseOrderListPage() {
             }}
           />
         }
-        options={false}
-        scroll={{ x: 1360 }}
+        options={{
+          density: false,
+          reload: false,
+          fullScreen: false,
+          setting: rcOptionSetting,
+        }}
+        columnsState={columnsState}
+        onColumnsStateChange={onColumnsChange}
+        components={rcComponents}
+        scroll={rcScroll}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,

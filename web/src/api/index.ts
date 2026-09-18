@@ -893,3 +893,16 @@ export const settlementApi = {
   ar: () => http.get<unknown, LedgerRow[]>("/settlement/ar"),
   dashboard: () => http.get<unknown, SettlementDashboard>("/settlement/dashboard"),
 };
+
+// 表格偏好(列宽拖拽/列显隐/列序,按用户持久化;config 结构见 utils/tablePrefs.ts)
+export const tablePrefApi = {
+  // 当前用户全部页面列配置(pageKey→config)
+  get: () =>
+    http.get<
+      unknown,
+      Record<string, { widths?: Record<string, number>; hidden?: string[]; order?: string[] }>
+    >("/table-prefs"),
+  // 保存指定页面列配置(upsert)
+  save: (pageKey: string, config: { widths?: Record<string, number>; hidden?: string[]; order?: string[] }) =>
+    http.put<unknown, { ok: boolean }>(`/table-prefs/${pageKey}`, config),
+};

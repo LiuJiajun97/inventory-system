@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState , useMemo} from "react";
 import { Button, Descriptions, Modal, Segmented, Space, Table, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -285,6 +286,7 @@ export function OutboundListPage() {
     {
       title: "状态",
       dataIndex: "status",
+      width: 90,
       valueEnum: { finished: { text: "已完成" } },
       render: (_v, r) =>
         r.status === "finished" ? (
@@ -389,13 +391,25 @@ export function OutboundListPage() {
     },
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化,主表/明细共用同一 pageKey)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(
+    viewMode === "line" ? (lineColumns as unknown as ProColumns<OutboundDoc>[]) : columns,
+    "outbound-list",
+  );
   return (
     <>
       <ProTable<OutboundDoc>
         rowKey="id"
         locale={{ emptyText: <EmptyHint text="当前筛选条件下暂无出库单" /> }}
         actionRef={actionRef}
-        columns={viewMode === "line" ? (lineColumns as unknown as ProColumns<OutboundDoc>[]) : columns}
+        columns={rcColumns}
         request={viewMode === "line" ? (lineRequest as unknown as typeof request) : request}
         headerTitle={
           <Segmented
@@ -410,8 +424,16 @@ export function OutboundListPage() {
             }}
           />
         }
-        options={false}
-        scroll={{ x: 1700 }}
+        options={{
+          density: false,
+          reload: false,
+          fullScreen: false,
+          setting: rcOptionSetting,
+        }}
+        columnsState={columnsState}
+        onColumnsStateChange={onColumnsChange}
+        components={rcComponents}
+        scroll={rcScroll}
         search={{
           labelWidth: "auto",
           defaultCollapsed: false,

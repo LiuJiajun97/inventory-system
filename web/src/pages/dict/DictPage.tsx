@@ -22,6 +22,7 @@ import {
 } from "antd";
 import { PlusOutlined, EditOutlined, ToolOutlined } from "@ant-design/icons";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { dictApi } from "../../api";
 import type { DictItem, DictTypeItem } from "../../types/phase1";
@@ -194,6 +195,7 @@ export function DictPage() {
       title: "类型编码",
       dataIndex: "typeCode",
       key: "typeCode",
+      width: 140,
       search: false,
       render: (_v, record) => (
         <Typography.Text code style={{ fontSize: 13 }}>
@@ -205,12 +207,14 @@ export function DictPage() {
       title: "类型名称",
       dataIndex: "typeName",
       key: "typeName",
+      width: 160,
       search: false,
     },
     {
       title: "备注",
       dataIndex: "remark",
       key: "remark",
+      width: 180,
       search: false,
       render: (_v, record) => record.remark || <span style={{ color: "#ccc" }}>-</span>,
     },
@@ -270,16 +274,35 @@ export function DictPage() {
       : []),
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化)
+  const {
+    columns: rcColumns,
+    scroll: rcScroll,
+    columnsState,
+    onColumnsChange,
+    components: rcComponents,
+    optionSetting: rcOptionSetting,
+  } = useResizableColumns(typeColumns, "dict-list");
+
   return (
     <>
       <ProTable<DictTypeItem>
         rowKey="typeCode"
         locale={{ emptyText: <EmptyHint text="当前条件下暂无字典类型" /> }}
         actionRef={actionRef}
-        columns={typeColumns}
+        columns={rcColumns}
         request={request}
         headerTitle={false}
-        options={false}
+        options={{
+          density: false,
+          reload: false,
+          fullScreen: false,
+          setting: rcOptionSetting,
+        }}
+        columnsState={columnsState}
+        onColumnsStateChange={onColumnsChange}
+        components={rcComponents}
+        scroll={rcScroll}
         size="middle"
         search={{
           labelWidth: "auto",

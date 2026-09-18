@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button, Tabs, Tag } from "antd";
 import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { alertApi, warehouseApi } from "../../api";
 import type { Warehouse } from "../../types";
@@ -117,6 +118,24 @@ export function AlertPage() {
     { title: "单位", dataIndex: "unit", width: 80, search: false },
   ];
 
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化,临期/低库存各自独立 pageKey)
+  const {
+    columns: rcExpiryColumns,
+    scroll: rcExpiryScroll,
+    columnsState: expiryColumnsState,
+    onColumnsChange: onExpiryColumnsChange,
+    components: rcExpiryComponents,
+    optionSetting: rcExpiryOptionSetting,
+  } = useResizableColumns(expiryColumns, "alert-list");
+  const {
+    columns: rcLowColumns,
+    scroll: rcLowScroll,
+    columnsState: lowColumnsState,
+    onColumnsChange: onLowColumnsChange,
+    components: rcLowComponents,
+    optionSetting: rcLowOptionSetting,
+  } = useResizableColumns(lowColumns, "alert-expiry-list");
+
   return (
     <div className="table-card">
       <Tabs
@@ -132,11 +151,19 @@ export function AlertPage() {
                 locale={{ emptyText: <EmptyHint text="当前条件下暂无临期预警" /> }}
                 actionRef={expiryRef}
                 size="small"
-                columns={expiryColumns}
+                columns={rcExpiryColumns}
                 request={requestExpiry}
                 headerTitle={false}
-                options={false}
-                scroll={{ x: 900 }}
+                options={{
+                  density: false,
+                  reload: false,
+                  fullScreen: false,
+                  setting: rcExpiryOptionSetting,
+                }}
+                columnsState={expiryColumnsState}
+                onColumnsStateChange={onExpiryColumnsChange}
+                components={rcExpiryComponents}
+                scroll={rcExpiryScroll}
                 search={{
                   labelWidth: "auto",
                   defaultCollapsed: false,
@@ -172,10 +199,19 @@ export function AlertPage() {
                 locale={{ emptyText: <EmptyHint text="当前条件下暂无低库存预警" /> }}
                 actionRef={lowRef}
                 size="small"
-                columns={lowColumns}
+                columns={rcLowColumns}
                 request={requestLow}
                 headerTitle={false}
-                options={false}
+                options={{
+                  density: false,
+                  reload: false,
+                  fullScreen: false,
+                  setting: rcLowOptionSetting,
+                }}
+                columnsState={lowColumnsState}
+                onColumnsStateChange={onLowColumnsChange}
+                components={rcLowComponents}
+                scroll={rcLowScroll}
                 search={{ labelWidth: "auto", defaultCollapsed: false, span: 6 }}
                 pagination={{
                   pageSize: 20,
