@@ -44,6 +44,7 @@
 | GET | `/payments/unsettled-invoices`(V18) | 可核销票(confirmed 正票,剩余=净额−已核销>0) | 登录 |
 | GET | `/settlement/ap` `/settlement/ar`(V18) | 应付/应收台账(对方维度实时聚合零建表:累计单据金额/退货冲减/发票净额(仅 confirmed)/已核销/余额;行展开:① 对方全部发票(含未确认/作废,含正票已核销)② 订单执行子表(未执行/执行中/已完成,采购退货扣减净到货量);分页) | 登录(采购单无仓字段不加 DataScope,销售侧按自有仓库口径待后续对齐) |
 | GET | `/settlement/dashboard`(V18) | 结算总览(应付/应收余额合计,仪表盘 2 卡) | 登录 |
+| GET/PUT | `/table-prefs` `/table-prefs/{pageKey}`(V21) | 表格列偏好:拉当前用户全部页面配置 / 整页覆盖存列宽+显隐+列序(config JSONB,Redis 缓存 `pref:table:{uid}` TTL300s 写失效) | 登录 |
 
 完整契约以 Swagger 为准:`http://127.0.0.1:8888/docs`。
 
