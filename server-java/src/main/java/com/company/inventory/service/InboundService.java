@@ -1,0 +1,50 @@
+package com.company.inventory.service;
+
+import com.company.inventory.common.page.PageResult;
+import com.company.inventory.model.dto.inbound.InboundCreateDTO;
+import com.company.inventory.model.query.InboundDocQuery;
+import com.company.inventory.model.vo.inbound.InboundDocCreatedVO;
+import com.company.inventory.model.vo.inbound.InboundDocVO;
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * 入库单服务接口。
+ *
+ * @author inventory
+ */
+public interface InboundService {
+
+    /**
+     * 新建入库单:整单一个事务,单据头 + 行 + 库存变动 + 序列号同事务。
+     *
+     * @param dto      入参
+     * @param username 当前登录用户名(记为 creator/operator)
+     * @return 单据头
+     */
+    InboundDocCreatedVO create(InboundCreateDTO dto, String username);
+
+    /**
+     * 入库单分页列表(id 降序,含仓库与单据行)。
+     *
+     * @param query 查询条件(warehouseId/page/pageSize)
+     * @return 分页结果
+     */
+    PageResult<InboundDocVO> list(InboundDocQuery query);
+
+    /**
+     * 入库单详情,不存在抛 404。
+     *
+     * @param id 单据 ID
+     * @return 单据(含仓库与单据行)
+     */
+    InboundDocVO get(long id);
+}

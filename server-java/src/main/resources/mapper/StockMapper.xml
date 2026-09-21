@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 库存核心 SQL:扣减必须是条件 UPDATE(带 quantity >= qty),防并发穿仓 -->
+<mapper namespace="com.company.inventory.mapper.StockMapper">
+
+    <!-- 条件扣减:唯一键匹配且可用量(quantity - preAllocatedQty)足够才扣,affected rows=0 即库存不足。
+         防穿仓条件保留且按方案 §5.2 拍板点 2 加强:不击穿预占(可用口径全局统一) -->
+    <update id="deductStock">
+        UPDATE stock
+        SET quantity  = quantity - #{qty},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE warehouse_id = #{warehouseId}
+          AND item_id = #{itemId}
+          AND batch_id = #{batchId}
+          AND location_id = #{locationId}
+          AND quantity &gt;= #{qty}
+          AND quantity - pre_allocated_qty &gt;= #{qty}
+    </update>
+
+    <!-- 条件扣减并原子返回扣后余额(UPDATE ... RETURNING,并发下流水 afterQty 精确) -->
+    <select id="deductStockReturning" resultType="java.math.BigDecimal">
+        UPDATE stock
+        SET quantity  = quantity - #{qty},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE warehouse_id = #{warehouseId}
+          AND item_id = #{itemId}
+          AND batch_id = #{batchId}
+          AND location_id = #{locationId}
+          AND quantity &gt;= #{qty}
+          AND quantity - pre_allocated_qty &gt;= #{qty}
+        RETURNING quantity
+    </select>
+
+    <!-- 增加:余额行已存在时累加 -->
+    <update id="incrementStock">
+        UPDATE stock
+        SET quantity  = quantity + #{qty},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE warehouse_id = #{warehouseId}
+          AND item_id = #{itemId}
+          AND batch_id = #{batchId}
+          AND location_id = #{locationId}
+    </update>
+
+    <!-- 新建余额行(首次入库) -->
+    <insert id="insertStockRow">
+        INSERT INTO stock (warehouse_id, item_id, batch_id, location_id, quantity, updated_at)
+        VALUES (#{warehouseId}, #{itemId}, #{batchId}, #{locationId}, #{quantity},
+                CURRENT_TIMESTAMP)
+    </insert>
+
+    <!-- 选批候选集:仅批次行、可用量(quantity - preAllocatedQty)大于 0,按 id 升序保证确定性 -->
+    <select id="selectActiveStocks" resultType="com.company.inventory.model.entity.stock.StockDO">
+        SELECT id, warehouse_id, item_id, batch_id, location_id, quantity,
+               pre_allocated_qty, updated_at
+        FROM stock
+        WHERE warehouse_id = #{warehouseId}
+          AND item_id = #{itemId}
+          AND location_id = #{locationId}
+          AND batch_id &lt;&gt; 0
+          AND quantity &gt; 0
+          AND quantity - pre_allocated_qty &gt; 0
+          AND NOT frozen
+        ORDER BY id
+    </select>
+
+    <!-- 预占候选集:仓+物品下余额大于 0 的所有行(不限批次/库位,含无批次行),按 id 升序 -->
+    <select id="selectPreAllocCandidates" resultType="com.company.inventory.model.entity.stock.StockDO">
+        SELECT id, warehouse_id, item_id, batch_id, location_id, quantity,
+               pre_allocated_qty, updated_at
+        FROM stock
+        WHERE warehouse_id = #{warehouseId}
+          AND item_id = #{itemId}
+          AND quantity &gt; 0
+          AND NOT frozen
+        ORDER BY id
+    </select>
+
+    <!-- 预占:单行条件累加(可用量足够才预占),affected rows=0 表示该行可用不足 -->
+    <update id="preAllocRow">
+        UPDATE stock
+        SET pre_allocated_qty = pre_allocated_qty + #{qty},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{stockId}
+          AND quantity - pre_allocated_qty &gt;= #{qty}
+    </update>
+
+    <!-- 释放预占:单行条件扣减(预占量足够才释放) -->
+    <update id="releasePreAllocRow">
+        UPDATE stock
+        SET pre_allocated_qty = pre_allocated_qty - #{qty},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{stockId}
+          AND pre_allocated_qty &gt;= #{qty}
+    </update>
+
+    <!-- 销售发货扣减:单行同时扣库存与预占(预占量足够才扣,防击穿他人预占) -->
+    <update id="salesDeductRow">
+        UPDATE stock
+        SET quantity        = quantity - #{qty},
+            pre_allocated_qty = pre_allocated_qty - #{qty},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{stockId}
+          AND pre_allocated_qty &gt;= #{qty}
+    </update>
+
+    <!-- FIFO 用:每个批次最近一笔入库流水时间,批量一次查完 -->
+    <select id="selectLatestInboundTimeByBatch" resultType="java.util.HashMap">
+        SELECT batch_id, MAX(created_at) AS "maxCreatedAt"
+        FROM stock_transaction
+        WHERE warehouse_id = #{warehouseId}
+          AND item_id = #{itemId}
+          AND biz_code = 'inbound'
+          AND batch_id IN
+        <foreach collection="batchIds" item="bid" open="(" separator="," close=")">
+            #{bid}
+        </foreach>
+        GROUP BY batch_id
+    </select>
+
+</mapper>

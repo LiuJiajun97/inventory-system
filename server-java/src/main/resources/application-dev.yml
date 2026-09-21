@@ -1,0 +1,24 @@
+# 开发环境(本地/IDEA/测试默认):连本机 compose 的 PG 5433 + 无密码 Redis,JWT 用开发密钥
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    # 端口 5433(用户 8081 另有用途,2026-09-14 迁出);PG 复用 5433 的 inventory 库
+    url: ${DB_URL:jdbc:postgresql://127.0.0.1:5433/inventory}
+    username: ${DB_USERNAME:inv}
+    password: ${DB_PASSWORD:inv123}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      # 本地 Redis 无密码(空串),让 Lettuce 不启用认证
+      password: ""
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
+# JWT:开发密钥(仅本地);2 小时过期(登出即吊销,故缩短有效期)
+jwt:
+  secret: ${JWT_SECRET:dev-secret-please-change-in-production-9f3a8b2c1e4d}
+  expires-seconds: 7200

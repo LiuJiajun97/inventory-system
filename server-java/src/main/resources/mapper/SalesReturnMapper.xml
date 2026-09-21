@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- V17 单据明细行拍平查询:只读 SELECT,单据行 JOIN 主表/物品/源订单客户,显式列(禁 select *),分页由 MyBatis-Plus 插件完成。 -->
+<mapper namespace="com.company.inventory.mapper.SalesReturnMapper">
+
+    <sql id="docLinesFrom">
+        FROM sales_return d
+        JOIN sales_return_item i ON i.doc_id = d.id
+        LEFT JOIN item it ON it.id = i.item_id
+        LEFT JOIN sales_order so ON so.id = d.sales_order_id
+        LEFT JOIN customer c ON c.id = so.customer_id
+    </sql>
+
+    <sql id="docLinesFilters">
+        <if test="q.warehouseId != null">
+            AND d.warehouse_id = #{q.warehouseId}
+        </if>
+        <if test="q.docNo != null and q.docNo != ''">
+            AND d.doc_no LIKE '%' || TRIM(#{q.docNo}) || '%'
+        </if>
+        <if test="q.status != null and q.status != ''">
+            AND d.status = TRIM(#{q.status})
+        </if>
+        <if test="q.from != null and q.from != ''">
+            AND d.doc_date >= #{q.from}::date
+        </if>
+        <if test="q.to != null and q.to != ''">
+            AND d.doc_date &lt;= #{q.to}::date
+        </if>
+        <if test="q.itemKeyword != null and q.itemKeyword != ''">
+            AND (it.item_code LIKE '%' || TRIM(#{q.itemKeyword}) || '%'
+                OR it.item_name LIKE '%' || TRIM(#{q.itemKeyword}) || '%')
+        </if>
+        <if test="q.allowedWarehouseIds != null">
+            AND d.warehouse_id IN
+            <foreach collection="q.allowedWarehouseIds" item="wh" open="(" separator="," close=")">
+                #{wh}
+            </foreach>
+        </if>
+    </sql>
+
+    <select id="selectDocLines" resultType="com.company.inventory.model.vo.returns.SalesReturnLinesVO">
+        SELECT
+            i.id,
+            d.id AS doc_id, d.doc_no, d.doc_date, d.status,
+            c.customer_name, i.line_no, i.item_id, it.item_code, it.item_name,
+            i.spec_snapshot AS spec, i.unit,
+            i.quantity, i.unit_price, i.tax_price, i.tax_rate, i.amount,
+            i.tax_amount, i.tax_inclusive_total
+        <include refid="docLinesFrom"/>
+        WHERE 1 = 1
+        <include refid="docLinesFilters"/>
+        ORDER BY d.doc_date DESC, d.doc_no DESC, i.line_no
+    </select>
+</mapper>

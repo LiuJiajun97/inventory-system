@@ -1,0 +1,103 @@
+# 库存管理系统 CI:后端(Java 21 + PG16)与前端(Node 24)两个 job 并行
+# 说明:
+# - 测试库 inventory_test 由 PG 服务容器提供,端口必须 5433(全部测试类
+#   @SpringBootTest properties 硬编码 127.0.0.1:5433),故容器内监听 5433 并映射 5433:5433
+# - PG 就绪后先导入 schema.sql 再导入 seed.sql(ubuntu-latest 自带 psql 客户端)
+# - 后端 CI 在 Linux 上直接跑 mvn(不走 scripts/mvn.sh,那是 Windows 包装)
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # 后端:测试 + checkstyle + 打包
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server-java
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: inv
+          POSTGRES_PASSWORD: inv123
+          POSTGRES_DB: inventory_test
+        # 宿主机 5433 → 容器 5432(容器内 PG 监听默认 5432),对齐测试类硬编码 127.0.0.1:5433
+        ports:
+          - "5433:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      # 测试用 Redis(独立 6379 实例,测试类 properties 硬编码 spring.data.redis.port=6379)
+      redis:
+        image: redis:7.4
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 JDK 21(Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: 初始化测试库结构(导入 schema.sql)
+        run: |
+          export PGPASSWORD=inv123
+          psql "host=127.0.0.1 port=5433 dbname=inventory_test user=inv" -v ON_ERROR_STOP=1 -f src/main/resources/db/schema.sql
+
+      - name: 初始化测试库种子(导入 seed.sql)
+        run: |
+          export PGPASSWORD=inv123
+          psql "host=127.0.0.1 port=5433 dbname=inventory_test user=inv" -v ON_ERROR_STOP=1 -f src/main/resources/db/seed.sql
+
+      - name: 后端三件套(测试 + checkstyle + 打包)
+        run: mvn -q test checkstyle:check package
+
+      - name: 上传后端产物(jar)
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-backend
+          path: target/server.jar
+          if-no-files-found: error
+
+  # 前端:安装依赖 + 构建
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: 安装依赖并构建
+        run: npm ci && npm run build
+
+      - name: 上传前端产物(dist)
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-frontend
+          path: dist
+          if-no-files-found: error

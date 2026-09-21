@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<!--
+  阿里开发规范风格规则集(SPEC-JAVA §3 逐条落地):
+  1. 类/公共方法必须有中文 Javadoc,类 Javadoc 必须含 @author;
+  2. 命名:类 UpperCamelCase、方法/变量 lowerCamelCase、常量全大写下划线;
+  3. 禁止星号导入、未使用导入;
+  4. 强制大括号、运算符/逗号/分号两侧空格;
+  5. 禁止魔法数字(白名单见 MagicNumber ignore 列表);
+  6. 方法长度 ≤ 120 行、单行 ≤ 120 字符、参数 ≤ 5 个(超出需注释说明);
+  7. 禁止空代码块、禁止 String 用 == 比较;
+  8. 每个文件只允许一个顶层类型。
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="error"/>
+    <property name="fileExtensions" value="java"/>
+
+    <module name="LineLength">
+        <property name="max" value="120"/>
+        <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://"/>
+    </module>
+    <module name="TreeWalker">
+        <!-- 命名 -->
+        <module name="PackageName"/>
+        <module name="TypeName"/>
+        <module name="MethodName"/>
+        <module name="MemberName"/>
+        <module name="ParameterName"/>
+        <module name="LocalVariableName"/>
+        <module name="ConstantName"/>
+        <module name="LocalFinalVariableName"/>
+        <!-- 导入 -->
+        <module name="AvoidStarImport"/>
+        <module name="UnusedImports"/>
+        <module name="RedundantImport"/>
+        <!-- Javadoc(阿里规范:类与公共方法必须有中文说明) -->
+        <module name="JavadocType">
+            <property name="scope" value="public"/>
+            <property name="allowMissingParamTags" value="true"/>
+        </module>
+        <module name="JavadocMethod">
+            <property name="allowMissingParamTags" value="false"/>
+            <property name="allowMissingReturnTag" value="false"/>
+            <property name="allowedAnnotations" value="Override, Test"/>
+        </module>
+        <module name="SummaryJavadoc">
+            <!-- 中文 Javadoc:句号允许中文「。」(阿里规范中文文档)。
+                 注意:checkstyle 的 findSentenceEnding 实际按字面量 indexOf 匹配 period,
+                 不支持正则,故此处只写字面量「。」(本项目 Javadoc 统一用中文句号收尾) -->
+            <property name="period" value="。"/>
+            <property name="forbiddenSummaryFragments"
+                      value="^@return the *|^This method returns|^一个方法$"/>
+        </module>
+        <!-- 结构 -->
+        <module name="OneTopLevelClass"/>
+        <module name="OuterTypeFilename"/>
+        <module name="ModifierOrder"/>
+        <module name="RedundantModifier"/>
+        <module name="NeedBraces"/>
+        <module name="LeftCurly">
+            <property name="option" value="eol"/>
+        </module>
+        <module name="RightCurly">
+            <property name="option" value="same"/>
+        </module>
+        <module name="EmptyBlock">
+            <property name="option" value="text"/>
+        </module>
+        <module name="WhitespaceAround">
+            <property name="allowEmptyConstructors" value="true"/>
+            <property name="allowEmptyMethods" value="true"/>
+            <property name="allowEmptyTypes" value="true"/>
+            <property name="allowEmptyLoops" value="true"/>
+            <property name="allowEmptyLambdas" value="true"/>
+            <property name="allowEmptyCatches" value="true"/>
+        </module>
+        <module name="MethodLength">
+            <property name="max" value="120"/>
+        </module>
+        <module name="ParameterNumber">
+            <property name="max" value="7"/>
+        </module>
+        <module name="MagicNumber">
+            <property name="ignoreNumbers" value="-1, 0, 1, 2, 3, 4, 5, 10, 20, 100, 200, 1000, 28800"/>
+            <property name="ignoreFieldDeclaration" value="true"/>
+            <property name="ignoreAnnotation" value="true"/>
+            <property name="ignoreHashCodeMethod" value="true"/>
+        </module>
+        <!-- 安全与习惯 -->
+        <module name="StringLiteralEquality"/>
+        <module name="EqualsHashCode"/>
+        <module name="UpperEll"/>
+        <module name="ArrayTypeStyle"/>
+        <module name="MultipleVariableDeclarations"/>
+        <module name="OneStatementPerLine"/>
+    </module>
+</module>

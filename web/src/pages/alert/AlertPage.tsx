@@ -1,0 +1,228 @@
+// 预警中心(一期新增)
+// ProTable 版:Tabs 双表,每个 tab 各自 ProTable(各自 request + 各自 actionRef,筛选天然隔离)
+// 临期预警(到期日 ≤ 30 天)+ 低库存预警(全仓可用 < minStock)
+// 刷新按钮放临期 tab 筛选行右侧,点击两个表都 reload
+
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Button, Tabs, Tag } from "antd";
+import { ProTable } from "@ant-design/pro-components";
+import { useResizableColumns } from "../../utils/tablePrefs";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
+import { alertApi, warehouseApi } from "../../api";
+import type { Warehouse } from "../../types";
+import type { ExpiryAlertRow, LowStockRow } from "../../types/phase1";
+import { fmtQty } from "../../utils/format";
+import { proTableRequest } from "../../utils/proTable";
+import { EmptyHint } from "../../components/EmptyHint";
+
+export function AlertPage() {
+  // 支持 URL 带 ?tab= 直达(仪表盘待办"临期/低库存"跳转预置 tab)
+  const [searchParams] = useSearchParams();
+  const urlTab = searchParams.get("tab");
+  const [tab, setTab] = useState(urlTab === "low" ? "low" : "expiry");
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const expiryRef = useRef<ActionType>();
+  const lowRef = useRef<ActionType>();
+
+  // 仓库下拉数据源(异步加载,仅用于临期 tab 筛选项)
+  useEffect(() => {
+    warehouseApi
+      .list({ page: 1, pageSize: 200 })
+      .then((r) => setWarehouses(r.rows))
+      .catch(() => undefined);
+  }, []);
+
+  // 分页适配走公共封装:current/pageSize -> page/pageSize、{rows,total} -> {data,success,total}
+  const requestExpiry = proTableRequest(
+    (p: { warehouseId?: number }) => ({
+      warehouseId: p.warehouseId,
+    }),
+    alertApi.expiry,
+  );
+
+  const requestLow = proTableRequest(
+    (p: { itemKeyword?: string }) => ({
+      itemKeyword: p.itemKeyword || undefined,
+    }),
+    alertApi.lowStock,
+  );
+
+  const expiryColumns: ProColumns<ExpiryAlertRow>[] = [
+    {
+      title: "仓库",
+      dataIndex: "warehouseId",
+      valueType: "select",
+      hideInTable: true,
+      fieldProps: {
+        allowClear: true,
+        placeholder: "全部仓库",
+        options: warehouses.map((w) => ({ label: w.warehouseName, value: w.id })),
+      },
+    },
+    {
+      title: "物品",
+      dataIndex: "itemName",
+      width: 220,
+      ellipsis: true,
+      search: false,
+      render: (_v, r) => `${r.itemCode} ${r.itemName}`,
+    },
+    { title: "批次号", dataIndex: "batchNo", width: 140, search: false },
+    { title: "仓库", dataIndex: "warehouseName", width: 140, search: false },
+    { title: "生产日期", dataIndex: "productionDate", width: 110, search: false, render: (_v, r) => r.productionDate ?? "-" },
+    { title: "到期日", dataIndex: "expiryDate", width: 110, search: false },
+    {
+      title: "剩余天数",
+      dataIndex: "daysLeft",
+      width: 100,
+      align: "right",
+      search: false,
+      render: (_v, r) => (
+        <Tag color={r.daysLeft <= 7 ? "red" : r.daysLeft <= 15 ? "orange" : "gold"}>{r.daysLeft} 天</Tag>
+      ),
+    },
+    { title: "库存量", dataIndex: "quantity", width: 100, align: "right", className: "num-cell", search: false },
+    { title: "可用量", dataIndex: "availableQty", width: 100, align: "right", className: "num-cell", search: false },
+  ];
+
+  const lowColumns: ProColumns<LowStockRow>[] = [
+    {
+      title: "关键字",
+      dataIndex: "itemKeyword",
+      hideInTable: true,
+      fieldProps: { placeholder: "物品编码/名称", allowClear: true },
+    },
+    { title: "物品", dataIndex: "itemName", search: false, render: (_v, r) => `${r.itemCode} ${r.itemName}` },
+    {
+      title: "最低库存",
+      dataIndex: "minStock",
+      width: 110,
+      align: "right",
+      className: "num-cell",
+      search: false,
+      render: (v) => fmtQty(Number(v)),
+    },
+    { title: "全仓总量", dataIndex: "totalQty", width: 110, align: "right", className: "num-cell", search: false },
+    {
+      title: "全仓可用量",
+      dataIndex: "availableQty",
+      width: 120,
+      align: "right",
+      className: "num-cell",
+      search: false,
+      render: (_v, r) => (
+        <span style={{ color: "#cf1322", fontWeight: 600 }}>{fmtQty(r.availableQty)}</span>
+      ),
+    },
+    { title: "单位", dataIndex: "unit", width: 80, search: false },
+  ];
+
+  // 表格偏好:列宽拖拽/列显隐/列序(服务端持久化,临期/低库存各自独立 pageKey)
+  const {
+    columns: rcExpiryColumns,
+    scroll: rcExpiryScroll,
+    columnsState: expiryColumnsState,
+    onColumnsChange: onExpiryColumnsChange,
+    components: rcExpiryComponents,
+    optionSetting: rcExpiryOptionSetting,
+  } = useResizableColumns(expiryColumns, "alert-list");
+  const {
+    columns: rcLowColumns,
+    scroll: rcLowScroll,
+    columnsState: lowColumnsState,
+    onColumnsChange: onLowColumnsChange,
+    components: rcLowComponents,
+    optionSetting: rcLowOptionSetting,
+  } = useResizableColumns(lowColumns, "alert-expiry-list");
+
+  return (
+    <div className="table-card">
+      <Tabs
+        activeKey={tab}
+        onChange={setTab}
+        items={[
+          {
+            key: "expiry",
+            label: "临期预警(30 天内)",
+            children: (
+              <ProTable<ExpiryAlertRow>
+                rowKey={(r) => `${r.batchNo}-${r.warehouseId}`}
+                locale={{ emptyText: <EmptyHint text="当前条件下暂无临期预警" /> }}
+                actionRef={expiryRef}
+                size="small"
+                columns={rcExpiryColumns}
+                request={requestExpiry}
+                headerTitle={false}
+                options={{
+                  density: false,
+                  reload: false,
+                  fullScreen: false,
+                  setting: rcExpiryOptionSetting,
+                }}
+                columnsState={expiryColumnsState}
+                onColumnsStateChange={onExpiryColumnsChange}
+                components={rcExpiryComponents}
+                scroll={rcExpiryScroll}
+                search={{
+                  labelWidth: "auto",
+                  defaultCollapsed: false,
+                  span: 6,
+                  // 刷新按钮放临期 tab 筛选行右侧;点击两个表都 reload
+                  optionRender: (_searchConfig, _props, dom) => [
+                    ...dom,
+                    <Button
+                      key="refresh"
+                      onClick={() => {
+                        expiryRef.current?.reload();
+                        lowRef.current?.reload();
+                      }}
+                    >
+                      刷新
+                    </Button>,
+                  ],
+                }}
+                pagination={{
+                  pageSize: 20,
+                  showSizeChanger: true,
+                  showTotal: (t) => `共 ${t} 条`,
+                }}
+              />
+            ),
+          },
+          {
+            key: "low",
+            label: "低库存预警",
+            children: (
+              <ProTable<LowStockRow>
+                rowKey="itemId"
+                locale={{ emptyText: <EmptyHint text="当前条件下暂无低库存预警" /> }}
+                actionRef={lowRef}
+                size="small"
+                columns={rcLowColumns}
+                request={requestLow}
+                headerTitle={false}
+                options={{
+                  density: false,
+                  reload: false,
+                  fullScreen: false,
+                  setting: rcLowOptionSetting,
+                }}
+                columnsState={lowColumnsState}
+                onColumnsStateChange={onLowColumnsChange}
+                components={rcLowComponents}
+                scroll={rcLowScroll}
+                search={{ labelWidth: "auto", defaultCollapsed: false, span: 6 }}
+                pagination={{
+                  pageSize: 20,
+                  showSizeChanger: true,
+                  showTotal: (t) => `共 ${t} 条`,
+                }}
+              />
+            ),
+          },
+        ]}
+      />
+    </div>
+  );
+}

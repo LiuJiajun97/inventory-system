@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 预警查询 SQL:临期(批次到期日 N 天内)+ 低库存(全仓可用量 < minStock),均为数据库层聚合 -->
+<mapper namespace="com.company.inventory.mapper.AlertMapper">
+
+    <!-- 临期预警:Batch×Item×Stock×Warehouse 关联,按到期日升序 -->
+    <select id="selectExpiryAlerts" resultType="com.company.inventory.model.vo.alert.ExpiryAlertRow">
+        SELECT b.item_id,
+               i.item_code,
+               i.item_name,
+               i.unit,
+               b.batch_no,
+               s.warehouse_id,
+               w.warehouse_name,
+               b.production_date,
+               b.expiry_date,
+               (b.expiry_date - CURRENT_DATE) AS "daysLeft",
+               s.quantity,
+               (s.quantity - s.pre_allocated_qty) AS "availableQty"
+        FROM batch b
+        JOIN item i ON i.id = b.item_id
+        JOIN stock s ON s.batch_id = b.id
+        JOIN warehouse w ON w.id = s.warehouse_id
+        WHERE b.expiry_date IS NOT NULL
+          AND b.expiry_date &lt;= CURRENT_DATE + #{alertDays}
+          AND s.quantity &gt; 0
+        <if test="query.warehouseId != null">
+          AND s.warehouse_id = #{query.warehouseId}
+        </if>
+        <if test="query.itemId != null">
+          AND b.item_id = #{query.itemId}
+        </if>
+        ORDER BY b.expiry_date, s.id
+    </select>
+
+    <!-- 低库存预警:按物品聚合全仓可用量(available = quantity - preAllocatedQty) -->
+    <select id="selectLowStock" resultType="com.company.inventory.model.vo.alert.LowStockRow">
+        SELECT i.id       AS item_id,
+               i.item_code,
+               i.item_name,
+               i.unit,
+               i.min_stock,
+               COALESCE(SUM(s.quantity), 0) AS "totalQty",
+               COALESCE(SUM(s.quantity - s.pre_allocated_qty), 0) AS "availableQty"
+        FROM item i
+        LEFT JOIN stock s ON s.item_id = i.id
+        WHERE i.min_stock IS NOT NULL
+        <if test="query.itemId != null">
+          AND i.id = #{query.itemId}
+        </if>
+        <if test="query.itemKeyword != null and query.itemKeyword != ''">
+          AND (i.item_code LIKE CONCAT('%', #{query.itemKeyword}, '%')
+               OR i.item_name LIKE CONCAT('%', #{query.itemKeyword}, '%'))
+        </if>
+        GROUP BY i.id, i.item_code, i.item_name, i.unit, i.min_stock
+        HAVING COALESCE(SUM(s.quantity - s.pre_allocated_qty), 0) &lt; i.min_stock
+        ORDER BY i.id
+    </select>
+
+</mapper>

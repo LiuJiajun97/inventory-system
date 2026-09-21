@@ -1,0 +1,1015 @@
+/* 全局样式:按 SPEC-WEB V2 设计令牌 */
+/* 设计基调:专业管理后台风——浅底+深蓝主色,克制 */
+
+:root {
+  /* 主色 */
+  --color-primary: #3056d3;          /* 降饱和蓝 */
+  --color-primary-soft: #eef2ff;      /* menu 选中浅底 */
+  --color-primary-gradient: linear-gradient(135deg, #3056d3, #5a7df7);
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+
+  /* 中性色 */
+  --color-text: #1f2937;
+  --color-text-secondary: #4b5563;
+  --color-text-tertiary: #6b7280;
+  --color-text-quaternary: #9ca3af;
+
+  /* 背景色(整站 ≤ 5 种) */
+  --color-bg-layout: #f5f6fa;        /* 内容区柔和灰底 */
+  --color-bg-white: #ffffff;
+  --color-bg-table-head: #f8fafc;
+  --color-bg-table-hover: #f5f7fa;
+  --color-bg-card: #ffffff;
+
+  /* 边框 */
+  --color-border: #e5e7eb;
+  --color-border-light: #f1f5f9;
+
+  /* 圆角 */
+  --radius: 10px;
+  --radius-lg: 12px;
+
+  /* 阴影三级令牌 */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+
+  /* 预警色 */
+  --color-alert-red: #fef2f2;
+  --color-alert-orange: #fff7ed;
+
+  /* 字体 */
+  --font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei",
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ====== 全局基础 ====== */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: 14px;
+  color: var(--color-text);
+  background-color: var(--color-bg-layout);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 表格数字等宽对齐,便于纵向扫视对比(数字列统一 tabular-nums) */
+.ant-table td,
+.ant-statistic-content {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ====== 数字右对齐 + 等宽数字 ====== */
+.num,
+.num-cell {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-feature-settings: "tnum";
+}
+
+/* ====== 顶部品牌区 logo 方块 ====== */
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  background: var(--color-primary-gradient);
+  color: #ffffff;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.brand-logo-lg {
+  width: 48px;
+  height: 48px;
+  font-size: 22px;
+}
+
+/* ====== 页面标题行 ====== */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0 16px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.page-header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.page-header-extra {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.filter-card,
+.table-card {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ====== 筛选卡 / 表格卡 微调 ====== */
+/* 筛选卡:左侧筛选表单(flex:1)+ 右侧页面级操作按钮,窄屏 wrap 时按钮换行 */
+.filter-card {
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-card form {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-card-extra {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.table-card {
+  padding: 16px 20px;
+}
+
+/* ====== 顶部固定操作条(form 提交区) ====== */
+.fixed-action-bar {
+  position: sticky;
+  bottom: 0;
+  background: var(--color-bg-card);
+  padding: 12px 0;
+  margin-top: 16px;
+  border-top: 1px solid var(--color-border-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  z-index: 10;
+}
+
+/* ====== 数量 0 的行弱化 ====== */
+.row-zero {
+  color: var(--color-text-quaternary) !important;
+}
+
+.row-zero .num,
+.row-zero .num-cell {
+  color: var(--color-text-quaternary) !important;
+}
+
+/* ====== 变动量正负色 ====== */
+.qty-positive {
+  color: var(--color-success);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.qty-negative {
+  color: var(--color-error);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ====== 表格头部加粗(已通过 ConfigProvider token 控) ====== */
+.ant-table-thead > tr > th {
+  font-weight: 600 !important;
+}
+
+/* ====== 登录页背景 ====== */
+.login-bg {
+  min-height: 100vh;
+  background: var(--color-bg-layout);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-card {
+  width: 380px;
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: 32px 32px 24px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04),
+    0 4px 16px rgba(15, 23, 42, 0.06);
+}
+
+.login-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 12px 0 4px;
+}
+
+.login-subtitle {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin: 0 0 24px;
+}
+
+.login-footer {
+  font-size: 12px;
+  color: var(--color-text-quaternary);
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* ====== 用户头像首字圆块 ====== */
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  background: var(--color-primary-gradient);
+  color: #ffffff;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+/* ====== 顶部 Header / Sider 微调 ======
+   锁视口布局(修复:菜单全展开撑高整页、顶栏/内容随文档滚出视野):
+   根布局锁 100vh 不滚,侧栏菜单内部滚,右侧内容区内部滚,顶栏永远固定 */
+.app-layout {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-layout > .ant-layout {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-header {
+  background: var(--color-bg-white);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border-light);
+  height: 56px;
+  line-height: 56px;
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.app-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-header-right .user-meta {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.app-sider {
+  background: var(--color-bg-white);
+  border-right: 1px solid var(--color-border-light);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 侧栏菜单区:logo 固定,菜单超出一屏时内部滚动(菜单全展开不再撑高整页) */
+.app-sider .ant-menu {
+  max-height: calc(100vh - 56px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.app-sider-brand {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 10px;
+  border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-bg-white);
+}
+
+.app-sider-brand-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: hidden;
+}
+
+/* 收起时 logo 居中 */
+.app-sider-brand-collapsed {
+  justify-content: center;
+  padding: 0;
+}
+
+/* ====== 内容区 ======
+   锁视口下:内容区占满剩余高度,自身内部滚动(不再撑高整页) */
+.app-content {
+  padding: 16px;
+  height: calc(100vh - 56px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--color-bg-layout);
+}
+
+/* ====== 统计卡(仪表板) ====== */
+.stat-card {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  border: 1px solid var(--color-border-light);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  justify-content: center;
+  transition: all 200ms ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+.stat-card-label {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stat-card-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* 预警卡(临期-红) */
+.stat-card.alert-red {
+  border-left: 3px solid var(--color-error);
+  background: var(--color-alert-red);
+}
+
+.stat-card.alert-red .stat-card-value {
+  color: var(--color-error);
+}
+
+/* 预警卡(低库存-橙) */
+.stat-card.alert-orange {
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-alert-orange);
+}
+
+.stat-card.alert-orange .stat-card-value {
+  color: var(--color-warning);
+}
+
+/* KPI 图标容器 */
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.stat-icon.blue {
+  background: #eef2ff;
+  color: #3056d3;
+}
+
+.stat-icon.cyan {
+  background: #ecfeff;
+  color: #0891b2;
+}
+
+.stat-icon.green {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.stat-icon.orange {
+  background: #fff7ed;
+  color: #d97706;
+}
+
+.stat-icon.red {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* 横向数据条 */
+.data-bar {
+  height: 6px;
+  background: #eef2ff;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.data-bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 3px;
+  transition: width 300ms ease;
+}
+
+/* ====== 空状态小调整 ====== */
+.ant-empty-description {
+  color: var(--color-text-tertiary);
+}
+
+/* ====== Tag 颜色按 SPEC ====== */
+.tag-status-enabled {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.tag-status-disabled {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #6b7280;
+}
+
+.tag-status-inbound {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.tag-status-outbound {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
+}
+
+.tag-status-expired {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* 调拨入(目的仓,紫)/ 调拨出(源仓,紫深) */
+.tag-biz-transfer-in {
+  background: #faf5ff;
+  border-color: #e9d5ff;
+  color: #7e22ce;
+}
+
+.tag-biz-transfer-out {
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  color: #6d28d9;
+}
+
+/* 调整入(盘盈,青)/ 调整出(盘亏,青深) */
+.tag-biz-adjust-in {
+  background: #ecfeff;
+  border-color: #a5f3fc;
+  color: #0e7490;
+}
+
+.tag-biz-adjust-out {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+  color: #0f766e;
+}
+
+/* 预占(销售审批冻结,金)/ 释放预占(解冻,灰) */
+.tag-biz-pre-alloc {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.tag-biz-release {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+  color: #4b5563;
+}
+
+.tag-role-admin {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3056d3;
+}
+
+.tag-role-operator {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.tag-role-viewer {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+/* ====== 折叠菜单触发按钮 ====== */
+.sider-collapse-btn {
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--color-text-tertiary);
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.sider-collapse-btn:hover {
+  background: var(--color-bg-table-hover);
+  color: var(--color-primary);
+}
+
+/* ====== 序列号输入红色行内提示 ====== */
+.serial-error-text {
+  color: var(--color-error);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* ====== 行内编辑小框 ====== */
+.inline-input {
+  width: 100%;
+}
+
+/* ====== 操作列语义色 ====== */
+.action-btn {
+  transition: opacity 200ms ease;
+}
+
+.action-btn:hover {
+  opacity: 0.8;
+}
+
+.action-void {
+  color: var(--color-error) !important;
+}
+
+.action-reject {
+  color: var(--color-warning) !important;
+}
+
+.action-close {
+  color: var(--color-text-tertiary) !important;
+}
+
+.action-submit,
+.action-approve,
+.action-edit {
+  color: var(--color-primary) !important;
+}
+
+/* 危险操作链接(如停用) */
+.action-edit.danger {
+  color: #cf1322 !important;
+}
+
+/* 带图标的操作链接:垂直居中,消除图标基线对齐的行高漂移 */
+a.action-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+a.action-edit .anticon {
+  line-height: 1;
+}
+
+/* ====== 菜单选中态左侧圆角条 ====== */
+.ant-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: var(--color-primary);
+  border-radius: 0 3px 3px 0;
+}
+
+/* ====== Button primary 渐变 ====== */
+.ant-btn-primary {
+  background: var(--color-primary-gradient) !important;
+  border: none !important;
+}
+
+.ant-btn-primary:hover {
+  background: linear-gradient(135deg, #254bc2, #4a6ee6) !important;
+  box-shadow: 0 4px 12px rgba(48, 86, 211, 0.4) !important;
+}
+
+/* ====== Drawer / Modal 阴影 ====== */
+.ant-drawer-content {
+  box-shadow: var(--shadow-lg);
+}
+
+.ant-modal-content {
+  box-shadow: var(--shadow-lg);
+}
+
+/* ====== 单据新增/编辑页(采购/销售/入库/出库 4 页统一) ====== */
+/* 页面头部:返回链接 + 标题 + 右侧单据摘要 */
+.doc-page-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.doc-page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.doc-page-back:hover {
+  color: var(--color-primary);
+}
+
+.doc-page-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.doc-page-meta {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+
+/* 单卡片内容区(卡片 body 去内边距,由该类统一控制) */
+.doc-form-body {
+  padding: 20px 20px 8px;
+}
+
+/* 表头与明细之间的分节标题 */
+/* 表头四列 grid:控件列内撑满,仅表头 form 内,不影响明细表行内控件 */
+.doc-form-body form .ant-select,
+.doc-form-body form .ant-picker,
+.doc-form-body form .ant-input-number,
+.doc-form-body form .ant-input,
+.doc-form-body form .ant-input-textarea {
+  width: 100%;
+  max-width: 100%;
+}
+.doc-form-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 20px 0 12px;
+}
+
+/* 底部固定操作条:sticky 吸底,左摘要右按钮组 */
+.doc-form-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--color-bg-white);
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 -2px 8px rgba(16, 24, 40, 0.04);
+}
+
+.doc-form-footer-summary {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.doc-form-footer-muted {
+  font-size: 12px;
+  color: var(--color-text-quaternary);
+  margin-left: 8px;
+}
+
+/* 底部操作条左侧组:摘要 + (入库/出库)取消按钮,同一 flex 组靠左 */
+.doc-form-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 底部操作条中间主按钮区:绝对居中(sticky 已使 footer 成为定位祖先) */
+.doc-form-footer-main {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+}
+
+/* 明细表下方的添加行按钮区:左对齐 */
+.doc-form-line-adder {
+  margin: 8px 0 12px;
+}
+
+/* ====== 抽屉底部统一操作条(新建/编辑抽屉共用) ====== */
+/* 布局:右对齐按钮组;上边线颜色由组件内 antd token(colorBorderSecondary)提供 */
+.drawer-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 0;
+}
+
+/* ====== 欢迎语样式 ====== */
+.welcome-section {
+  margin-bottom: 20px;
+}
+
+.welcome-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 4px 0;
+}
+
+.welcome-subtitle {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  margin: 0;
+}
+
+/* ====== 单据详情弹窗紧凑布局(.doc-detail-modal:采购/销售/入库/出库/调拨/调整/盘点 7 个只读详情弹窗) ======
+   仅收紧弹窗内 Descriptions 与 Table 单元格的上下 padding 到 8px;
+   作用域限定在 .doc-detail-modal(Modal 独立挂到 body 下),不影响列表主表格 45px 行高规格。 */
+.doc-detail-modal .ant-descriptions-item-label,
+.doc-detail-modal .ant-descriptions-item-content {
+  padding-block: 8px !important;
+}
+
+.doc-detail-modal .ant-table .ant-table-tbody > tr > td {
+  padding-block: 8px !important;
+}
+
+.doc-detail-modal .ant-table .ant-table-thead > tr > th {
+  padding-block: 8px !important;
+}
+
+/* ProTable 筛选行操作按钮区:列宽不足时按钮组自动换行,避免被裁到视口外(物品页 6 按钮场景) */
+.ant-pro-query-filter-actions .ant-form-item-control-input-content {
+  width: 100%;
+}
+.ant-pro-query-filter-actions .ant-form-item-control-input-content > .ant-space {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 8px;
+}
+
+/* ====== 单据打印(V14) ====== */
+/* 屏显:打印 Modal 内的 A4 单据纸样(白底黑字,灰边模拟纸张,打印时去掉) */
+.print-doc-sheet {
+  background: #fff;
+  color: #000;
+  border: 1px solid #d9d9d9;
+  padding: 16px 20px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.print-doc-title {
+  text-align: right;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.print-doc-no {
+  text-align: right;
+  font-size: 16px;
+  margin: 2px 0 0;
+}
+
+/* 抬头行(TASK-v22c C6):左公司名,右单据类型+单号,下边线分隔 */
+.print-doc-letterhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #000;
+}
+
+.print-doc-company {
+  font-size: 14px;
+  font-weight: 600;
+  padding-top: 8px;
+}
+
+.print-doc-docinfo {
+  line-height: 1.5;
+}
+
+/* 头部键值对:纯表格两组 label/value,label 列固定 18% */
+.print-doc-header {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+}
+
+.print-doc-header td {
+  border: 1px solid #000;
+  padding: 4px 8px;
+}
+
+.print-doc-hlabel {
+  width: 18%;
+  font-weight: 600;
+}
+
+/* 明细表:纯表格 1px 黑边框 */
+.print-doc-lines {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.print-doc-lines th,
+.print-doc-lines td {
+  border: 1px solid #000;
+  padding: 4px 8px;
+}
+
+.print-doc-lines thead th {
+  font-weight: 600;
+}
+
+/* 底部:状态/备注 + 签字区 */
+.print-doc-foot {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.print-doc-sign {
+  display: flex;
+  gap: 60px;
+  margin-top: 28px;
+}
+
+.print-doc-pagemeta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 11px;
+  color: #595959;
+}
+
+/* 打印:隐藏主应用与其它弹窗,只保留 .print-doc-sheet(antd Modal portal 到 body) */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  #root {
+    display: none !important;
+  }
+
+  /* 不含打印单据的弹窗根节点(详情弹窗等)全部隐藏 */
+  .ant-modal-root:not(:has(.print-doc-sheet)) {
+    display: none !important;
+  }
+
+  .ant-modal-mask {
+    display: none !important;
+  }
+
+  .ant-modal-wrap {
+    position: static !important;
+    inset: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  .ant-modal {
+    position: static !important;
+    top: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    box-shadow: none !important;
+  }
+
+  .ant-modal-body {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .ant-modal-content {
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .ant-modal-header,
+  .ant-modal-close,
+  .ant-modal-footer {
+    display: none !important;
+  }
+
+  .print-doc-sheet {
+    border: none;
+    padding: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* 列表页列宽拖拽:表头右缘常驻握把(react-resizable 默认 handle 透明,补宽命中区+常驻可见) */
+th.react-resizable {
+  position: relative;
+}
+th.react-resizable .react-resizable-handle {
+  width: 14px;
+  height: 100%;
+  bottom: 0;
+  cursor: col-resize;
+}
+/* 常驻握把:竖条+两端圆点,默认浅灰可见,悬停/拖动时主色高亮 */
+th.react-resizable .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--color-text-tertiary);
+  opacity: 0.9;
+  transition: background 0.15s, width 0.15s;
+}
+th.react-resizable:hover .react-resizable-handle::after,
+th.react-resizable .react-resizable-handle:hover::after {
+  background: var(--color-primary);
+  width: 4px;
+}

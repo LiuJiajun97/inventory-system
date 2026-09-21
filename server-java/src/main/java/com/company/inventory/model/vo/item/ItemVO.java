@@ -1,0 +1,33 @@
+package com.company.inventory.model.vo.item;
+import java.time.LocalDateTime;
+
+/**
+ * 物品出参(契约:8 字段 + 一期增量 3 字段 + V9 增量 4 字段)。
+ *
+ * @param id             主键
+ * @param itemCode       物品编码
+ * @param itemName       物品名称
+ * @param unit           单位
+ * @param spec           规格
+ * @param attributes     扩展属性(JSON 字符串)
+ * @param status         状态
+ * @param createdAt      创建时间
+ * @param category       物料分类(增量)
+ * @param minStock       最低库存预警线(增量)
+ * @param defaultTaxRate 默认税率(增量)
+ * @param barcode        条码(V9 增量)
+ * @param secondUnit     辅助单位(V9 增量)
+ * @param convertFactor  换算率(V9 增量)
+ * @param brand          品牌(V9 增量)
+ * @param referencePurchasePrice 参考采购价(V10 增量)
+ * @param referenceSalePrice 参考销售价(V10 增量)
+ * @param origin         产地(V10 增量)
+ * @author inventory
+ */
+public record ItemVO(Long id, String itemCode, String itemName, String unit,
+        String spec, String attributes, Integer status, LocalDateTime createdAt,
+        String category, java.math.BigDecimal minStock, java.math.BigDecimal defaultTaxRate,
+        String barcode, String secondUnit, java.math.BigDecimal convertFactor, String brand,
+        java.math.BigDecimal referencePurchasePrice, java.math.BigDecimal referenceSalePrice,
+        String origin) {
+}

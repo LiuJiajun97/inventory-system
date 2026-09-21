@@ -1,0 +1,46 @@
+# 库存管理系统 生产应用栈(目标机:一台 Linux 服务器 + 已有公共服务栈,网络名/路径按目标机调整,下文以 host-app-net 示意)
+# 基础设施全部复用宿主机公共服务栈:
+#   - postgres 容器(16-alpine,用户 inv,库 inventory,容器名 postgres,仅 127.0.0.1:5433)
+#   - redis 容器(带密码,app 与 redis 同网络按容器名直连)
+#   - nginx 容器(站点文件在 /usr/share/nginx/html/inventory,location 组并入既有 80 server 块)
+# 本栈只有 1 个容器:inventory-app(temurin 21 + jar),数据目录 /opt/inventory
+# 敏感值(DB_PASSWORD/REDIS_PASSWORD/JWT_SECRET)一律由 /opt/inventory/.env 注入(compose 自动读取),
+# 本文件不落任何密码,可公开
+services:
+  inventory-app:
+    image: eclipse-temurin:21-jre-alpine
+    container_name: inventory-app
+    restart: unless-stopped
+    working_dir: /app
+    # 产物路径:本地直传或 CI artifact 下载后都放 /opt/inventory/app/server.jar
+    volumes:
+      - /opt/inventory/app/server.jar:/app/server.jar:ro
+    command: ["java", "-Xms128m", "-Xmx384m", "-jar", "server.jar"]
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # PG = 公共服务 postgres 容器(app-net 网络内按容器名直连),密码由 .env 注入
+      DB_URL: jdbc:postgresql://postgres:5432/inventory
+      DB_USERNAME: inv
+      DB_PASSWORD: ${DB_PASSWORD}
+      # 复用公共服务 redis(带密码),密码由 .env 注入
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      # 生产密钥:部署脚本向 /opt/inventory/.env 注入随机值
+      JWT_SECRET: ${JWT_SECRET}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8888/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    # 注意:不声明 depends_on——postgres 在公共服务栈(本文件之外),
+    # 公共栈未起时直接 up 本栈会因外部容器不存在而报缺依赖,公共栈先起是部署前提
+    networks:
+      - app-net
+
+networks:
+  # 复用公共服务栈的外部网络(宿主 compose 项目名决定网络实际名前缀,按目标机调整)
+  app-net:
+    external: true
+    name: host_app-net

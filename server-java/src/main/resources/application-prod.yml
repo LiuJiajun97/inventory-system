@@ -1,0 +1,24 @@
+# 生产环境:全部连接项走环境变量,缺失即启动失败(fail-fast,不静默连错库)
+# 由 deploy/inventory-stack.yml 的 environment 注入,密钥放 /opt/inventory/.env
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      # 生产 redis 必设密码
+      password: ${REDIS_PASSWORD}
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
+# JWT:生产密钥必注入(64 位随机 hex,部署脚本生成)
+jwt:
+  secret: ${JWT_SECRET}
+  expires-seconds: 7200

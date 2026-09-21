@@ -1,0 +1,60 @@
+# 库存管理系统 Java 后端配置(基础段,公共配置)
+# 环境区分:dev(本地默认)/ prod(生产),由 SPRING_PROFILES_ACTIVE 环境变量切换
+# 连接类配置(datasource/redis/jwt)在 application-dev.yml 与 application-prod.yml 中
+server:
+  port: 8888
+
+spring:
+  application:
+    name: inventory-server-java
+  profiles:
+    # 缺省 dev(本地/IDEA/测试);生产部署注入 SPRING_PROFILES_ACTIVE=prod
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jackson:
+    # 契约要求:remark/location/batch 等空字段必须出现在响应 JSON 中,保持默认包含 null
+    serialization:
+      fail-on-empty-beans: false
+
+mybatis-plus:
+  configuration:
+    # 表/列名统一小写蛇形(PG 惯例,见 db/V6),开启下划线自动映射:
+    # Java camelCase 字段 <-> 数据库 snake_case 列。显式 @TableField 仍优先(审计 fill 字段用)。
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+  # 分页插件在 MybatisPlusConfig 中注册
+
+# 登录防爆破:连续失败次数上限与锁定时长(秒)
+login:
+  max-attempts: 5
+  lock-seconds: 300
+
+# 操作日志:保留天数(每天 3 点定时清理早于该天数的记录)
+operation-log:
+  retention-days: 180
+
+# 站内消息(V25):保留天数(每天 3 点定时清理早于该天数的消息)
+message:
+  retention-days: 90
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    # swagger-ui 挂 /docs
+    path: /docs
+    doc-expansion: list
+    deep-linking: true
+
+# 结构化日志:控制台输出 JSON(零新依赖,Spring Boot 3 内置;
+# 自定义 logback-spring.xml 场景用 format.console 驱动 StructuredLogEncoder,而非 console.json)
+logging:
+  level:
+    com.company.inventory: info
+
+# 可观测性:暴露 health/info/metrics(不加 prometheus registry,无采集端)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

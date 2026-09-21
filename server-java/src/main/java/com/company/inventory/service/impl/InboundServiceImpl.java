@@ -1,0 +1,624 @@
+package com.company.inventory.service.impl;
+
+import com.company.inventory.common.constant.ErrorCode;
+import com.company.inventory.common.exception.BizException;
+import com.company.inventory.common.support.DataScope;
+import com.company.inventory.common.support.DateRangeSupport;
+import com.company.inventory.common.page.PageResult;
+import com.company.inventory.common.util.MoneyUtils;
+import com.company.inventory.common.util.QtyUtils;
+import com.company.inventory.model.dto.inbound.InboundCreateDTO;
+import com.company.inventory.model.dto.inbound.InboundLineDTO;
+import com.company.inventory.model.dto.purchase.ArrivalLine;
+import com.company.inventory.model.dto.stock.StockOpRequest;
+import com.company.inventory.model.entity.customer.CustomerDO;
+import com.company.inventory.model.entity.inbound.InboundDocDO;
+import com.company.inventory.model.entity.inbound.InboundDocItemDO;
+import com.company.inventory.model.entity.opening.OpeningStockDocDO;
+import com.company.inventory.model.entity.purchase.PurchaseOrderDO;
+import com.company.inventory.model.entity.returns.PurchaseReturnDO;
+import com.company.inventory.model.entity.returns.SalesReturnDO;
+import com.company.inventory.model.entity.sales.SalesOrderDO;
+import com.company.inventory.model.entity.stock.SerialDO;
+import com.company.inventory.model.entity.supplier.SupplierDO;
+import com.company.inventory.model.entity.warehouse.WarehouseDO;
+import com.company.inventory.mapper.CustomerMapper;
+import com.company.inventory.mapper.InboundDocItemMapper;
+import com.company.inventory.mapper.InboundDocMapper;
+import com.company.inventory.mapper.OpeningStockDocMapper;
+import com.company.inventory.mapper.PurchaseOrderMapper;
+import com.company.inventory.mapper.PurchaseReturnMapper;
+import com.company.inventory.mapper.SalesOrderMapper;
+import com.company.inventory.mapper.SalesReturnMapper;
+import com.company.inventory.mapper.SerialMapper;
+import com.company.inventory.mapper.SupplierMapper;
+import com.company.inventory.mapper.WarehouseMapper;
+import com.company.inventory.model.query.InboundDocQuery;
+import com.company.inventory.service.DocNoService;
+import com.company.inventory.service.InboundService;
+import com.company.inventory.service.PurchaseOrderService;
+import com.company.inventory.service.StockCoreService;
+import com.company.inventory.model.vo.inbound.InboundDocCreatedVO;
+import com.company.inventory.model.vo.inbound.InboundDocItemVO;
+import com.company.inventory.model.vo.inbound.InboundDocVO;
+import com.company.inventory.model.vo.purchase.PurchaseOrderItemVO;
+import com.company.inventory.model.vo.stock.StockLine;
+import com.company.inventory.model.vo.stock.StockOpResult;
+import com.company.inventory.model.vo.warehouse.WarehouseVO;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+/**
+ * 入库单服务实现:整单一个事务,单据头 + 行 + 库存变动 + 序列号同事务。
+ *
+ * <p>一期扩展:refType=purchase 关联采购订单到货,到货行价税携带订单行单价(服务端取值,
+ * 不信前端),入库成功后同事务回写订单 arrivedQty(超收拒绝并提示行号)。</p>
+ *
+ * @author inventory
+ */
+@Service
+public class InboundServiceImpl implements InboundService {
+
+    /** 日志。 */
+    private static final Logger LOGGER = LoggerFactory.getLogger(InboundServiceImpl.class);
+
+    /** 单据 Mapper。 */
+    private final InboundDocMapper inboundDocMapper;
+    /** 单据行 Mapper。 */
+    private final InboundDocItemMapper inboundDocItemMapper;
+    /** 仓库 Mapper。 */
+    private final WarehouseMapper warehouseMapper;
+    /** 库存核心服务。 */
+    private final StockCoreService stockCoreService;
+    /** 单据号服务。 */
+    private final DocNoService docNoService;
+    /** 采购订单服务(到货回写)。 */
+    private final PurchaseOrderService purchaseOrderService;
+    /** 采购订单 Mapper(列表展示关联单号)。 */
+    private final PurchaseOrderMapper purchaseOrderMapper;
+    /** 供应商 Mapper(列表展示关联供应商)。 */
+    private final SupplierMapper supplierMapper;
+    /** 采购退货单 Mapper(列表展示 refType=purchase_return 关联单号)。 */
+    private final PurchaseReturnMapper purchaseReturnMapper;
+    /** 销售退货单 Mapper(列表展示 refType=sales_return 关联单号)。 */
+    private final SalesReturnMapper salesReturnMapper;
+    /** 期初单 Mapper(列表展示 refType=opening 关联单号)。 */
+    private final OpeningStockDocMapper openingStockDocMapper;
+    /** 销售订单 Mapper(销售退货对端客户名溯源)。 */
+    private final SalesOrderMapper salesOrderMapper;
+    /** 客户 Mapper(列表展示销售退货对端客户名)。 */
+    private final CustomerMapper customerMapper;
+    /** 序列号 Mapper(V9 追溯链补写)。 */
+    private final SerialMapper serialMapper;
+    /** JSON 序列化(serialNos 列存 JSON 数组字符串)。 */
+    private final ObjectMapper objectMapper;
+
+    /**
+     * 构造服务。
+     *
+     * @param inboundDocMapper       单据 Mapper
+     * @param inboundDocItemMapper   单据行 Mapper
+     * @param warehouseMapper        仓库 Mapper
+     * @param stockCoreService       库存核心服务
+     * @param docNoService           单据号服务
+     * @param purchaseOrderService   采购订单服务
+     * @param purchaseOrderMapper    采购订单 Mapper
+     * @param supplierMapper         供应商 Mapper
+     * @param purchaseReturnMapper   采购退货单 Mapper
+     * @param salesReturnMapper      销售退货单 Mapper
+     * @param openingStockDocMapper  期初单 Mapper
+     * @param salesOrderMapper       销售订单 Mapper
+     * @param customerMapper         客户 Mapper
+     * @param serialMapper           序列号 Mapper
+     * @param objectMapper           JSON 序列化器
+     */
+    public InboundServiceImpl(InboundDocMapper inboundDocMapper,
+                              InboundDocItemMapper inboundDocItemMapper,
+                              WarehouseMapper warehouseMapper,
+                              StockCoreService stockCoreService,
+                              DocNoService docNoService,
+                              PurchaseOrderService purchaseOrderService,
+                              PurchaseOrderMapper purchaseOrderMapper,
+                              SupplierMapper supplierMapper,
+                              PurchaseReturnMapper purchaseReturnMapper,
+                              SalesReturnMapper salesReturnMapper,
+                              OpeningStockDocMapper openingStockDocMapper,
+                              SalesOrderMapper salesOrderMapper,
+                              CustomerMapper customerMapper,
+                              SerialMapper serialMapper,
+                              ObjectMapper objectMapper) {
+        this.inboundDocMapper = inboundDocMapper;
+        this.inboundDocItemMapper = inboundDocItemMapper;
+        this.warehouseMapper = warehouseMapper;
+        this.stockCoreService = stockCoreService;
+        this.docNoService = docNoService;
+        this.purchaseOrderService = purchaseOrderService;
+        this.purchaseOrderMapper = purchaseOrderMapper;
+        this.supplierMapper = supplierMapper;
+        this.purchaseReturnMapper = purchaseReturnMapper;
+        this.salesReturnMapper = salesReturnMapper;
+        this.openingStockDocMapper = openingStockDocMapper;
+        this.salesOrderMapper = salesOrderMapper;
+        this.customerMapper = customerMapper;
+        this.serialMapper = serialMapper;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * 新建入库单(手工入库或采购到货)。
+     *
+     * @param dto      入参
+     * @param username 当前登录用户名
+     * @return 单据头
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public InboundDocCreatedVO create(InboundCreateDTO dto, String username) {
+        // V9 追溯链:方法开头记录基准时间(留 5 秒容差,防止 JVM 与数据库时钟漂移导致漏补写),
+        // 过账后补写本单序列号的 ref_doc_no
+        LocalDateTime ts = LocalDateTime.now().minusSeconds(5);
+        String docNo = docNoService.generateInboundDocNo();
+
+        boolean purchaseArrival = ErrorCode.REF_TYPE_PURCHASE.equals(dto.refType())
+                && dto.refDocId() != null;
+        // 采购到货:先校验订单已审批并取订单行(服务端单价/税率来源),失败即整单回滚
+        Map<Long, PurchaseOrderItemVO> refItems =
+                purchaseArrival ? purchaseOrderService.requireApprovedItems(dto.refDocId()) : Map.of();
+        for (InboundLineDTO line : dto.items()) {
+            if (purchaseArrival) {
+                if (line.refLineId() == null) {
+                    throw new BizException("采购到货行必须选择采购订单行");
+                }
+                PurchaseOrderItemVO ref = refItems.get(line.refLineId());
+                if (ref == null || !ref.itemId().equals(line.itemId())) {
+                    throw new BizException("采购订单行不存在或物品不匹配: " + line.refLineId());
+                }
+            }
+        }
+
+        InboundDocDO doc = new InboundDocDO();
+        doc.setDocNo(docNo);
+        doc.setWarehouseId(dto.warehouseId());
+        doc.setStatus(ErrorCode.DOC_STATUS_FINISHED);
+        doc.setRemark(dto.remark());
+        doc.setCreator(username);
+        doc.setRefType(dto.refType());
+        doc.setRefDocId(dto.refDocId());
+        doc.setDocDate(dto.docDate());
+        doc.setCarrier(dto.carrier());
+        doc.setVehicleNo(dto.vehicleNo());
+        doc.setFreight(dto.freight());
+        doc.setDocType(dto.docType());
+        doc.setHandler(dto.handler());
+        inboundDocMapper.insert(doc);
+
+        StockOpRequest request = new StockOpRequest();
+        request.setWarehouseId(dto.warehouseId());
+        request.setLines(toStockLines(dto));
+        request.setDocNo(docNo);
+        request.setOperator(username);
+        StockOpResult stockResult = stockCoreService.inbound(request);
+
+        List<StockOpResult.StockOpRow> resultRows = stockResult.getRows();
+        List<ArrivalLine> arrivalLines = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (int i = 0; i < dto.items().size(); i++) {
+            InboundLineDTO line = dto.items().get(i);
+            StockOpResult.StockOpRow resultRow = resultRows.get(i);
+            InboundDocItemDO docItem = new InboundDocItemDO();
+            docItem.setDocId(doc.getId());
+            docItem.setItemId(line.itemId());
+            docItem.setQuantity(line.qty());
+            docItem.setBatchId(resultRow.batchId());
+            docItem.setLocationId(resultRow.locationId());
+            docItem.setSerialNos(toJsonArray(line.serialNos()));
+            docItem.setBatchNo(line.batchNo());
+            docItem.setProductionDate(line.productionDate());
+            docItem.setExpiryDate(line.expiryDate());
+            docItem.setRefLineId(line.refLineId());
+            if (purchaseArrival) {
+                // 价税携带订单行单价(服务端取值,不信前端传值)
+                PurchaseOrderItemVO ref = refItems.get(line.refLineId());
+                docItem.setUnitPrice(ref.unitPrice());
+                docItem.setTaxRate(ref.taxRate());
+                // V20 含税单价:有源继承源订单行快照
+                docItem.setTaxPrice(ref.taxPrice());
+                arrivalLines.add(new ArrivalLine(line.refLineId(), line.qty()));
+            } else {
+                // V20 无源:不含税单价/含税单价二选一(与订单同口径),缺的互算
+                BigDecimal up = line.unitPrice();
+                BigDecimal tp = line.taxPrice();
+                BigDecimal rt = line.taxRate() == null ? BigDecimal.ZERO : line.taxRate();
+                if (up == null && tp != null) {
+                    // 只填含税单价:按行数量反算不含税单价
+                    up = MoneyUtils.fromInclusiveUnit(line.qty(), tp, rt).unitPrice();
+                }
+                docItem.setUnitPrice(up);
+                docItem.setTaxRate(rt);
+                // 含税单价缺失时按 不含税×(1+税率/100) 补(存量回填同口径)
+                if (tp == null && up != null) {
+                    tp = up.multiply(BigDecimal.ONE.add(rt.divide(
+                            new BigDecimal("100"), 10, java.math.RoundingMode.HALF_UP)))
+                            .setScale(4, java.math.RoundingMode.HALF_UP);
+                }
+                docItem.setTaxPrice(tp);
+            }
+            // V10 金额快照:行号从 1 连号,金额=数量×(不含税单价??0),税额=金额×(税率??0)/100
+            BigDecimal amount = MoneyUtils.amountOf(line.qty(),
+                    docItem.getUnitPrice() == null ? BigDecimal.ZERO : docItem.getUnitPrice());
+            BigDecimal tax = MoneyUtils.taxOf(amount,
+                    docItem.getTaxRate() == null ? BigDecimal.ZERO : docItem.getTaxRate());
+            docItem.setLineNo(i + 1);
+            docItem.setAmount(amount);
+            docItem.setTaxAmount(tax);
+            docItem.setTaxInclusiveTotal(MoneyUtils.inclusiveOf(amount, tax));
+            totalAmount = totalAmount.add(amount);
+            inboundDocItemMapper.insert(docItem);
+        }
+        // V10 头总金额=行金额合计(服务端重算)
+        doc.setTotalAmount(totalAmount);
+        inboundDocMapper.updateById(doc);
+        // 采购与库存同事务:入库成功后回写订单到货量(超收拒绝整单回滚)
+        if (purchaseArrival) {
+            purchaseOrderService.applyArrival(dto.refDocId(), arrivalLines);
+        }
+        backfillSerialRef(dto.items(), docNo, dto.warehouseId(), ts);
+        LOGGER.info("新建入库单: docNo={}, warehouseId={}, refType={}, 行数={}, operator={}",
+                docNo, dto.warehouseId(), dto.refType(), dto.items().size(), username);
+        return toCreatedVO(doc);
+    }
+
+    /**
+     * 入库单分页列表。
+     *
+     * @param query 查询条件(warehouseId/page/pageSize)
+     * @return 分页结果
+     */
+    @Override
+    public PageResult<InboundDocVO> list(InboundDocQuery query) {
+        // 数据权限:未授权用户查空;授权用户只查授权仓(admin 豁免不过滤)
+        List<Long> allowed = DataScope.allowedWarehouseIds();
+        if (allowed != null && allowed.isEmpty()) {
+            return PageResult.of(List.of(), 0L, query.getPage(), query.getPageSize());
+        }
+        LambdaQueryWrapper<InboundDocDO> wrapper = new LambdaQueryWrapper<>();
+        if (allowed != null) {
+            wrapper.in(InboundDocDO::getWarehouseId, allowed);
+        }
+        if (query.getWarehouseId() != null) {
+            wrapper.eq(InboundDocDO::getWarehouseId, query.getWarehouseId());
+        }
+        if (StringUtils.hasText(query.getDocNo())) {
+            wrapper.like(InboundDocDO::getDocNo, query.getDocNo().trim());
+        }
+        if (StringUtils.hasText(query.getStatus())) {
+            wrapper.eq(InboundDocDO::getStatus, query.getStatus().trim());
+        }
+        LocalDate from = DateRangeSupport.parseDate(query.getFrom(), "日期起");
+        if (from != null) {
+            wrapper.ge(InboundDocDO::getDocDate, from);
+        }
+        LocalDate to = DateRangeSupport.parseDate(query.getTo(), "日期止");
+        if (to != null) {
+            wrapper.le(InboundDocDO::getDocDate, to);
+        }
+        wrapper.orderByDesc(InboundDocDO::getId);
+        Page<InboundDocDO> result = inboundDocMapper.selectPage(
+                Page.of(query.getPage(), query.getPageSize()), wrapper);
+        List<InboundDocDO> rows = result.getRecords();
+        if (rows.isEmpty()) {
+            return PageResult.of(List.of(), result.getTotal(),
+                    query.getPage(), query.getPageSize());
+        }
+        return PageResult.of(toVOs(rows), result.getTotal(),
+                query.getPage(), query.getPageSize());
+    }
+
+    /**
+     * 入库单详情。
+     *
+     * @param id 单据 ID
+     * @return 单据(含仓库与单据行)
+     */
+    @Override
+    public InboundDocVO get(long id) {
+        InboundDocDO doc = inboundDocMapper.selectById(id);
+        if (doc == null) {
+            throw BizException.notFound("入库单不存在");
+        }
+        List<InboundDocVO> vos = toVOs(List.of(doc));
+        return vos.get(0);
+    }
+
+    /**
+     * 批量组装单据 VO(仓库 + 单据行 + 按 refType 分表回填关联单号/对端名)。
+     *
+     * <p>各关联表自增 id 相互独立,refDocId 必须按 refType 查对应表,否则撞号时
+     * 会回填成别的单据的单号与对端名。</p>
+     *
+     * @param docs 单据列表
+     * @return VO 列表
+     */
+    private List<InboundDocVO> toVOs(List<InboundDocDO> docs) {
+        Set<Long> whIds = docs.stream().map(InboundDocDO::getWarehouseId)
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<Long> docIds = docs.stream().map(InboundDocDO::getId)
+                .collect(Collectors.toCollection(HashSet::new));
+        // 关联单 id 按 refType 分组(不同表自增 id 独立,查错表会回填串号)
+        Map<String, Set<Long>> refIdsByType = new HashMap<>();
+        for (InboundDocDO doc : docs) {
+            if (doc.getRefType() != null && doc.getRefDocId() != null) {
+                refIdsByType.computeIfAbsent(doc.getRefType(), t -> new HashSet<>())
+                        .add(doc.getRefDocId());
+            }
+        }
+
+        // 空集合防护:selectByIds 空集会生成非法 SQL "IN ( )"
+        Map<Long, WarehouseVO> whMap = (whIds.isEmpty() ? List.<WarehouseDO>of()
+                : warehouseMapper.selectByIds(whIds)).stream()
+                .collect(Collectors.toMap(WarehouseDO::getId, this::toWarehouseVO));
+        List<InboundDocItemDO> allItems = inboundDocItemMapper.selectList(
+                new LambdaQueryWrapper<InboundDocItemDO>()
+                        .in(InboundDocItemDO::getDocId, docIds)
+                        .orderByAsc(InboundDocItemDO::getId));
+        Map<Long, List<InboundDocItemDO>> itemMap = allItems.stream()
+                .collect(Collectors.groupingBy(InboundDocItemDO::getDocId));
+
+        // 退货单先查(取其原订单 id 与直挂订单合并成一次批查)
+        Set<Long> prIds = refIdsByType.getOrDefault(ErrorCode.REF_TYPE_PURCHASE_RETURN, Set.of());
+        Map<Long, PurchaseReturnDO> purchaseReturnMap = toIdMap(prIds.isEmpty()
+                ? List.of() : purchaseReturnMapper.selectByIds(prIds), PurchaseReturnDO::getId);
+        Set<Long> srIds = refIdsByType.getOrDefault(ErrorCode.REF_TYPE_SALES_RETURN, Set.of());
+        Map<Long, SalesReturnDO> salesReturnMap = toIdMap(srIds.isEmpty()
+                ? List.of() : salesReturnMapper.selectByIds(srIds), SalesReturnDO::getId);
+        // 采购订单批查:直挂 refType=purchase + 采购退货原采购订单(对端供应商名溯源)
+        Set<Long> purchaseOrderIds = new HashSet<>(
+                refIdsByType.getOrDefault(ErrorCode.REF_TYPE_PURCHASE, Set.of()));
+        for (PurchaseReturnDO pr : purchaseReturnMap.values()) {
+            if (pr.getPurchaseOrderId() != null) {
+                purchaseOrderIds.add(pr.getPurchaseOrderId());
+            }
+        }
+        Map<Long, PurchaseOrderDO> purchaseOrderMap = toIdMap(purchaseOrderIds.isEmpty()
+                ? List.of() : purchaseOrderMapper.selectByIds(purchaseOrderIds), PurchaseOrderDO::getId);
+        // 销售订单批查:销售退货原销售订单(对端客户名溯源)
+        Set<Long> salesOrderIds = new HashSet<>();
+        for (SalesReturnDO sr : salesReturnMap.values()) {
+            if (sr.getSalesOrderId() != null) {
+                salesOrderIds.add(sr.getSalesOrderId());
+            }
+        }
+        Map<Long, SalesOrderDO> salesOrderMap = toIdMap(salesOrderIds.isEmpty()
+                ? List.of() : salesOrderMapper.selectByIds(salesOrderIds), SalesOrderDO::getId);
+        // 供应商/客户名批查
+        Set<Long> supplierIds = purchaseOrderMap.values().stream()
+                .map(PurchaseOrderDO::getSupplierId).filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+        Map<Long, SupplierDO> supplierMap = toIdMap(supplierIds.isEmpty() ? List.of()
+                : supplierMapper.selectByIds(supplierIds), SupplierDO::getId);
+        Set<Long> customerIds = salesOrderMap.values().stream()
+                .map(SalesOrderDO::getCustomerId).filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+        Map<Long, CustomerDO> customerMap = toIdMap(customerIds.isEmpty() ? List.of()
+                : customerMapper.selectByIds(customerIds), CustomerDO::getId);
+        // 期初单批查(期初单无对端名,只回填单号)
+        Set<Long> openingIds = refIdsByType.getOrDefault(ErrorCode.REF_TYPE_OPENING, Set.of());
+        Map<Long, OpeningStockDocDO> openingMap = toIdMap(openingIds.isEmpty()
+                ? List.of() : openingStockDocMapper.selectByIds(openingIds),
+                OpeningStockDocDO::getId);
+
+        List<InboundDocVO> vos = new ArrayList<>();
+        for (InboundDocDO doc : docs) {
+            List<InboundDocItemDO> items = itemMap.getOrDefault(doc.getId(), List.of());
+            List<InboundDocItemVO> itemVos = items.stream().map(this::toItemVO).toList();
+            String refDocNo;
+            String refPartner;
+            Long refDocId = doc.getRefDocId();
+            String refType = doc.getRefType();
+            if (ErrorCode.REF_TYPE_PURCHASE.equals(refType) && refDocId != null) {
+                PurchaseOrderDO po = purchaseOrderMap.get(refDocId);
+                refDocNo = po == null ? null : po.getDocNo();
+                refPartner = po == null ? null : supplierNameOf(supplierMap, po.getSupplierId());
+            } else if (ErrorCode.REF_TYPE_PURCHASE_RETURN.equals(refType) && refDocId != null) {
+                PurchaseReturnDO pr = purchaseReturnMap.get(refDocId);
+                refDocNo = pr == null ? null : pr.getDocNo();
+                PurchaseOrderDO po = pr == null || pr.getPurchaseOrderId() == null ? null
+                        : purchaseOrderMap.get(pr.getPurchaseOrderId());
+                refPartner = po == null ? null : supplierNameOf(supplierMap, po.getSupplierId());
+            } else if (ErrorCode.REF_TYPE_SALES_RETURN.equals(refType) && refDocId != null) {
+                SalesReturnDO sr = salesReturnMap.get(refDocId);
+                refDocNo = sr == null ? null : sr.getDocNo();
+                SalesOrderDO so = sr == null || sr.getSalesOrderId() == null ? null
+                        : salesOrderMap.get(sr.getSalesOrderId());
+                refPartner = so == null ? null : customerNameOf(customerMap, so.getCustomerId());
+            } else if (ErrorCode.REF_TYPE_OPENING.equals(refType) && refDocId != null) {
+                OpeningStockDocDO od = openingMap.get(refDocId);
+                refDocNo = od == null ? null : od.getDocNo();
+                refPartner = null;
+            } else {
+                refDocNo = null;
+                refPartner = null;
+            }
+            vos.add(new InboundDocVO(doc.getId(), doc.getDocNo(), doc.getWarehouseId(),
+                    doc.getStatus(), doc.getRemark(), doc.getCreator(), doc.getCreatedAt(),
+                    whMap.get(doc.getWarehouseId()), itemVos,
+                    doc.getRefType(), doc.getRefDocId(), refDocNo, refPartner,
+                    doc.getDocDate(), doc.getCarrier(), doc.getVehicleNo(),
+                    doc.getFreight() == null ? null
+                            : QtyUtils.toContractString(doc.getFreight()),
+                    doc.getTotalAmount() == null ? null
+                            : QtyUtils.toContractString(doc.getTotalAmount()),
+                    doc.getDocType(), doc.getHandler()));
+        }
+        return vos;
+    }
+
+    /**
+     * DTO 行转库存操作行。
+     *
+     * @param dto 入参
+     * @return 操作行列表
+     */
+    private List<StockLine> toStockLines(InboundCreateDTO dto) {
+        return dto.items().stream().map(line -> {
+            StockLine sl = new StockLine();
+            sl.setItemId(line.itemId());
+            sl.setQty(line.qty());
+            sl.setBatchNo(line.batchNo());
+            sl.setProductionDate(line.productionDate());
+            sl.setExpiryDate(line.expiryDate());
+            sl.setSupplier(line.supplier());
+            sl.setLocationId(line.locationId());
+            sl.setSerialNos(line.serialNos());
+            return sl;
+        }).toList();
+    }
+
+    /**
+     * 实体转单据行 VO。
+     *
+     * @param item 实体
+     * @return VO
+     */
+    private InboundDocItemVO toItemVO(InboundDocItemDO item) {
+        return new InboundDocItemVO(item.getId(), item.getDocId(), item.getItemId(),
+                QtyUtils.toContractString(item.getQuantity()), item.getBatchId(),
+                item.getLocationId(), item.getSerialNos(),
+                item.getUnitPrice(), item.getTaxRate(), item.getBatchNo(),
+                item.getProductionDate(), item.getExpiryDate(), item.getRefLineId(),
+                item.getLineNo(), item.getAmount(), item.getTaxAmount(), item.getTaxInclusiveTotal(),
+                item.getTaxPrice());
+    }
+
+    /**
+     * 实体转单据头 VO。
+     *
+     * @param doc 实体
+     * @return VO
+     */
+    private InboundDocCreatedVO toCreatedVO(InboundDocDO doc) {
+        return new InboundDocCreatedVO(doc.getId(), doc.getDocNo(), doc.getWarehouseId(),
+                doc.getStatus(), doc.getRemark(), doc.getCreator(), doc.getCreatedAt());
+    }
+
+    /**
+     * V9 追溯链补写:入库过账后把本单所有行序列号挂上本单 doc_no(同一事务,与库存数量无关)。
+     *
+     * @param items       入库行列表
+     * @param docNo       本单单据号
+     * @param warehouseId 本仓 ID
+     * @param ts          过账前基准时间(只补写本单入库产生的序列号)
+     */
+    private void backfillSerialRef(List<InboundLineDTO> items, String docNo, Long warehouseId,
+            LocalDateTime ts) {
+        Set<String> serialNos = new HashSet<>();
+        for (InboundLineDTO line : items) {
+            if (line.serialNos() != null) {
+                serialNos.addAll(line.serialNos());
+            }
+        }
+        if (serialNos.isEmpty()) {
+            return;
+        }
+        serialMapper.update(null, new LambdaUpdateWrapper<SerialDO>()
+                .eq(SerialDO::getWarehouseId, warehouseId)
+                .in(SerialDO::getSerialNo, serialNos)
+                .ge(SerialDO::getInboundTime, ts)
+                .set(SerialDO::getRefDocNo, docNo));
+    }
+
+    /**
+     * 序列号列表转 JSON 数组字符串(与 Fastify 版 JSON.stringify 一致,空则 null)。
+     *
+     * @param serialNos 序列号列表(可空)
+     * @return JSON 数组字符串或 null
+     */
+    private String toJsonArray(List<String> serialNos) {
+        if (serialNos == null || serialNos.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(serialNos);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("序列号序列化失败: " + serialNos, e);
+        }
+    }
+
+    /**
+     * 实体转仓库 VO。
+     *
+     * @param warehouse 实体
+     * @return VO
+     */
+    private WarehouseVO toWarehouseVO(WarehouseDO warehouse) {
+        return new WarehouseVO(warehouse.getId(), warehouse.getWarehouseCode(),
+                warehouse.getWarehouseName(), warehouse.getWarehouseType(),
+                warehouse.getEnableBatch(), warehouse.getEnableExpiry(),
+                warehouse.getEnableSerial(), warehouse.getEnableLocation(),
+                warehouse.getStatus(), warehouse.getCreatedAt());
+    }
+
+    /**
+     * 实体列表转 id 索引 Map。
+     *
+     * @param <T>      实体类型
+     * @param rows     实体列表
+     * @param idGetter 取 id 函数
+     * @return id 索引 Map
+     */
+    private <T> Map<Long, T> toIdMap(List<T> rows, Function<T, Long> idGetter) {
+        return rows.stream().collect(Collectors.toMap(idGetter, r -> r));
+    }
+
+    /**
+     * 供应商名安全取值。
+     *
+     * @param supplierMap 供应商索引
+     * @param supplierId  供应商 ID(可空)
+     * @return 供应商名或 null
+     */
+    private String supplierNameOf(Map<Long, SupplierDO> supplierMap, Long supplierId) {
+        if (supplierId == null) {
+            return null;
+        }
+        SupplierDO s = supplierMap.get(supplierId);
+        return s == null ? null : s.getSupplierName();
+    }
+
+    /**
+     * 客户名安全取值。
+     *
+     * @param customerMap 客户索引
+     * @param customerId  客户 ID(可空)
+     * @return 客户名或 null
+     */
+    private String customerNameOf(Map<Long, CustomerDO> customerMap, Long customerId) {
+        if (customerId == null) {
+            return null;
+        }
+        CustomerDO c = customerMap.get(customerId);
+        return c == null ? null : c.getCustomerName();
+    }
+}
